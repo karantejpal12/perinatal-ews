@@ -112,4 +112,12 @@ MIT. See [LICENSE](LICENSE).
 
 ## Citation
 
-If you use this software, please cite it. A Zenodo DOI will be added with the first tagged release.
+If you use this software, please cite it:
+
+> Tejpal, K. (2026). *perinatal-ews: open-source early-warning analytics for county maternal and newborn health* (Version 0.1.0) [Computer software]. https://github.com/karantejpal12/perinatal-ews
+
+GitHub's "Cite this repository" button gives this in other formats. A Zenodo DOI will be added with the first tagged release.
+
+## Author
+
+Karan Tejpal · [ORCID 0009-0004-8609-2854](https://orcid.org/0009-0004-8609-2854)

@@ -1,0 +1,28 @@
+cff-version: 1.2.0
+message: "If you use this software, please cite it as below."
+title: "perinatal-ews: open-source early-warning analytics for county maternal and newborn health"
+type: software
+authors:
+  - family-names: Tejpal
+    given-names: Karan
+    orcid: "https://orcid.org/0009-0004-8609-2854"
+version: 0.1.0
+date-released: 2026-10-14
+license: MIT
+repository-code: "https://github.com/karantejpal12/perinatal-ews"
+abstract: >-
+  perinatal-ews scans public natality data and flags counties where maternal and
+  newborn outcomes (preterm birth, low birth weight, late or no prenatal care,
+  gestational hypertension) are worse than their own recent history and the
+  all-county trend predict. It uses empirical-Bayes shrinkage, overdispersion
+  modelling and false-discovery-rate control, runs the same test within
+  subgroups, reports within-county equity gaps, and monitors its own data
+  quality, distribution drift and detection performance.
+keywords:
+  - public health surveillance
+  - maternal health
+  - perinatal health
+  - natality
+  - early warning
+  - health equity
+  - model monitoring
