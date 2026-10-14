@@ -111,6 +111,28 @@ td.num, th.num { text-align: right; font-family: var(--font-data); font-variant-
 iframe.report { width: 100%; height: 80vh; border: 1px solid var(--rule); border-radius: 10px; background: #fff; }
 code { font-family: var(--font-data); font-size: 13px; background: var(--surface-2); padding: 1px 5px; border-radius: 4px; }
 footer { max-width: 1120px; margin: 0 auto; padding: 16px max(16px, env(safe-area-inset-right, 0px)) 40px max(16px, env(safe-area-inset-left, 0px)); font-size: 13px; color: var(--ink-3); border-top: 1px solid var(--rule); }
+.summary { font-size: 15px; color: var(--ink); background: var(--surface); border: 1px solid var(--rule); border-left: 3px solid var(--accent); border-radius: 8px; padding: 12px 14px; max-width: 80ch; }
+.summary small { display: block; margin-top: 6px; font-size: 12px; color: var(--ink-3); }
+.st-stats { display: grid; grid-template-columns: repeat(auto-fit, minmax(170px, 1fr)); gap: 10px; }
+.st-stats div { background: var(--surface); border: 1px solid var(--rule); border-radius: 10px; padding: 12px 14px; }
+.st-stats b { display: block; font-family: var(--font-data); font-weight: 500; font-size: 22px; }
+.st-stats span { font-size: 12.5px; color: var(--ink-3); }
+.chat { display: flex; flex-direction: column; gap: 12px; }
+.ai-log { display: flex; flex-direction: column; gap: 12px; }
+.msg { border-radius: 10px; padding: 12px 14px; max-width: 80ch; }
+.msg.user { align-self: flex-end; background: var(--accent); color: #fff; }
+.msg.user p { margin: 0; color: #fff; }
+.msg.bot { background: var(--surface); border: 1px solid var(--rule); }
+.md p { margin: 0 0 8px; color: var(--ink); } .md ul { margin: 0 0 8px; padding-left: 20px; } .md li { margin-bottom: 4px; }
+.steps { display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 8px; }
+.step { font-family: var(--font-data); font-size: 11.5px; color: var(--ink-3); background: var(--surface-2); border-radius: 999px; padding: 2px 9px; }
+.check { font-size: 12.5px; margin: 6px 0 0; padding: 6px 9px; border-radius: 6px; }
+.check.ok { background: var(--stable-bg); color: var(--stable); }
+.check.warn { background: var(--watch-bg); color: var(--ink); }
+.chips { display: flex; flex-wrap: wrap; gap: 8px; }
+.chip { font: inherit; font-size: 13px; padding: 6px 11px; border-radius: 999px; border: 1px solid var(--rule); background: var(--surface); color: var(--ink); cursor: pointer; text-align: left; }
+.ai-row { display: flex; gap: 8px; flex-wrap: wrap; align-items: center; }
+.ai-row input[type=password], .ai-row input[type=text], .ai-row input[type=search] { flex: 1 1 260px; font: inherit; font-size: 15px; padding: 10px 12px; border: 1px solid var(--rule); border-radius: 8px; background: var(--surface); color: var(--ink); min-width: 0; }
 [hidden] { display: none !important; }
 @media (prefers-reduced-motion: reduce) { * { transition: none !important; } }
 </style>
@@ -120,6 +142,8 @@ footer { max-width: 1120px; margin: 0 auto; padding: 16px max(16px, env(safe-are
   <a class="brand" href="./">perinatal-ews<span>Explorer</span></a>
   <div class="tabs" role="tablist">
     <button class="tab" role="tab" id="tab-explore" aria-selected="true" aria-controls="view-explore">Explore counties</button>
+    <button class="tab" role="tab" id="tab-states" aria-selected="false" aria-controls="view-states">States</button>
+    <button class="tab" role="tab" id="tab-ask" aria-selected="false" aria-controls="view-ask">Ask AI</button>
     <button class="tab" role="tab" id="tab-run" aria-selected="false" aria-controls="view-run">Run on your data</button>
   </div>
   <nav class="links"><a href="./">About</a><a href="results/2024/report.html">Full bulletin</a><a href="https://github.com/karantejpal12/perinatal-ews">GitHub</a></nav>
@@ -159,6 +183,76 @@ footer { max-width: 1120px; margin: 0 auto; padding: 16px max(16px, env(safe-are
         <tbody id="list"></tbody>
       </table></div>
       <p class="note" id="list-note"></p>
+    </div>
+  </section>
+
+  <!-- STATES -->
+  <section id="view-states" class="stack" role="tabpanel" aria-labelledby="tab-states" hidden>
+    <div>
+      <h1>State view</h1>
+      <p>Choose a state to see every scored county side by side, state-wide patterns and the need-and-access review list.</p>
+    </div>
+    <div class="filters">
+      <label for="st-pick">State<select id="st-pick"></select></label>
+      <label for="st-sort">Sort counties by<select id="st-sort">
+        <option value="flags">Most flags first</option><option value="risk">Highest next-year risk</option>
+        <option value="need">Need and access first</option><option value="name">Name</option></select></label>
+      <label for="st-only">Show<select id="st-only"><option value="">All counties</option><option value="flag">Only flagged counties</option></select></label>
+    </div>
+    <div id="state-body" class="stack"></div>
+  </section>
+
+  <!-- ASK -->
+  <section id="view-ask" class="stack" role="tabpanel" aria-labelledby="tab-ask" hidden>
+    <div>
+      <h1>Ask perinatal-ews</h1>
+      <p>An AI assistant that answers questions in plain language using the published results. It looks up the data with the
+        same tools as this explorer, shows each lookup, and checks every figure in its answer against the data.</p>
+    </div>
+    <div class="panel">
+      <h2>Connect an AI model</h2>
+      <div id="ai-key-row" class="stack" style="gap:8px">
+        <p class="note" style="margin:0">Uses your own Anthropic API key (from console.anthropic.com). The key goes only from your browser to Anthropic;
+          this site has no server and never sees it. It is kept for this tab unless you choose to remember it.</p>
+        <div class="ai-row">
+          <input id="ai-key" type="password" placeholder="sk-ant-…" autocomplete="off" aria-label="Anthropic API key">
+          <button class="btn primary" id="ai-key-save" type="button">Use key</button>
+        </div>
+        <label class="check" for="ai-remember"><input type="checkbox" id="ai-remember"> Remember on this device</label>
+      </div>
+      <div id="ai-key-set" class="ai-row" hidden>
+        <span class="note">API key added.</span>
+        <label for="ai-model" class="note">Model <select id="ai-model"></select></label>
+        <button class="btn" id="ai-key-clear" type="button">Remove key</button>
+      </div>
+    </div>
+    <div class="chat">
+      <div class="chips">
+        <button class="chip" type="button" data-q="Which counties are high priority on the need-and-access list, and why?">High-priority need-and-access counties</button>
+        <button class="chip" type="button" data-q="Summarise Georgia's late prenatal care pattern in 2024. Is it state-wide?">Georgia prenatal care</button>
+        <button class="chip" type="button" data-q="Which counties look stable now but are most likely to be flagged next year?">Stable now, at risk next year</button>
+        <button class="chip" type="button" data-q="How is Hampden County, MA doing, and how does it compare with similar counties?">Hampden County, MA</button>
+        <button class="chip" type="button" data-q="How accurate is the forecast, and what are its limits?">How accurate is the forecast?</button>
+      </div>
+      <div id="ai-log" class="ai-log" aria-live="polite"></div>
+      <form id="ai-form" class="ai-row">
+        <input id="ai-q" type="search" placeholder="Ask about a county, a state or an indicator" autocomplete="off" aria-label="Your question">
+        <button class="btn primary" id="ai-send" type="submit">Ask</button>
+        <button class="btn" id="ai-reset" type="button">New conversation</button>
+      </form>
+      <div class="status" id="ai-status"></div>
+      <p class="note">Answers come from an AI model and can be wrong; the figure check helps, but confirm important numbers on the county pages.
+        Population surveillance only, not for clinical or individual decisions.</p>
+    </div>
+    <div class="panel">
+      <h2>Plain-language briefs (no key needed)</h2>
+      <p class="note" style="margin:0">Generated directly from the data by fixed rules, without an AI model.</p>
+      <div class="ai-row">
+        <input id="brief-county" type="text" placeholder="County, e.g. Hampden, MA (or leave blank)" aria-label="County for brief">
+        <label for="brief-state" class="note">or state <select id="brief-state"><option value="">–</option></select></label>
+        <button class="btn" id="brief-go" type="button">Write brief</button>
+      </div>
+      <div id="brief-out" class="summary" style="border-left-width:3px"></div>
     </div>
   </section>
 
@@ -205,6 +299,8 @@ footer { max-width: 1120px; margin: 0 auto; padding: 16px max(16px, env(safe-are
   Flags are statistical leads for local follow-up, not confirmed problems, and are not for clinical or individual decisions.
 </footer>
 
+<script src="js/ews-tools.js"></script>
+<script src="js/assistant.js"></script>
 <script>
 (() => {
   const $ = s => document.querySelector(s);
@@ -235,13 +331,15 @@ footer { max-width: 1120px; margin: 0 auto; padding: 16px max(16px, env(safe-are
 
   /* ---------- tabs ---------- */
   function showTab(which) {
-    for (const t of ['explore', 'run']) {
+    for (const t of ['explore', 'states', 'ask', 'run']) {
       $('#tab-' + t).setAttribute('aria-selected', String(t === which));
       $('#view-' + t).hidden = t !== which;
     }
   }
   $('#tab-explore').addEventListener('click', () => showTab('explore'));
   $('#tab-run').addEventListener('click', () => { showTab('run'); if (location.hash !== '#run') history.replaceState(null, '', '#run'); });
+  $('#tab-ask').addEventListener('click', () => { showTab('ask'); history.replaceState(null, '', '#ask'); });
+  $('#tab-states').addEventListener('click', () => { showTab('states'); const v = $('#st-pick').value; if (v) { drawState(v); history.replaceState(null, '', '#state-' + v); } });
 
   /* ---------- explore ---------- */
   let D = null, byId = new Map(), patterns = new Set();
@@ -316,6 +414,8 @@ footer { max-width: 1120px; margin: 0 auto; padding: 16px max(16px, env(safe-are
       cards.append(card);
     }
     const extra = [];
+    const brief = el('div', { class: 'summary' }, window.EWS.countyBrief(D, c),
+      el('small', {}, 'Summary written from the data by fixed rules. ', el('a', { href: '#ask', onclick: () => showTab('ask') }, 'Ask the AI assistant'), ' for more.'));
     if (c.need) extra.push(el('div', { class: 'need' + (c.need.priority === 'high' ? ' high' : '') },
       el('b', { text: c.need.priority === 'high' ? 'Need and access: high priority for review. ' : 'Need and access: for review. ' }),
       `A perinatal warning sign here coincides with: ${c.need.reasons}.`));
@@ -331,7 +431,7 @@ footer { max-width: 1120px; margin: 0 auto; padding: 16px max(16px, env(safe-are
       extra.push(el('h3', { text: 'County context' }), grid,
         el('p', { class: 'note', text: (D.context_source || '') + ' These describe the county, not individual people.' }));
     }
-    box.append(head, ...extra.slice(0, c.need ? 1 : 0), legend, cards, ...extra.slice(c.need ? 1 : 0), el('p', { class: 'note', text: D.source }));
+    box.append(head, brief, ...extra.slice(0, c.need ? 1 : 0), legend, cards, ...extra.slice(c.need ? 1 : 0), el('p', { class: 'note', text: D.source }));
   }
 
   function openCounty(id, push = true) {
@@ -396,15 +496,62 @@ footer { max-width: 1120px; margin: 0 auto; padding: 16px max(16px, env(safe-are
     $('#list-note').textContent = rows.length ? `${rows.length} result${rows.length > 1 ? 's' : ''}${rows.length > 200 ? ', showing the first 200' : ''}.` : 'No counties match these filters.';
   }
 
+  /* ---------- states ---------- */
+  function drawState(st) {
+    const body = $('#state-body'); body.textContent = '';
+    const S = window.EWS.stateSummary(D, st); if (!S) return;
+    body.append(el('div', { class: 'summary' }, window.EWS.stateBrief(D, st)));
+    const stats = el('div', { class: 'st-stats' });
+    stats.append(el('div', {}, el('b', { text: S.counties }), el('span', { text: 'Counties scored (100,000+ residents)' })));
+    for (const [k, v] of Object.entries(S.by_indicator))
+      stats.append(el('div', {}, el('b', { text: `${v.alerts} / ${v.watch}` }), el('span', { text: `${k}: alerts / watch` })));
+    stats.append(el('div', {}, el('b', { text: S.need_and_access.length }), el('span', { text: 'On the need-and-access list' })));
+    body.append(stats);
+    for (const p of S.statewide_patterns)
+      body.append(el('div', { class: 'flag-note', text: `State-wide pattern: ${p.indicator}, ${p.counties_flagged} of ${p.counties} counties flagged; state rate ${pct(p.state_rate_baseline)} at baseline, ${pct(p.state_rate_now)} in ${D.year}. Check with the state vital records office whether recording changed before reading this as local.` }));
+    let cs = D.counties.filter(c => c.state === st);
+    const nflags = c => Object.values(c.ind).filter(e => e.level === 'alert' || e.level === 'watch').length * 10 + Object.values(c.ind).filter(e => e.level === 'alert').length;
+    const maxRisk = c => Math.max(0, ...Object.values(c.ind).map(e => e.risk || 0));
+    if ($('#st-only').value === 'flag') cs = cs.filter(c => nflags(c) > 0);
+    const sort = $('#st-sort').value;
+    cs.sort((a, b) => sort === 'name' ? a.name.localeCompare(b.name) : sort === 'risk' ? maxRisk(b) - maxRisk(a)
+      : sort === 'need' ? ((b.need ? (b.need.priority === 'high' ? 2 : 1) : 0) - (a.need ? (a.need.priority === 'high' ? 2 : 1) : 0)) || nflags(b) - nflags(a)
+      : nflags(b) - nflags(a) || maxRisk(b) - maxRisk(a));
+    const keys = Object.keys(D.indicators);
+    const head = el('tr', {}, el('th', { text: 'County' }), ...keys.map(k => el('th', { text: D.indicators[k] })), el('th', { class: 'num', text: `Top ${D.forecast_year} risk` }), el('th', { text: 'Need and access' }));
+    const tb = el('tbody');
+    for (const c of cs) {
+      tb.append(el('tr', { class: 'row', tabindex: '0', onclick: () => { showTab('explore'); openCounty(c.id); window.scrollTo({ top: 0 }); },
+        onkeydown: ev => { if (ev.key === 'Enter') { showTab('explore'); openCounty(c.id); window.scrollTo({ top: 0 }); } } },
+        el('td', { text: c.name }), ...keys.map(k => el('td', {}, c.ind[k] ? pill(c.ind[k].level) : '–')),
+        el('td', { class: 'num', text: pct(maxRisk(c), 0) }),
+        el('td', { text: c.need ? (c.need.priority === 'high' ? 'High' : 'Review') : '' })));
+    }
+    body.append(el('div', { class: 'table-wrap' }, el('table', {}, el('thead', {}, head), tb)),
+      el('p', { class: 'note', text: `${cs.length} counties. Select a row to open the county. Counties under 100,000 residents are not reported separately by CDC WONDER.` }));
+  }
+
   fetch('results/2024/explorer.json').then(r => { if (!r.ok) throw new Error(r.status); return r.json(); }).then(data => {
     D = data;
     byId = new Map(D.counties.map(c => [c.id, c]));
     patterns = new Set(D.state_patterns.map(p => p.indicator + '|' + p.state));
     document.querySelectorAll('.yr').forEach(n => { n.textContent = D.year; });
     for (const [k, v] of Object.entries(D.indicators)) $('#f-ind').append(el('option', { value: k, text: v }));
-    for (const s of [...new Set(D.counties.map(c => c.state))].sort()) $('#f-state').append(el('option', { value: s, text: s }));
+    for (const s of [...new Set(D.counties.map(c => c.state))].sort()) $('#f-state').append(el('option', { value: s, text: (window.EWS.STATE_NAMES[s] || s) }));
     ['#f-ind', '#f-state', '#f-level'].forEach(s => $(s).addEventListener('change', drawList));
     drawList();
+    const states = [...new Set(D.counties.map(c => c.state))].sort();
+    for (const s of states) $('#st-pick').append(el('option', { value: s, text: (window.EWS.STATE_NAMES[s] || s) }));
+    $('#st-pick').value = 'GA';
+    ['#st-pick', '#st-sort', '#st-only'].forEach(s => $(s).addEventListener('change', () => { drawState($('#st-pick').value); history.replaceState(null, '', '#state-' + $('#st-pick').value); }));
+    window.initAssistant(D);
+    const route = () => {
+      const st = location.hash.match(/^#state-([A-Z]{2})$/);
+      if (st && states.includes(st[1])) { $('#st-pick').value = st[1]; showTab('states'); drawState(st[1]); return true; }
+      if (location.hash === '#ask') { showTab('ask'); return true; }
+      return false;
+    };
+    route();
     const m = location.hash.match(/^#county-(\d{5})$/);
     openCounty(m && byId.has(m[1]) ? m[1] : '25013', !!m);
     if (location.hash === '#run') showTab('run');
@@ -412,6 +559,7 @@ footer { max-width: 1120px; margin: 0 auto; padding: 16px max(16px, env(safe-are
       const h = location.hash.match(/^#county-(\d{5})$/);
       if (h && byId.has(h[1])) { showTab('explore'); openCounty(h[1], false); }
       else if (location.hash === '#run') showTab('run');
+      else route();
     });
   }).catch(() => { $('#load-status').textContent = 'The county data could not be loaded. Refresh the page to try again.'; });
 
@@ -436,7 +584,7 @@ footer { max-width: 1120px; margin: 0 auto; padding: 16px max(16px, env(safe-are
     status('Loading scientific libraries…');
     await py.loadPackage(['numpy', 'pandas', 'scipy', 'scikit-learn', 'pyyaml', 'micropip']);
     status('Installing perinatal-ews…');
-    const wheel = new URL('dist/perinatal_ews-0.3.0-py3-none-any.whl', location.href).href;
+    const wheel = new URL('dist/perinatal_ews-0.4.0-py3-none-any.whl', location.href).href;
     await py.runPythonAsync(`import micropip\nawait micropip.install("${wheel}", deps=False)`);
     return py;
   }

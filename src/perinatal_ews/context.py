@@ -163,7 +163,7 @@ def need_access(detections: pd.DataFrame, ctx: pd.DataFrame, forecast_scores: pd
         if r.thin_treatment_access:
             n = r.get("preg_moud_medicaid_facilities", np.nan)
             parts.append("no MOUD facility listed for pregnant/postpartum patients that accepts Medicaid"
-                         if n == 0 else f"{int(n)} MOUD facilities for pregnant/postpartum patients taking Medicaid "
+                         if n == 0 else f"{int(n)} MOUD {'facility' if n == 1 else 'facilities'} for pregnant/postpartum patients taking Medicaid "
                                         f"({r.preg_moud_per_1k_births:.2f} per 1,000 births, bottom quarter)")
         if r.thin_delivery_capacity:
             parts.append("no hospital in the county reports labour and delivery care to CMS "

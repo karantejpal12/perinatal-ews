@@ -135,6 +135,15 @@ def main() -> None:
                            "drug overdose deaths; SAMHSA FindTreatment.gov facility listings (Oct 2026); CMS Maternal "
                            "Health - Hospital (Maternal Morbidity Structural Measure)."),
     }
+    if (res / "forecast_metrics.csv").exists():
+        m = pd.read_csv(res / "forecast_metrics.csv")
+        payload["forecast_metrics"] = [{"model": r.model, "auroc": _r(r.auroc, 3), "auprc": _r(r.auprc, 3),
+                                        "brier": _r(r.brier, 3), "selected": bool(r.selected),
+                                        "outcome_years": str(r.outcome_years)} for r in m.itertuples()]
+    if (res / "context_benchmark_quality.csv").exists():
+        q = pd.read_csv(res / "context_benchmark_quality.csv")
+        payload["benchmark_quality"] = [{"indicator": r.indicator, "r2_context_model": _r(r.r2_context_model, 2),
+                                         "r2_state_average": _r(r.r2_state_average, 2)} for r in q.itertuples()]
     if bench is not None and (res / "context_benchmark_quality.csv").exists():
         payload["benchmark_years"] = str(pd.read_csv(res / "context_benchmark_quality.csv")["years_pooled"].iloc[0])
     Path(a.out).write_text(json.dumps(payload, separators=(",", ":")))

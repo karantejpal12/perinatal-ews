@@ -4,7 +4,7 @@
 [![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
 [![Open In Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/github/karantejpal12/perinatal-ews/blob/main/notebooks/perinatal_ews_colab.ipynb)
 
-**Try it:** [county explorer and in-browser tool](https://karantejpal12.github.io/perinatal-ews/app.html) · [project site](https://karantejpal12.github.io/perinatal-ews/) · [2024 bulletin](https://karantejpal12.github.io/perinatal-ews/results/2024/report.html)
+**Try it:** [county explorer and in-browser tool](https://karantejpal12.github.io/perinatal-ews/app.html) · [AI assistant](https://karantejpal12.github.io/perinatal-ews/app.html#ask) · [state view](https://karantejpal12.github.io/perinatal-ews/app.html#state-GA) · [project site](https://karantejpal12.github.io/perinatal-ews/) · [2024 bulletin](https://karantejpal12.github.io/perinatal-ews/results/2024/report.html)
 
 **Open-source early-warning analytics for county maternal and newborn health.**
 
@@ -17,6 +17,8 @@ It produces:
 - **within-county equity gaps** between subgroups
 - a **next-year machine-learning forecast**: the probability that each county will be flagged for each indicator next year, including counties that look stable today, with forward-in-time validation against simpler baselines (see the [model card](docs/model_card.md))
 - **county context** (v0.3): drug overdose deaths, opioid treatment capacity for pregnant and postpartum patients, hospitals with labour and delivery care, adult health and social conditions, from public CDC, SAMHSA and CMS data; a **cross-validated machine-learning comparison with similar counties**; and a **need-versus-access review list** (see [county context](docs/county_context.md))
+- an **AI assistant** (v0.4) that answers questions about the results in plain language by calling the tool's own data functions, shows each lookup, and checks every figure in its answer against the data (see [AI assistant](docs/ai_assistant.md)); plus plain-language county and state summaries that need no AI model
+- a **state view** with every scored county side by side, state-wide patterns and the need-and-access list
 - a **system health** check on every run: data completeness, distribution shift, a backtest of alert rates, and (on synthetic data) detection sensitivity by county size
 - a self-contained HTML bulletin and CSV outputs
 
@@ -117,6 +119,12 @@ The model's ranking is close to the logistic baseline (the bootstrap interval fo
 
 Sources: CDC PLACES (BRFSS 2023) and ACS 2017–2021 measures, CDC VSRR provisional county overdose deaths 2020–2024, SAMHSA FindTreatment.gov listings, CMS Maternal Health – Hospital. To rebuild: run [`scripts/fetch_county_context.js`](scripts/fetch_county_context.js) in a browser on each site, then `python scripts/build_county_context.py` (needs `pip install shapely`). Methods and limitations: [docs/county_context.md](docs/county_context.md).
 
+## AI assistant (v0.4)
+
+The explorer's **Ask AI** tab is an AI agent built on Anthropic Claude with tool use. It answers questions such as "Which counties are high priority on the need-and-access list, and why?" by calling six data tools (`search_counties`, `get_county`, `list_counties`, `state_summary`, `national_summary`, `method_info`) that read the published results, so it works from the same numbers as the bulletin. Every lookup is shown, and after each answer every figure is checked against the data the assistant looked up; any figure that cannot be matched is listed for the reader to verify. The site has no server: the reader's own API key goes only from their browser to Anthropic. Without a key, each county and state page opens with a plain-language summary written by fixed rules from the data.
+
+Design, guardrails and tests: [docs/ai_assistant.md](docs/ai_assistant.md). `node --test tests/js/ews-tools.test.js` runs the tool and figure-check tests.
+
 ## How detection works
 
 See [docs/methodology.md](docs/methodology.md) for the full method. In short:
@@ -154,11 +162,12 @@ src/perinatal_ews/
   synthetic.py     fictional data with known injected changes
   report.py        HTML bulletin
   cli.py           command line
+js/                AI assistant (assistant.js) and its data tools, briefs and figure check (ews-tools.js)
 scripts/           CDC WONDER and county context fetch and build scripts
 data/context/      county_context.csv (public county context table)
 results/2024/      outputs on real 2016–2024 US county data
 tests/             pytest suite
-docs/              methodology, model card and county context
+docs/              methodology, model card, county context and AI assistant
 ```
 
 ## Development
@@ -166,6 +175,7 @@ docs/              methodology, model card and county context
 ```bash
 pip install -e ".[dev]"
 pytest
+node --test tests/js/ews-tools.test.js
 ```
 
 ## Licence

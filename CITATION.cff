@@ -6,7 +6,7 @@ authors:
   - family-names: Tejpal
     given-names: Karan
     orcid: "https://orcid.org/0009-0004-8609-2854"
-version: 0.3.0
+version: 0.4.0
 doi: "10.5281/zenodo.23378773"
 identifiers:
   - type: doi
@@ -29,7 +29,9 @@ abstract: >-
   county context (adult health, social factors, drug overdose deaths, opioid
   treatment capacity for pregnant and postpartum patients, and hospitals with
   labour and delivery care), a cross-validated machine-learning comparison with
-  similar counties, and a need-versus-access review list.
+  similar counties, and a need-versus-access review list. Version 0.4 adds an
+  AI assistant that answers questions by calling the tool's data functions
+  and checks every figure in its answers, and a state view.
 keywords:
   - public health surveillance
   - maternal health
@@ -42,3 +44,5 @@ keywords:
   - opioid use disorder
   - maternity care access
   - machine learning
+  - large language models
+  - AI agents
