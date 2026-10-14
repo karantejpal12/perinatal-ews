@@ -3,7 +3,9 @@
     perinatal-ews demo --out out/
     perinatal-ews ingest-wonder --file preterm.txt --indicator preterm_birth --out data/preterm.csv
     perinatal-ews run --input data/tidy.csv --out out/ [--year 2024] [--config my.yaml]
-                      [--forecast] [--context data/context/county_context.csv]
+                      [--forecast] [--context data/context/county_context.csv] [--level state]
+    perinatal-ews pooled --input data/tidy.csv --out out/ [--level state] [--window 3]
+                         [--unavailable-years 2017,2018] [--fill-window] [--combine groups.yaml]
 """
 from __future__ import annotations
 
@@ -77,7 +79,7 @@ def _run(tidy: pd.DataFrame, cfg: dict, out: Path, year: int | None, truth: pd.D
                                                   benchmark=bench, typology=typ,
                                                   anomalies=anomalies))
     total = res[res["subgroup"] == TOTAL_SUBGROUP]
-    print(f"Scored {total['geo_id'].nunique()} counties: "
+    print(f"Scored {total['geo_id'].nunique()} areas: "
           f"{int((total['level'] == 'alert').sum())} alerts, {int((total['level'] == 'watch').sum())} watch. "
           f"Outputs in {out}/")
 
@@ -109,6 +111,22 @@ def main(argv: list[str] | None = None) -> None:
                    help="county context CSV (scripts/build_county_context.py): adds context to the forecast "
                         "and writes the need-versus-access review list")
 
+    r.add_argument("--level", choices=["county", "state"], default="county",
+                   help="state: sum county rows to states first (or use state-level input as is)")
+
+    pl = sub.add_parser("pooled", help="multi-year pooled estimates, combining small groups (small-numbers analysis)")
+    pl.add_argument("--input", required=True, nargs="+")
+    pl.add_argument("--out", default="out")
+    pl.add_argument("--level", choices=["county", "state", "as-is"], default="as-is",
+                    help="state: sum county rows to states; as-is: use the input geography")
+    pl.add_argument("--window", type=int, default=3, help="years per pooled window (default 3)")
+    pl.add_argument("--unavailable-years", default="", help="comma-separated years with no data, e.g. 2017,2018")
+    pl.add_argument("--fill-window", action="store_true",
+                    help="reach further back to collect --window available years when some are missing")
+    pl.add_argument("--min-events", type=int, default=20, help="events needed for a reliable estimate (NCHS: 20)")
+    pl.add_argument("--combine", default=None,
+                    help="YAML file mapping combined-group labels to lists of subgroups (default: federal-style combinations)")
+
     args = p.parse_args(argv)
     if args.cmd == "demo":
         cfg = load_config()
@@ -125,10 +143,39 @@ def main(argv: list[str] | None = None) -> None:
         tidy.to_csv(args.out, index=False)
         others = tidy.attrs.get("non_case_categories", [])
         print(f"Wrote {len(tidy)} rows to {args.out}. Categories counted as non-cases: {others}")
+    elif args.cmd == "pooled":
+        _pooled(args)
     elif args.cmd == "run":
         cfg = load_config(args.config)
         tidy = pd.concat([load_tidy_csv(f) for f in args.input], ignore_index=True)
+        if args.level == "state" and tidy["geo_id"].astype(str).str.len().eq(5).any():
+            from .pooling import to_state
+            tidy = to_state(tidy)
         _run(tidy, cfg, Path(args.out), args.year, None, args.title, args.source_note, args.forecast, args.context)
+
+
+def _pooled(args) -> None:
+    import yaml
+
+    from .pooling import combine_small_groups, compare_windows, pooled_estimates, to_state
+
+    tidy = pd.concat([load_tidy_csv(f) for f in args.input], ignore_index=True)
+    if args.level == "state":
+        tidy = to_state(tidy)
+    unavailable = [int(y) for y in args.unavailable_years.split(",") if y.strip()]
+    combine = yaml.safe_load(Path(args.combine).read_text()) if args.combine else None
+    p = pooled_estimates(tidy, window=args.window, unavailable_years=unavailable, fill_window=args.fill_window,
+                         min_events=args.min_events)
+    p = combine_small_groups(p, combine, min_events=args.min_events)
+    out = Path(args.out)
+    out.mkdir(parents=True, exist_ok=True)
+    p.to_csv(out / "pooled_estimates.csv", index=False)
+    c = compare_windows(p[p["combined_from"].eq("") | p["status"].eq("reliable")], window=args.window)
+    c.to_csv(out / "pooled_comparison.csv", index=False)
+    latest = p[p["window_end"] == p["window_end"].max()]
+    print(f"Pooled {args.window}-year windows: {len(p)} estimates; latest window "
+          f"{latest['window'].iloc[0] if len(latest) else '-'}: {int((latest['status'] == 'reliable').sum())} reliable, "
+          f"{int((latest['report_as'] == 'insufficient data').sum())} insufficient. Outputs in {out}/")
 
 
 if __name__ == "__main__":

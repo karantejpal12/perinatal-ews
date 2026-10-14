@@ -234,3 +234,71 @@ def test_anomaly_model_finds_injected_errors_the_rule_misses():
     assert v.loc["one_rate_spike", "found_by_model_pct"] >= 50
     assert v.loc["births_drop", "found_by_either_pct"] == 100
     assert v.loc["false flags on clean records (%)", "found_by_model_pct"] <= 2
+
+
+def _race_tidy():
+    """Small fictional state-level table with race groups and a 2017-2018 gap."""
+    rows = []
+    groups = {"White": (20000, 0.10), "Asian": (3000, 0.10), "Native Hawaiian or Other Pacific Islander": (40, 0.12),
+              "Black": (2500, 0.13)}
+    for y in range(2016, 2025):
+        for g, (n, p) in groups.items():
+            num = round(n * p) if not (g == "Native Hawaiian or Other Pacific Islander" and y in (2017, 2018)) else np.nan
+            rows.append(dict(geo_id="HI", geo_name="Hawaii", state="HI", year=y, indicator="preterm_birth",
+                             subgroup=g, numerator=num, denominator=float(n)))
+    return pd.DataFrame(rows)
+
+
+def test_to_state_sums_counties_and_keeps_missing_missing(data):
+    from perinatal_ews.pooling import to_state
+
+    tidy, _ = data
+    st = to_state(tidy)
+    one = tidy[(tidy.year == 2024) & (tidy.indicator == "preterm_birth") & (tidy.subgroup == "All")]
+    s = st[(st.year == 2024) & (st.indicator == "preterm_birth") & (st.subgroup == "All")]
+    assert s["denominator"].sum() == one["denominator"].sum()
+    t2 = tidy.copy()
+    k = t2.index[(t2.year == 2024) & (t2.indicator == "preterm_birth") & (t2.subgroup == "All")][0]
+    t2.loc[k, "numerator"] = np.nan
+    s2 = to_state(t2)
+    st_k = t2.loc[k, "state"]
+    assert s2[(s2.state == st_k) & (s2.year == 2024) & (s2.indicator == "preterm_birth") & (s2.subgroup == "All")]["numerator"].isna().all()
+
+
+def test_pooling_skips_and_reports_unavailable_years():
+    from perinatal_ews.pooling import pooled_estimates
+
+    p = pooled_estimates(_race_tidy(), window=3, unavailable_years=[2017, 2018])
+    r = p[(p.subgroup == "White") & (p.window == "2016-2018")].iloc[0]
+    assert r["years_used"] == "2016" and r["years_unavailable"] == "2017,2018"
+    assert r["status"].startswith("too few years") and np.isnan(r["rate"])   # never treated as zero
+    full = p[(p.subgroup == "White") & (p.window == "2022-2024")].iloc[0]
+    assert full["n_years"] == 3 and full["denominator"] == 60000
+    filled = pooled_estimates(_race_tidy(), window=3, unavailable_years=[2017, 2018], fill_window=True)
+    f = filled[(filled.subgroup == "White") & (filled.window_end == 2019)].iloc[0]
+    assert f["years_used"] == "2016,2019" and f["years_unavailable"] == "2017,2018"
+    g = filled[(filled.subgroup == "White") & (filled.window_end == 2021)].iloc[0]
+    assert g["years_used"] == "2019,2020,2021"
+
+
+def test_small_groups_are_combined_and_labelled():
+    from perinatal_ews.pooling import combine_small_groups, pooled_estimates
+
+    p = combine_small_groups(pooled_estimates(_race_tidy(), window=3))
+    w = p[p.window == "2022-2024"].set_index("subgroup")
+    nhpi = "Native Hawaiian or Other Pacific Islander"
+    assert w.loc[nhpi, "status"] != "reliable"                     # about 15 events over 3 years
+    combo = "Asian or Pacific Islander (combined)"
+    assert w.loc[combo, "combined_from"] == "Asian + " + nhpi
+    assert w.loc[combo, "denominator"] == w.loc["Asian", "denominator"] + w.loc[nhpi, "denominator"]
+    assert w.loc[combo, "status"] == "reliable"
+    assert w.loc[nhpi, "report_as"] == combo
+    assert w.loc["White", "report_as"] == "White"
+
+
+def test_compare_windows_only_when_reliable():
+    from perinatal_ews.pooling import compare_windows, pooled_estimates
+
+    c = compare_windows(pooled_estimates(_race_tidy(), window=3)).set_index("subgroup")
+    assert c.loc["White", "change"] == "no clear change"
+    assert c.loc["Native Hawaiian or Other Pacific Islander", "change"].startswith("not compared")
