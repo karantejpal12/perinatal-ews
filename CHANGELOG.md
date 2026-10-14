@@ -2,7 +2,7 @@
 
 All notable changes to perinatal-ews. Each release is archived on Zenodo (concept DOI [10.5281/zenodo.23374046](https://doi.org/10.5281/zenodo.23374046)). Feedback from users and reviewers is tracked as [GitHub issues](https://github.com/karantejpal12/perinatal-ews/issues) and linked here.
 
-## 0.6.0 – 2026-10-14
+## 0.6.0 – 2026-10-14 · [10.5281/zenodo.23381196](https://doi.org/10.5281/zenodo.23381196)
 
 Changes in response to feedback from a state maternal and child health epidemiologist ([#1](https://github.com/karantejpal12/perinatal-ews/issues/1)):
 
@@ -15,7 +15,7 @@ Changes in response to feedback from a state maternal and child health epidemiol
 - `docs/small_numbers.md`.
 - Tests for state aggregation, pooling with a 2017–2018 gap, combining small groups, combined groups from the source, window comparison, and a check that published race results never show a rate based on fewer than 20 events.
 
-## 0.5.0 – 2026-10-14
+## 0.5.0 – 2026-10-14 · [10.5281/zenodo.23380220](https://doi.org/10.5281/zenodo.23380220)
 
 - Interactive county map in the explorer.
 - County types from unsupervised k-means clustering (silhouette-based k, bootstrap stability).
@@ -24,6 +24,9 @@ Changes in response to feedback from a state maternal and child health epidemiol
 - `docs/ml_methods.md`.
 
 ## 0.4.0 – 2026-10-14
+
+Not released separately; included in the 0.5.0 archive.
+
 
 - "Ask perinatal-ews" AI assistant (LLM agent with six data tools and an automatic figure check).
 - Rule-based plain-language county and state summaries.
