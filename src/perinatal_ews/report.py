@@ -9,7 +9,7 @@ import pandas as pd
 from . import __version__
 from .detect import detect
 from .equity import subgroup_gaps
-from .monitor import backtest, data_quality, distribution_drift, evaluate_against_truth
+from .monitor import backtest, data_quality, distribution_drift, evaluate_against_truth, state_clusters
 from .schema import TOTAL_SUBGROUP
 
 CSS = """
@@ -182,8 +182,15 @@ def _flag_table(res: pd.DataFrame, tidy: pd.DataFrame, labels: dict, subgroup_co
             + "".join(rows) + "</tbody></table></div>")
 
 
+def _more_note(n: int, shown: int, file: str) -> str:
+    if n <= shown:
+        return ""
+    return f'<p class="note">Showing the {shown} strongest of {n:,}. The full list is in {escape(file)}.</p>'
+
+
 def build_report(tidy: pd.DataFrame, config: dict, truth: pd.DataFrame | None = None,
-                 target_year: int | None = None, title: str = "Perinatal Early Warning") -> str:
+                 target_year: int | None = None, title: str = "Perinatal Early Warning",
+                 source_note: str | None = None, max_rows: int = 40) -> str:
     year = int(target_year or tidy["year"].max())
     labels = {k: v["label"] for k, v in config["indicators"].items()}
     subgroups = sorted(s for s in tidy["subgroup"].unique() if s != TOTAL_SUBGROUP)
@@ -196,6 +203,7 @@ def build_report(tidy: pd.DataFrame, config: dict, truth: pd.DataFrame | None = 
     dq = data_quality(tidy, year)
     drift = distribution_drift(tidy, config, year)
     bt = backtest(tidy, config)
+    clusters = state_clusters(res_all, tidy, config)
 
     scored = res_all[res_all["level"] != "insufficient data"]
     n_alert = int((scored["level"] == "alert").sum())
@@ -207,6 +215,8 @@ def build_report(tidy: pd.DataFrame, config: dict, truth: pd.DataFrame | None = 
         synthetic_note = ('<div class="synthetic"><b>Demonstration data.</b> Every county and number on this page is '
                           'synthetic, generated with known changes injected so the system can be tested. '
                           'No real places or people are shown.</div>')
+    elif source_note:
+        synthetic_note = f'<p class="note">{source_note}</p>'
 
     out = [f'<title>{escape(title)}</title>',
            '<meta name="claude:viewport-fit-sides" content="cover">',
@@ -232,13 +242,31 @@ after allowing for the change seen across all counties.</p>{synthetic_note}</hea
 and at least 10% above expected. <b>Watch</b> means a likely rise that needs another year of data to confirm.
 "2nd year" shows whether the county was also elevated the year before.</p>
 <div class="legend"><span><i></i>Observed rate by year</span><span><i class="ring"></i>Expected rate, {year}</span></div>
-{_flag_table(flagged, tidy, labels, subgroup_col=False)}</section>''')
+{_flag_table(flagged.head(max_rows), tidy, labels, subgroup_col=False)}
+{_more_note(len(flagged), max_rows, "detections.csv")}</section>''')
 
     if len(res_sub):
         out.append(f'''<section><h2>Subgroup alerts</h2>
 <p>The same test run separately within each subgroup ({escape(", ".join(subgroups))}). A change confined to one group
 can be too diluted to show in the county total.</p>
-{_flag_table(sub_flagged, tidy, labels, subgroup_col=True)}</section>''')
+{_flag_table(sub_flagged.head(max_rows), tidy, labels, subgroup_col=True)}
+{_more_note(len(sub_flagged), max_rows, "detections.csv")}</section>''')
+
+    if len(clusters):
+        rows = "".join(
+            f"<tr><td>{escape(labels.get(r.indicator, r.indicator))}</td><td>{escape(str(r.state))}</td>"
+            f'<td class="num">{int(r.flagged)} of {int(r.counties)}</td><td class="num">{int(r.alerts)}</td>'
+            f'<td class="num">{_pct(r.state_rate_baseline)} → {_pct(r.state_rate_current)}</td>'
+            f'<td class="num">{_pct(r.national_rate_baseline)} → {_pct(r.national_rate_current)}</td></tr>'
+            for r in clusters.itertuples())
+        out.append(f'''<section><h2>State-wide patterns</h2>
+<p>States where at least 40% of scored counties were flagged for the same indicator. When counties across a state
+rise together, the cause is more likely state-wide: a real change in coverage, policy or practice, or a change in how
+the state records that birth certificate item. Review these with the state vital records office before treating
+the county flags as local problems.</p>
+<div class="table-wrap"><table><thead><tr><th>Indicator</th><th>State</th><th class="num">Counties flagged</th>
+<th class="num">Alerts</th><th class="num">State rate, baseline → {year}</th><th class="num">All counties, baseline → {year}</th></tr></thead>
+<tbody>{rows}</tbody></table></div></section>''')
 
     if len(gaps):
         top = gaps.sort_values("rate_ratio", ascending=False).groupby("indicator").head(3)

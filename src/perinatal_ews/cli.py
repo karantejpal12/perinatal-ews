@@ -16,16 +16,18 @@ from .config import load_config
 from .detect import detect
 from .equity import subgroup_gaps
 from .ingest import load_tidy_csv, wonder_to_tidy
-from .monitor import backtest, data_quality, distribution_drift, evaluate_against_truth
+from .monitor import backtest, data_quality, distribution_drift, evaluate_against_truth, state_clusters
 from .report import build_report
 from .schema import TOTAL_SUBGROUP
 
 
-def _run(tidy: pd.DataFrame, cfg: dict, out: Path, year: int | None, truth: pd.DataFrame | None) -> None:
+def _run(tidy: pd.DataFrame, cfg: dict, out: Path, year: int | None, truth: pd.DataFrame | None,
+         title: str = "Perinatal Early Warning", source_note: str | None = None) -> None:
     out.mkdir(parents=True, exist_ok=True)
     subgroups = sorted(set(tidy["subgroup"]) - {TOTAL_SUBGROUP})
     res = detect(tidy, cfg, target_year=year, subgroups=[TOTAL_SUBGROUP] + subgroups)
     res.to_csv(out / "detections.csv", index=False)
+    state_clusters(res, tidy, cfg).to_csv(out / "state_patterns.csv", index=False)
     if subgroups:
         subgroup_gaps(tidy, cfg, year).to_csv(out / "subgroup_gaps.csv", index=False)
     data_quality(tidy, year).to_csv(out / "data_quality.csv", index=False)
@@ -36,7 +38,8 @@ def _run(tidy: pd.DataFrame, cfg: dict, out: Path, year: int | None, truth: pd.D
         ev["summary"].to_csv(out / "evaluation_summary.csv", index=False)
         ev["by_size"].to_csv(out / "evaluation_by_size.csv", index=False)
         ev["cases"].to_csv(out / "evaluation_cases.csv", index=False)
-    (out / "report.html").write_text(build_report(tidy, cfg, truth=truth, target_year=year))
+    (out / "report.html").write_text(build_report(tidy, cfg, truth=truth, target_year=year, title=title,
+                                                            source_note=source_note))
     total = res[res["subgroup"] == TOTAL_SUBGROUP]
     print(f"Scored {total['geo_id'].nunique()} counties: "
           f"{int((total['level'] == 'alert').sum())} alerts, {int((total['level'] == 'watch').sum())} watch. "
@@ -63,6 +66,8 @@ def main(argv: list[str] | None = None) -> None:
     r.add_argument("--out", default="out")
     r.add_argument("--year", type=int, default=None)
     r.add_argument("--config", default=None)
+    r.add_argument("--title", default="Perinatal Early Warning")
+    r.add_argument("--source-note", default=None, help="one line on the data source, shown under the report title")
 
     args = p.parse_args(argv)
     if args.cmd == "demo":
@@ -83,7 +88,7 @@ def main(argv: list[str] | None = None) -> None:
     elif args.cmd == "run":
         cfg = load_config(args.config)
         tidy = pd.concat([load_tidy_csv(f) for f in args.input], ignore_index=True)
-        _run(tidy, cfg, Path(args.out), args.year, None)
+        _run(tidy, cfg, Path(args.out), args.year, None, args.title, args.source_note)
 
 
 if __name__ == "__main__":

@@ -55,6 +55,7 @@ Detection is repeated within each subgroup present in the data. Separately, for 
 
 - **Data quality:** counties missing compared with last year, suppressed counts, and denominator changes over 30%.
 - **Distribution drift:** population stability index (PSI) of county rates in T against the baseline years. PSI < 0.10 stable, 0.10–0.25 moderate, > 0.25 major. A shift can be a real national trend, which detection adjusts for, or a coding change, which it may not.
+- **State-wide patterns:** states where at least 40% of scored counties (minimum 3) are flagged for the same indicator. Detection compares counties with all counties nationally, so a state-wide shift (policy, coverage, or a change in how the state codes a birth-certificate item) can appear as many county flags; these are reported separately for review with the state vital records office.
 - **Backtest:** each past year scored as if current. On stable data, alert rates should stay low and steady; a jump with no known cause suggests a data problem.
 - **Ground-truth evaluation (synthetic data):** sensitivity overall and by county size, and false-alert rate on unchanged series.
 

@@ -103,6 +103,55 @@ def backtest(tidy: pd.DataFrame, config: dict, years: list[int] | None = None) -
     return pd.DataFrame(rows)
 
 
+def state_clusters(detections: pd.DataFrame, tidy: pd.DataFrame, config: dict,
+                   min_counties: int = 3, min_share: float = 0.4) -> pd.DataFrame:
+    """Flag states where many counties are flagged for the same indicator at once.
+
+    County detection compares each county with all counties nationally. When a
+    large share of one state's counties rise together, the cause is more likely
+    state-wide: a real change (coverage, policy, practice) or a change in how the
+    state records the birth certificate item. Either way, it should be reviewed
+    with the state vital records office before reading the county flags as local.
+    """
+    d = detections[(detections["subgroup"] == TOTAL_SUBGROUP) & (detections["level"] != "insufficient data")]
+    if d.empty:
+        return pd.DataFrame()
+    year = int(d["year"].iloc[0])
+    det = config["detection"]
+    last = year - det.get("guard_years", 1)
+    base_years = list(range(last - det["baseline_years"], last))
+
+    g = d.assign(flag=d["level"].isin(["alert", "watch"])).groupby(["indicator", "state"]).agg(
+        counties=("geo_id", "size"), flagged=("flag", "sum"),
+        alerts=("level", lambda s: int((s == "alert").sum()))).reset_index()
+    g["share_flagged"] = g["flagged"] / g["counties"]
+    g = g[(g["counties"] >= min_counties) & (g["share_flagged"] >= min_share)]
+    if g.empty:
+        return g.assign(state_rate_baseline=[], state_rate_current=[], national_rate_baseline=[],
+                        national_rate_current=[])
+
+    t = tidy[(tidy["subgroup"] == TOTAL_SUBGROUP)].dropna(subset=["numerator", "denominator"])
+
+    def pooled(frame):
+        return frame["numerator"].sum() / frame["denominator"].sum() if len(frame) else np.nan
+
+    rows = []
+    for r in g.itertuples():
+        ti = t[t["indicator"] == r.indicator]
+        ts = ti[ti["state"] == r.state]
+        rows.append({
+            "state_rate_baseline": pooled(ts[ts["year"].isin(base_years)]),
+            "state_rate_current": pooled(ts[ts["year"] == year]),
+            "national_rate_baseline": pooled(ti[ti["year"].isin(base_years)]),
+            "national_rate_current": pooled(ti[ti["year"] == year]),
+        })
+    out = pd.concat([g.reset_index(drop=True), pd.DataFrame(rows)], axis=1)
+    out["state_change_vs_national"] = (out["state_rate_current"] / out["state_rate_baseline"]) / (
+        out["national_rate_current"] / out["national_rate_baseline"])
+    out["year"] = year
+    return out.sort_values(["share_flagged", "flagged"], ascending=False).reset_index(drop=True)
+
+
 def evaluate_against_truth(tidy: pd.DataFrame, config: dict, truth: pd.DataFrame,
                            year: int | None = None) -> dict[str, pd.DataFrame]:
     """Sensitivity and false-alert rate against known injected changes (synthetic data only)."""

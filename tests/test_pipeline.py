@@ -118,3 +118,15 @@ def test_wonder_parser(tmp_path, cfg):
     assert mid["state"] == "MA" and mid["geo_name"] == "Middlesex County"
     tiny = tidy[tidy["geo_id"] == "25999"].iloc[0]
     assert np.isnan(tiny["numerator"])  # suppressed cell invalidates the county-year
+
+
+def test_state_clusters_flags_statewide_shift(cfg):
+    tidy, _ = synthetic.generate(seed=9, n_injected=0)
+    t = tidy.copy()
+    state = t["state"].iloc[0]
+    hit = (t["state"] == state) & (t["indicator"] == "preterm_birth") & (t["year"] == t["year"].max())
+    t.loc[hit, "numerator"] = (t.loc[hit, "numerator"] * 1.6).clip(upper=t.loc[hit, "denominator"]).round()
+    res = detect.detect(t, cfg)
+    cl = monitor.state_clusters(res, t, cfg)
+    assert ((cl["state"] == state) & (cl["indicator"] == "preterm_birth")).any()
+    assert not ((cl["indicator"] != "preterm_birth")).any()

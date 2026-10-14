@@ -63,6 +63,27 @@ Things to know about WONDER county data:
 
 Any other source works too: convert it to the tidy schema in `src/perinatal_ews/schema.py` (one row per county, year, indicator and subgroup, with numerator and denominator) and use `run`.
 
+## First results on real data: US counties, 2024
+
+Run on CDC WONDER natality data for the 578 US counties with 100,000+ residents (2016–2024, about 80% of US births). Full outputs are in [`results/2024/`](results/2024/), including the bulletin `report.html`.
+
+| Indicator | Alerts | Watch | Counties scored |
+|---|---|---|---|
+| Gestational hypertension | 65 | 30 | 578 |
+| Late or no prenatal care | 23 | 22 | 578 |
+| Preterm birth | 9 | 28 | 578 |
+| Low birth weight | 0 | 21 | 578 |
+
+Findings the tool surfaced:
+
+- **State-wide patterns.** Flags cluster by state: gestational hypertension in Pennsylvania (15 of 31 counties flagged), South Carolina and Hawaii, and late or no prenatal care in Georgia (11 of 24), where the state rate rose from about 9% to 12.5% in 2024. Clusters like these can be real state-wide changes or changes in how a state records a birth-certificate item; the bulletin lists them separately so they can be checked with the state vital records office before being read as local problems.
+- **Subgroups add signal.** Running the test within Medicaid and privately insured births produced 144 subgroup alerts, including changes that were too diluted to show in the county total.
+- **Self-monitoring.** Gestational hypertension shows a major distribution shift (stability index 0.33) because it has risen nationally from 5.8% to 10.2% since 2016; detection adjusts for this national trend. The backtest gives alert rates of 2.7–4.2% per year for 2021–2024, and 71–83% of alerts stay elevated the next year.
+
+These are statistical flags for follow-up, not confirmed problems. Each needs local review.
+
+To reproduce, run [`scripts/fetch_wonder_counties.js`](scripts/fetch_wonder_counties.js) in your browser on the CDC WONDER request form (instructions in the file), then `perinatal-ews run`.
+
 ## How detection works
 
 See [docs/methodology.md](docs/methodology.md) for the full method. In short:
@@ -98,6 +119,8 @@ src/perinatal_ews/
   synthetic.py     fictional data with known injected changes
   report.py        HTML bulletin
   cli.py           command line
+scripts/           CDC WONDER fetch script
+results/2024/      outputs on real 2016–2024 US county data
 tests/             pytest suite
 docs/              methodology
 ```
