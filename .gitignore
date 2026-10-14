@@ -5,3 +5,5 @@ __pycache__/
 *.egg-info/
 .pytest_cache/
 build/
+data/context/*
+!data/context/county_context.csv

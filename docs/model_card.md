@@ -55,6 +55,21 @@ The base rate of next-year flags is 7–9%. The model's ranking is close to the 
 
 The model is least reliable for small counties, which also have the fewest examples (131 county-indicator-years). Small-county forecasts should be read with caution.
 
+### County context as extra features (v0.3)
+
+A second gradient-boosted model adds county context (adult health, social factors, drug overdose rate matched to the feature year, treatment facilities and labour-and-delivery hospitals per 1,000 births; see [county_context.md](county_context.md)). Evaluated the same way:
+
+| Method | AUROC | AUPRC | Brier |
+|---|---|---|---|
+| Gradient-boosted trees (selected) | 0.790 | 0.354 | 0.061 |
+| Gradient-boosted trees + county context | 0.794 | 0.348 | 0.061 |
+
+Change in AUPRC from adding context: −0.006 (95% bootstrap CI −0.033 to +0.024). The context model is used only if it wins on held-out AUPRC, so the forecast keeps the base model. Overdose rates are matched to the feature year so no later information is used; facility and hospital counts are a current snapshot applied to all years, which could leak a little information about the present into earlier training years, and would be a reason for caution if the context model were ever selected.
+
+### Explanations
+
+Each scored county-indicator lists its main factors: for every input, the change in predicted risk when that input is replaced by its training median (an occlusion method; approximate, not SHAP, and not causal).
+
 ## Monitoring
 
 Each run reports:

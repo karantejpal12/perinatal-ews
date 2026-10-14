@@ -29,6 +29,7 @@ from sklearn.inspection import permutation_importance
 from sklearn.linear_model import LogisticRegression
 from sklearn.metrics import average_precision_score, brier_score_loss, roc_auc_score
 
+from . import context as ctxmod
 from .detect import detect
 from .schema import TOTAL_SUBGROUP
 
@@ -37,6 +38,19 @@ FEATURES = [
     "logit_rate_vs_peer", "log_births", "medicaid_share", "medicaid_private_ratio",
     "state_change_vs_national", "state_share_flagged", "peer_drift", "indicator_code",
 ]
+LABELS = {
+    "z": "this year's excess over expected (z)", "z_prev": "last year's excess (z)",
+    "relative_risk": "rate relative to expected", "logit_rate": "current rate level",
+    "logit_change_1y": "one-year rise in rate", "logit_change_2y": "two-year rise in rate",
+    "apc": "multi-year trend", "logit_rate_vs_peer": "rate above other counties",
+    "log_births": "county size", "medicaid_share": "Medicaid share of births",
+    "medicaid_private_ratio": "Medicaid-private gap", "state_change_vs_national": "state-wide rise",
+    "state_share_flagged": "share of state's counties flagged", "peer_drift": "national trend",
+    "indicator_code": "indicator", **ctxmod.LABELS,
+}
+GB_NAME = "Gradient-boosted trees (perinatal-ews)"
+GBC_NAME = "Gradient-boosted trees + county context"
+LR_NAME = "Logistic regression on z-scores"
 
 
 def _logit(p):
@@ -139,19 +153,20 @@ def add_targets(features: pd.DataFrame, tidy: pd.DataFrame, config: dict) -> pd.
     return pd.concat(out, ignore_index=True)
 
 
-def _X(df: pd.DataFrame) -> pd.DataFrame:
+def _X(df: pd.DataFrame, features: list[str] | None = None) -> pd.DataFrame:
     """Feature matrix. A feature with no values at all (e.g. payer mix when the data have no
     subgroup rows) is set to 0 so it carries no information instead of breaking the model."""
-    X = df[FEATURES].astype(float).copy()
+    X = df[features or FEATURES].astype(float).copy()
     for c in X.columns[X.isna().all()]:
         X[c] = 0.0
     return X
 
 
-def _model(seed: int = 0) -> HistGradientBoostingClassifier:
+def _model(seed: int = 0, features: list[str] | None = None) -> HistGradientBoostingClassifier:
+    features = features or FEATURES
     return HistGradientBoostingClassifier(
         max_iter=250, learning_rate=0.05, max_leaf_nodes=15, min_samples_leaf=40,
-        l2_regularization=1.0, categorical_features=[FEATURES.index("indicator_code")], random_state=seed)
+        l2_regularization=1.0, categorical_features=[features.index("indicator_code")], random_state=seed)
 
 
 def _metrics(y, p) -> dict:
@@ -202,10 +217,28 @@ class ForecastResult:
     folds: pd.DataFrame = field(default_factory=pd.DataFrame)   # metrics per held-out outcome year
     outcome_years: list[int] = field(default_factory=list)
     selected_model: str = ""
+    context_used: bool = False
+    context_gain: str = ""                    # AUPRC gain of context model vs base model, with 95% CI
 
 
-def run_forecast(tidy: pd.DataFrame, config: dict, seed: int = 0, n_folds: int = 2) -> ForecastResult:
-    """Train, evaluate forward in time, and score next year's risk."""
+def _boot_gain(y, a, b, rng, n=500):
+    diffs = []
+    for _ in range(n):
+        i = rng.integers(0, len(y), len(y))
+        if y[i].sum() == 0:
+            continue
+        diffs.append(average_precision_score(y[i], a[i]) - average_precision_score(y[i], b[i]))
+    return diffs
+
+
+def run_forecast(tidy: pd.DataFrame, config: dict, seed: int = 0, n_folds: int = 2,
+                 context: pd.DataFrame | None = None) -> ForecastResult:
+    """Train, evaluate forward in time, and score next year's risk.
+
+    If `context` (from context.load_context) is given, a second gradient-boosted
+    model that also uses county context features is evaluated the same way, and
+    is used only if it beats the base model on held-out average precision.
+    """
     det = config["detection"]
     first = int(tidy["year"].min()) + det["baseline_years"] + det.get("guard_years", 1)
     last = int(tidy["year"].max())
@@ -214,27 +247,39 @@ def run_forecast(tidy: pd.DataFrame, config: dict, seed: int = 0, n_folds: int =
         raise ValueError(f"need at least {first + 2 - int(tidy['year'].min())} years of data for forecasting")
 
     feats = add_targets(build_features(tidy, config, years), tidy, config)
+    use_ctx = context is not None and len(context) > 0 and feats["geo_id"].isin(context.index).mean() > 0.5
+    ctx_features = FEATURES + ctxmod.CONTEXT_FEATURES
+    if use_ctx:
+        feats = ctxmod.add_context_features(feats, context)
     labelled = feats.dropna(subset=["target"])
     label_years = sorted(labelled["year"].unique())
     # Rolling-origin evaluation: each of the last `n_folds` labelled years is predicted by a model
     # trained only on earlier years, exactly as the system would have been used at the time.
     test_years = label_years[-n_folds:] if len(label_years) > n_folds else label_years[1:]
     lr_cols = ["z", "z_prev"]
-    preds, fold_rows, imps = [], [], []
+    preds, fold_rows, imps, ctx_gain_diffs, imps_ctx = [], [], [], [], []
     rng = np.random.default_rng(seed)
     for test_t in test_years:
         train = labelled[labelled["year"] < test_t]
         test = labelled[labelled["year"] == test_t]
         model = _model(seed).fit(_X(train), train["target"])
         p_model = model.predict_proba(_X(test))[:, 1]
+        if use_ctx:
+            model_c = _model(seed, ctx_features).fit(_X(train, ctx_features), train["target"])
+            p_ctx = model_c.predict_proba(_X(test, ctx_features))[:, 1]
         p_persist = 1 / (1 + np.exp(-(test["z"].fillna(0).to_numpy() - det["watch_z"])))
         lr = LogisticRegression().fit(train[lr_cols].fillna(0), train["target"])
         p_lr = lr.predict_proba(test[lr_cols].fillna(0))[:, 1]
         y = test["target"].to_numpy()
-        for name, p in [("Gradient-boosted trees (perinatal-ews)", p_model),
-                        ("Logistic regression on z-scores", p_lr),
-                        ("Persistence (current z only)", p_persist)]:
+        candidates = [(GB_NAME, p_model)] + ([(GBC_NAME, p_ctx)] if use_ctx else []) + [
+            (LR_NAME, p_lr), ("Persistence (current z only)", p_persist)]
+        for name, p in candidates:
             fold_rows.append({"outcome_year": int(test_t) + 1, "model": name, **_metrics(y, p)})
+        if use_ctx:
+            ctx_gain_diffs += _boot_gain(y, p_ctx, p_model, rng)
+            imp_c = permutation_importance(model_c, _X(test, ctx_features), test["target"],
+                                           scoring="average_precision", n_repeats=10, random_state=seed)
+            imps_ctx.append(imp_c.importances_mean)
         # Bootstrap the difference in average precision against the best baseline.
         diffs = []
         for _ in range(500):
@@ -243,9 +288,9 @@ def run_forecast(tidy: pd.DataFrame, config: dict, seed: int = 0, n_folds: int =
                 continue
             diffs.append(average_precision_score(y[i], p_model[i]) -
                          max(average_precision_score(y[i], p_lr[i]), average_precision_score(y[i], p_persist[i])))
-        fold_rows[-3]["auprc_gain_vs_best_baseline_ci95"] = (
+        fold_rows[-len(candidates)]["auprc_gain_vs_best_baseline_ci95"] = (
             f"{np.percentile(diffs, 2.5):+.3f} to {np.percentile(diffs, 97.5):+.3f}" if diffs else "")
-        preds.append(test.assign(p=p_model))
+        preds.append(test.assign(p=p_model, p_ctx=p_ctx if use_ctx else np.nan))
         imp = permutation_importance(model, _X(test), test["target"], scoring="average_precision",
                                      n_repeats=10, random_state=seed)
         imps.append(imp.importances_mean)
@@ -266,19 +311,43 @@ def run_forecast(tidy: pd.DataFrame, config: dict, seed: int = 0, n_folds: int =
 
     # Pick the trainable method with the best held-out average precision, so that on small or
     # low-signal data the system falls back to the simpler model rather than overfitting.
-    gb_name, lr_name = "Gradient-boosted trees (perinatal-ews)", "Logistic regression on z-scores"
     perf = metrics.set_index("model")["auprc"]
-    selected = gb_name if perf.get(gb_name, -1) >= perf.get(lr_name, -1) else lr_name
+    trainable = [GB_NAME, LR_NAME] + ([GBC_NAME] if use_ctx else [])
+    selected = max(trainable, key=lambda m: (perf.get(m, -1), m == GB_NAME))
     metrics["selected"] = metrics["model"] == selected
+    context_gain = ""
+    if use_ctx and ctx_gain_diffs:
+        g = perf.get(GBC_NAME, np.nan) - perf.get(GB_NAME, np.nan)
+        context_gain = (f"{g:+.3f} (95% CI {np.percentile(ctx_gain_diffs, 2.5):+.3f} to "
+                        f"{np.percentile(ctx_gain_diffs, 97.5):+.3f})")
+    if selected == GBC_NAME:
+        ev = ev.assign(p=ev["p_ctx"])
+        by_size = pd.DataFrame([{"size_class": s_, **_metrics(g_["target"], g_["p"])}
+                                for s_, g_ in ev.groupby("size_class") if s_ != "unknown"])
+        by_ind = pd.DataFrame([{"indicator": s_, **_metrics(g_["target"], g_["p"])} for s_, g_ in ev.groupby("indicator")])
+        calib = _calibration(ev["target"], ev["p"])
+        importance = pd.DataFrame({"feature": ctx_features, "importance": np.mean(imps_ctx, axis=0)}).sort_values(
+            "importance", ascending=False)
+    elif use_ctx:
+        imp_ctx_df = pd.DataFrame({"feature": ctx_features, "importance_context_model": np.mean(imps_ctx, axis=0)})
+        importance = importance.merge(imp_ctx_df, on="feature", how="outer").sort_values(
+            "importance", ascending=False, na_position="last")
+    importance["label"] = importance["feature"].map(LABELS)
 
     # Refit the selected method on every labelled year, then score the latest year.
     score_rows = feats[feats["year"] == last].copy()
-    if selected == gb_name:
-        final = _model(seed).fit(_X(labelled), labelled["target"])
-        score_rows["risk"] = final.predict_proba(_X(score_rows))[:, 1]
+    if selected in (GB_NAME, GBC_NAME):
+        fs = ctx_features if selected == GBC_NAME else FEATURES
+        final = _model(seed, fs).fit(_X(labelled, fs), labelled["target"])
+        Xs = _X(score_rows, fs)
+        score_rows["risk"] = final.predict_proba(Xs)[:, 1]
+        ref = _X(labelled, fs).median()
+        score_rows["top_factors"] = ctxmod.explain(final, Xs, [f for f in fs if f != "indicator_code"], ref,
+                                                   labels=LABELS)
     else:
         final = LogisticRegression().fit(labelled[lr_cols].fillna(0), labelled["target"])
         score_rows["risk"] = final.predict_proba(score_rows[lr_cols].fillna(0))[:, 1]
+        score_rows["top_factors"] = ""
     score_rows["forecast_year"] = last + 1
     score_rows["size_class"] = score_rows["births"].map(size_class)
     base_rate = labelled["target"].mean()
@@ -286,11 +355,14 @@ def run_forecast(tidy: pd.DataFrame, config: dict, seed: int = 0, n_folds: int =
     scores = score_rows.sort_values("risk", ascending=False).reset_index(drop=True)
 
     # Features with few distinct values (indicator, national drift) are not meaningful for PSI.
-    drift = pd.DataFrame([{"feature": f, "psi": _psi(labelled[f], score_rows[f])} for f in FEATURES
-                          if labelled[f].nunique() >= 20])
+    drift = pd.DataFrame([{"feature": f, "psi": _psi(labelled[f], score_rows[f])}
+                          for f in (ctx_features if use_ctx else FEATURES)
+                          if f in labelled and labelled[f].nunique() >= 20
+                          and not (f.startswith("ctx_") and f not in ("ctx_overdose_rate", "ctx_overdose_change"))])
     drift["status"] = np.where(drift["psi"] < 0.10, "stable", np.where(drift["psi"] < 0.25, "moderate shift", "major shift"))
 
     return ForecastResult(
         forecast_year=last + 1, scores=scores, metrics=metrics, by_size=by_size, by_indicator=by_ind,
         calibration=calib, importance=importance, feature_drift=drift.sort_values("psi", ascending=False),
-        folds=folds, outcome_years=[int(t) + 1 for t in test_years], selected_model=selected)
+        folds=folds, outcome_years=[int(t) + 1 for t in test_years], selected_model=selected,
+        context_used=use_ctx, context_gain=context_gain)

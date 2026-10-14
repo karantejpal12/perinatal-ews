@@ -1,16 +1,32 @@
-feature,importance
-z,0.07871790488258806
-logit_change_1y,0.06782397697604203
-relative_risk,0.06022740495435831
-logit_change_2y,0.03356278485762927
-medicaid_private_ratio,0.016593140286740242
-state_change_vs_national,0.011797403755006302
-log_births,0.011644705027112994
-z_prev,0.0018369043278095494
-medicaid_share,0.00022146970674156432
-indicator_code,0.00021125825116036223
-state_share_flagged,0.00019415728720669487
-peer_drift,-0.000480839474786865
-apc,-0.0026192730428605264
-logit_rate,-0.00429632565149741
-logit_rate_vs_peer,-0.008726015183666702
+feature,importance,importance_context_model,label
+z,0.07871790488258806,0.05689711019538033,this year's excess over expected (z)
+logit_change_1y,0.06782397697604203,0.06039870055946937,one-year rise in rate
+relative_risk,0.06022740495435831,0.0418845400298968,rate relative to expected
+logit_change_2y,0.03356278485762927,0.03393650984490014,two-year rise in rate
+medicaid_private_ratio,0.016593140286740242,0.007551647334315543,Medicaid-private gap
+state_change_vs_national,0.011797403755006302,0.004123638630211238,state-wide rise
+log_births,0.011644705027112994,-0.0004152253895786135,county size
+z_prev,0.0018369043278095494,-0.004880333723759589,last year's excess (z)
+medicaid_share,0.00022146970674156432,-0.00042460813373305093,Medicaid share of births
+indicator_code,0.00021125825116036223,0.005192094536228262,indicator
+state_share_flagged,0.00019415728720669487,0.004895762601854336,share of state's counties flagged
+peer_drift,-0.000480839474786865,-0.0002529602414026305,national trend
+apc,-0.0026192730428605264,-0.0006567791531980058,multi-year trend
+logit_rate,-0.00429632565149741,-0.0051981857054722025,current rate level
+logit_rate_vs_peer,-0.008726015183666702,-0.001807756625619059,rate above other counties
+ctx_births_per_ld_hospital,,0.005850903794225671,births per labour-and-delivery hospital
+ctx_depression,,-0.002812378310761407,adult depression
+ctx_diabetes,,0.0027279647948171507,adult diabetes
+ctx_high_blood_pressure,,-0.0039617303203175495,adult high blood pressure
+ctx_moud_per_1k_births,,0.00013882340822947968,"opioid treatment (MOUD) facilities per 1,000 births"
+ctx_no_broadband,,-0.00019530079069954287,households without broadband
+ctx_no_high_school,,-0.002848867041885067,adults without a high-school diploma
+ctx_obesity,,0.003515418839081749,adult obesity
+ctx_overdose_change,,-0.005509629632625209,change in overdose death rate
+ctx_overdose_rate,,-0.0034333361539437028,drug overdose death rate
+ctx_poverty,,0.0023844611281186034,residents below 150% of poverty
+ctx_preg_moud_per_1k_births,,-0.0019082565153522384,"MOUD facilities for pregnant/postpartum patients taking Medicaid, per 1,000 births"
+ctx_single_parent,,-0.0026662066743244226,single-parent households
+ctx_smoking,,-0.0016134583284956316,adult smoking
+ctx_unemployment,,-0.0005328962291888061,unemployment
+ctx_uninsured,,0.0010756321224545174,uninsured adults aged 18-64

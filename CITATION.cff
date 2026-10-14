@@ -6,13 +6,13 @@ authors:
   - family-names: Tejpal
     given-names: Karan
     orcid: "https://orcid.org/0009-0004-8609-2854"
-version: 0.2.0
+version: 0.3.0
 doi: "10.5281/zenodo.23374647"
 identifiers:
   - type: doi
     value: "10.5281/zenodo.23374647"
     description: "Zenodo archive of this software"
-date-released: 2026-10-15
+date-released: 2026-10-14
 license: MIT
 repository-code: "https://github.com/karantejpal12/perinatal-ews"
 abstract: >-
@@ -22,7 +22,11 @@ abstract: >-
   all-county trend predict. It uses empirical-Bayes shrinkage, overdispersion
   modelling and false-discovery-rate control, runs the same test within
   subgroups, reports within-county equity gaps, and monitors its own data
-  quality, distribution drift and detection performance.
+  quality, distribution drift and detection performance. Version 0.3 adds
+  county context (adult health, social factors, drug overdose deaths, opioid
+  treatment capacity for pregnant and postpartum patients, and hospitals with
+  labour and delivery care), a cross-validated machine-learning comparison with
+  similar counties, and a need-versus-access review list.
 keywords:
   - public health surveillance
   - maternal health
@@ -31,3 +35,7 @@ keywords:
   - early warning
   - health equity
   - model monitoring
+  - substance use
+  - opioid use disorder
+  - maternity care access
+  - machine learning

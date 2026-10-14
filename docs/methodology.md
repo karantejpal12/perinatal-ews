@@ -61,6 +61,10 @@ Detection is repeated within each subgroup present in the data. Separately, for 
 
 Reporting performance by county size matters because detectors that work well for large urban counties can quietly miss small and rural ones.
 
+## County context
+
+Version 0.3 adds county context (substance use, maternity care access, adult health and social conditions), a cross-validated comparison with similar counties and a need-versus-access review list. See [county_context.md](county_context.md).
+
 ## Limitations
 
 - Annual county data detect changes a year or more after they begin. Monthly or provisional data would shorten the lag.

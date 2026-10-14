@@ -16,6 +16,7 @@ It produces:
 - the same test run **within subgroups** (for example by payer or race and ethnicity), because a change confined to one group can be invisible in the county total
 - **within-county equity gaps** between subgroups
 - a **next-year machine-learning forecast**: the probability that each county will be flagged for each indicator next year, including counties that look stable today, with forward-in-time validation against simpler baselines (see the [model card](docs/model_card.md))
+- **county context** (v0.3): drug overdose deaths, opioid treatment capacity for pregnant and postpartum patients, hospitals with labour and delivery care, adult health and social conditions, from public CDC, SAMHSA and CMS data; a **cross-validated machine-learning comparison with similar counties**; and a **need-versus-access review list** (see [county context](docs/county_context.md))
 - a **system health** check on every run: data completeness, distribution shift, a backtest of alert rates, and (on synthetic data) detection sensitivity by county size
 - a self-contained HTML bulletin and CSV outputs
 
@@ -58,7 +59,7 @@ CDC WONDER natality data are free and public. You export one file per indicator.
 perinatal-ews ingest-wonder --file preterm.txt --indicator preterm_birth --out data/preterm.csv
 perinatal-ews ingest-wonder --file pnc.txt --indicator late_no_prenatal_care --out data/pnc.csv \
     --subgroup-column "Source of Payment for Delivery"
-perinatal-ews run --input data/*.csv --out out/ --forecast
+perinatal-ews run --input data/*.csv --out out/ --forecast --context data/context/county_context.csv
 ```
 
 `ingest-wonder` prints the categories it counted as non-cases. **Check them**: WONDER category labels differ between databases and years. Edit the `wonder` block in a copy of `src/perinatal_ews/default_config.yaml` and pass it with `--config` if anything is misassigned.
@@ -106,6 +107,16 @@ On the US county data (held-out outcome years 2023 and 2024; next-year flag rate
 
 The model's ranking is close to the logistic baseline (the bootstrap interval for the AUPRC gain includes zero), and it is better calibrated than persistence. Most of the predictable signal for next year is already in this year's detection result; the forecast adds calibrated probabilities and surfaces counties that are **stable today but high-risk for 2025**, such as gestational hypertension in Columbia County, GA (64%). Accuracy is highest for large counties (AUROC 0.84) and lowest for small ones (0.68). Details, limitations and monitoring are in the [model card](docs/model_card.md).
 
+## County context: substance use, maternity care access and social conditions (v0.3)
+
+`perinatal-ews run --context data/context/county_context.csv` joins public county data to the results. Every measure describes a place, not a person.
+
+- **Compared with similar counties.** A gradient-boosted model predicts each county's 2022–2024 rate from its context alone, with 5-fold cross-validation so no county is judged by a model that saw it. Context explains far more of the variation than the state average for low birth weight (cross-validated R² 0.61 vs 0.23) and preterm birth (0.55 vs 0.34), but not for gestational hypertension (0.22 vs 0.22), where differences between states, including how the item is recorded, dominate. 106 county-indicators are higher than counties with similar conditions.
+- **Need and access review list.** 122 counties have a perinatal warning sign together with a high drug overdose burden, thin treatment access for pregnant and postpartum patients, or thin delivery capacity. Six have both a top-quarter overdose rate and thin treatment access: King County WA, Madison County IN, Monroe County NY, Ascension Parish LA, Monroe County IN and Comanche County OK. 89 of the 578 counties have no listed facility that offers buprenorphine or methadone, accepts Medicaid and runs a programme for pregnant or postpartum patients.
+- **Context in the forecast.** Tested as extra forecast inputs, county context did not clearly improve next-year prediction (AUPRC −0.006, 95% CI −0.033 to +0.024), so the forecast keeps the base model. County conditions explain where rates are high; recent changes in a county's own data explain which counties change next. Each forecast now lists its main factors.
+
+Sources: CDC PLACES (BRFSS 2023) and ACS 2017–2021 measures, CDC VSRR provisional county overdose deaths 2020–2024, SAMHSA FindTreatment.gov listings, CMS Maternal Health – Hospital. To rebuild: run [`scripts/fetch_county_context.js`](scripts/fetch_county_context.js) in a browser on each site, then `python scripts/build_county_context.py` (needs `pip install shapely`). Methods and limitations: [docs/county_context.md](docs/county_context.md).
+
 ## How detection works
 
 See [docs/methodology.md](docs/methodology.md) for the full method. In short:
@@ -138,14 +149,16 @@ src/perinatal_ews/
   detect.py        early-warning engine
   equity.py        within-county subgroup gaps
   monitor.py       data quality, distribution drift, state patterns, backtest, evaluation
-  forecast.py      next-year ML forecast, validation and monitoring
+  forecast.py      next-year ML forecast, validation, explanations and monitoring
+  context.py       county context, need-versus-access list, similar-county benchmark
   synthetic.py     fictional data with known injected changes
   report.py        HTML bulletin
   cli.py           command line
-scripts/           CDC WONDER fetch script
+scripts/           CDC WONDER and county context fetch and build scripts
+data/context/      county_context.csv (public county context table)
 results/2024/      outputs on real 2016–2024 US county data
 tests/             pytest suite
-docs/              methodology and model card
+docs/              methodology, model card and county context
 ```
 
 ## Development

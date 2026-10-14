@@ -3,6 +3,7 @@
     perinatal-ews demo --out out/
     perinatal-ews ingest-wonder --file preterm.txt --indicator preterm_birth --out data/preterm.csv
     perinatal-ews run --input data/tidy.csv --out out/ [--year 2024] [--config my.yaml]
+                      [--forecast] [--context data/context/county_context.csv]
 """
 from __future__ import annotations
 
@@ -22,7 +23,8 @@ from .schema import TOTAL_SUBGROUP
 
 
 def _run(tidy: pd.DataFrame, cfg: dict, out: Path, year: int | None, truth: pd.DataFrame | None,
-         title: str = "Perinatal Early Warning", source_note: str | None = None, with_forecast: bool = False) -> None:
+         title: str = "Perinatal Early Warning", source_note: str | None = None, with_forecast: bool = False,
+         context_path: str | None = None) -> None:
     out.mkdir(parents=True, exist_ok=True)
     subgroups = sorted(set(tidy["subgroup"]) - {TOTAL_SUBGROUP})
     res = detect(tidy, cfg, target_year=year, subgroups=[TOTAL_SUBGROUP] + subgroups)
@@ -38,15 +40,31 @@ def _run(tidy: pd.DataFrame, cfg: dict, out: Path, year: int | None, truth: pd.D
         ev["summary"].to_csv(out / "evaluation_summary.csv", index=False)
         ev["by_size"].to_csv(out / "evaluation_by_size.csv", index=False)
         ev["cases"].to_csv(out / "evaluation_cases.csv", index=False)
+    ctx = None
+    if context_path:
+        from .context import load_context
+        ctx = load_context(context_path)
     fc = None
     if with_forecast:
         from .forecast import run_forecast
-        fc = run_forecast(tidy, cfg)
+        fc = run_forecast(tidy, cfg, context=ctx)
         fc.scores.to_csv(out / "forecast_scores.csv", index=False)
         for name in ("metrics", "folds", "by_size", "by_indicator", "calibration", "importance", "feature_drift"):
             getattr(fc, name).to_csv(out / f"forecast_{name}.csv", index=False)
+    na = bench = None
+    if ctx is not None:
+        from .context import benchmark, need_access
+        na = need_access(res, ctx, fc.scores if fc is not None else None,
+                         labels={k: v["label"] for k, v in cfg["indicators"].items()})
+        na.to_csv(out / "need_access.csv", index=False)
+        bench = benchmark(tidy, ctx, cfg, year)
+        bench[0].to_csv(out / "context_benchmark.csv", index=False)
+        bench[1].to_csv(out / "context_benchmark_quality.csv", index=False)
+        if fc is not None:
+            fc.metrics.to_csv(out / "forecast_metrics.csv", index=False)
     (out / "report.html").write_text(build_report(tidy, cfg, truth=truth, target_year=year, title=title,
-                                                            source_note=source_note, forecast=fc))
+                                                  source_note=source_note, forecast=fc, need_access=na,
+                                                  benchmark=bench))
     total = res[res["subgroup"] == TOTAL_SUBGROUP]
     print(f"Scored {total['geo_id'].nunique()} counties: "
           f"{int((total['level'] == 'alert').sum())} alerts, {int((total['level'] == 'watch').sum())} watch. "
@@ -76,6 +94,9 @@ def main(argv: list[str] | None = None) -> None:
     r.add_argument("--title", default="Perinatal Early Warning")
     r.add_argument("--forecast", action="store_true", help="also train and evaluate the next-year ML forecast")
     r.add_argument("--source-note", default=None, help="one line on the data source, shown under the report title")
+    r.add_argument("--context", default=None,
+                   help="county context CSV (scripts/build_county_context.py): adds context to the forecast "
+                        "and writes the need-versus-access review list")
 
     args = p.parse_args(argv)
     if args.cmd == "demo":
@@ -96,7 +117,7 @@ def main(argv: list[str] | None = None) -> None:
     elif args.cmd == "run":
         cfg = load_config(args.config)
         tidy = pd.concat([load_tidy_csv(f) for f in args.input], ignore_index=True)
-        _run(tidy, cfg, Path(args.out), args.year, None, args.title, args.source_note, args.forecast)
+        _run(tidy, cfg, Path(args.out), args.year, None, args.title, args.source_note, args.forecast, args.context)
 
 
 if __name__ == "__main__":

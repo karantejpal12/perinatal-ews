@@ -147,3 +147,57 @@ def test_forecast_runs_forward_in_time_and_beats_chance(cfg):
     assert chosen["auroc"] > 0.6
     assert chosen["auprc"] == r.metrics["auprc"].iloc[:2].max()
     assert len(r.scores) == tidy[tidy["year"] == 2024].groupby(["indicator", "geo_id"]).ngroups
+
+
+def _synthetic_context(tidy, seed=0):
+    """Fictional county context for the fictional counties; preterm risk is tied to blood pressure."""
+    from perinatal_ews.context import BENCHMARK_COLUMNS
+
+    rng = np.random.default_rng(seed)
+    ids = sorted(tidy["geo_id"].unique())
+    pre = (tidy[(tidy.indicator == "preterm_birth") & (tidy.subgroup == "All")]
+           .groupby("geo_id")[["numerator", "denominator"]].sum())
+    rate = (pre["numerator"] / pre["denominator"]).reindex(ids)
+    ctx = pd.DataFrame(index=pd.Index(ids, name="geo_id"))
+    for c in BENCHMARK_COLUMNS:
+        ctx[c] = rng.normal(20, 5, len(ids))
+    ctx["bphigh"] = 30 + 200 * (rate - rate.mean()) + rng.normal(0, 0.5, len(ids))
+    for y in range(2020, 2025):
+        ctx[f"overdose_rate_{y}"] = rng.gamma(4, 8, len(ids))
+    ctx["moud_facilities"] = rng.poisson(5, len(ids))
+    ctx["preg_moud_medicaid_facilities"] = rng.poisson(1, len(ids))
+    ctx["ld_hospitals"] = rng.integers(0, 4, len(ids))
+    ctx["hospitals_ld_status_unknown"] = 0
+    return ctx
+
+
+def test_context_need_access_and_benchmark(cfg, data):
+    from perinatal_ews.context import benchmark, need_access
+
+    tidy, _ = data
+    ctx = _synthetic_context(tidy)
+    det = detect.detect(tidy, cfg)
+    na = need_access(det, ctx)
+    assert {"priority", "context_reasons", "perinatal_signals"} <= set(na.columns)
+    flagged = set(det.loc[det["level"].isin(["alert", "watch"]), "geo_id"])
+    assert set(na["geo_id"]) <= flagged               # every listed county has a perinatal signal
+    hi = na[na["priority"] == "high"]
+    assert (hi["high_overdose_burden"] & hi["thin_treatment_access"]).all()
+
+    scores, quality = benchmark(tidy, ctx, cfg)
+    q = quality.set_index("indicator")
+    # Context built from preterm rates must explain preterm much better than chance.
+    assert q.loc["preterm_birth", "r2_context_model"] > 0.5
+    assert set(scores["compared_with_similar"]) <= {"higher than similar counties", "lower than similar counties",
+                                                    "in line with similar counties"}
+
+
+def test_context_features_never_use_future_overdose_data():
+    from perinatal_ews.context import add_context_features
+
+    ctx = pd.DataFrame({f"overdose_rate_{y}": [float(y - 2000)] for y in range(2020, 2025)}, index=["90001"])
+    f = pd.DataFrame({"geo_id": ["90001"] * 3, "year": [2019, 2021, 2030], "births": [1000.0] * 3})
+    out = add_context_features(f, ctx)
+    assert np.isnan(out.loc[0, "ctx_overdose_rate"])       # before any data: missing, not a later year
+    assert out.loc[1, "ctx_overdose_rate"] == 21.0
+    assert out.loc[2, "ctx_overdose_rate"] == 24.0         # latest available, never beyond

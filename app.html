@@ -82,6 +82,13 @@ p { margin: 0 0 10px; color: var(--ink-2); max-width: 72ch; }
 .risk .track { flex: 1; height: 8px; background: var(--surface-2); border-radius: 4px; overflow: hidden; }
 .risk .fill { height: 100%; background: var(--accent); border-radius: 4px; }
 .risk b { font-family: var(--font-data); font-weight: 500; min-width: 3.5em; text-align: right; }
+.why { font-size: 12.5px; color: var(--ink-3); }
+.ctx { display: grid; grid-template-columns: repeat(auto-fill, minmax(210px, 1fr)); background: var(--surface); border: 1px solid var(--rule); border-radius: 10px; overflow: hidden; }
+.ctx div { box-shadow: 1px 1px 0 var(--rule); padding: 12px 14px; display: flex; flex-direction: column; gap: 2px; }
+.ctx b { font-family: var(--font-data); font-weight: 500; font-size: 18px; font-variant-numeric: tabular-nums; }
+.ctx span { font-size: 12px; color: var(--ink-3); }
+.need { font-size: 13.5px; border-radius: 8px; padding: 10px 12px; background: var(--watch-bg); color: var(--ink); }
+.need.high { background: var(--alert-bg); }
 .flag-note { font-size: 13px; background: var(--watch-bg); color: var(--ink); border-radius: 6px; padding: 8px 10px; }
 .filters { display: flex; flex-wrap: wrap; gap: 10px; align-items: end; }
 .filters label { display: flex; flex-direction: column; gap: 4px; font-size: 12px; color: var(--ink-3); font-weight: 600; letter-spacing: .02em; }
@@ -123,7 +130,7 @@ footer { max-width: 1120px; margin: 0 auto; padding: 16px max(16px, env(safe-are
   <section id="view-explore" class="stack" role="tabpanel" aria-labelledby="tab-explore">
     <div>
       <h1>Maternal and newborn health, county by county</h1>
-      <p>Search any of 578 US counties with 100,000 or more residents to see 2016–2024 trends, whether 2024 was worse than expected, and the forecast risk for 2025.</p>
+      <p>Search any of 578 US counties with 100,000 or more residents to see 2016–2024 trends, whether 2024 was worse than expected, the forecast risk for 2025, and county context such as overdose deaths and access to opioid treatment and delivery care.</p>
     </div>
     <div class="search">
       <input id="q" type="search" placeholder="Search a county, e.g. Hampden or Miami-Dade" autocomplete="off" aria-label="Search counties" role="combobox" aria-expanded="false" aria-controls="sugg">
@@ -144,7 +151,8 @@ footer { max-width: 1120px; margin: 0 auto; padding: 16px max(16px, env(safe-are
         <label for="f-state">State<select id="f-state"><option value="">All states</option></select></label>
         <label for="f-level">Status<select id="f-level">
           <option value="flag">Alert or watch</option><option value="alert">Alert only</option>
-          <option value="risk">Stable now, high 2025 risk</option></select></label>
+          <option value="risk">Stable now, high 2025 risk</option>
+          <option value="need">Need and access review list</option></select></label>
       </div>
       <div class="table-wrap"><table>
         <thead><tr><th>Status</th><th>County</th><th>Indicator</th><th class="num">Rate</th><th class="num">Expected</th><th class="num">Ratio</th><th class="num">2025 risk</th></tr></thead>
@@ -249,7 +257,7 @@ footer { max-width: 1120px; margin: 0 auto; padding: 16px max(16px, env(safe-are
     for (let k = 0; k <= 3; k++) {
       const v = lo + (hi - lo) * k / 3, yy = y(v);
       s.append(sv('line', { class: 'grid', x1: L, x2: W - R, y1: yy, y2: yy }));
-      const t = sv('text', { x: L - 6, y: yy + 4, 'text-anchor': 'end' }); t.textContent = (100 * v).toFixed(v < 0.1 ? 1 : 0) + '%'; s.append(t);
+      const t = sv('text', { x: L - 6, y: yy + 4, 'text-anchor': 'end' }); t.textContent = (100 * v).toFixed(v < 0.1 || hi - lo < 0.06 ? 1 : 0) + '%'; s.append(t);
     }
     years.forEach((yr, i) => { if (i % 2 === 0 || i === years.length - 1) { const t = sv('text', { x: x(i), y: H - 6, 'text-anchor': 'middle' }); t.textContent = "'" + String(yr).slice(2); s.append(t); } });
     let dpath = '', started = false;
@@ -301,9 +309,29 @@ footer { max-width: 1120px; margin: 0 auto; padding: 16px max(16px, env(safe-are
       }
       if (patterns.has(k + '|' + c.state)) card.append(el('div', { class: 'flag-note', text: `Many ${c.state} counties were flagged for this indicator in ${D.year}. The change may be state-wide (policy, coverage or how the state records it) rather than local.` }));
       if (e.sustained) card.append(el('p', { class: 'note', text: 'Also elevated the year before.' }));
+      if (e.factors) card.append(el('p', { class: 'why', text: `Main forecast factors (approximate): ${e.factors}` }));
+      if (e.similar && e.similar.expected != null) card.append(el('p', { class: 'why', text:
+        `Compared with counties with similar health, social and access conditions (${D.benchmark_years || 'recent years'}): ` +
+        `${pct(e.similar.rate)} vs ${pct(e.similar.expected)}, ${e.similar.verdict}.` }));
       cards.append(card);
     }
-    box.append(head, legend, cards, el('p', { class: 'note', text: D.source }));
+    const extra = [];
+    if (c.need) extra.push(el('div', { class: 'need' + (c.need.priority === 'high' ? ' high' : '') },
+      el('b', { text: c.need.priority === 'high' ? 'Need and access: high priority for review. ' : 'Need and access: for review. ' }),
+      `A perinatal warning sign here coincides with: ${c.need.reasons}.`));
+    if (c.ctx && D.context_fields) {
+      const grid = el('div', { class: 'ctx' });
+      for (const [k, label] of Object.entries(D.context_fields)) {
+        const v = c.ctx[k], m = D.context_median[k];
+        if (v == null && m == null) continue;
+        const per = (k === 'preg_moud_medicaid_facilities' || k === 'ld_hospitals') && v != null && c.births ? ` · ${(v / (c.births / 1000)).toFixed(2)} per 1,000 births` : '';
+        grid.append(el('div', {}, el('b', { text: v == null ? '–' : (Number.isInteger(v) ? v.toLocaleString() : v.toFixed(1)) }),
+          el('span', { text: label + per }), el('span', { text: `Median of these counties: ${m == null ? '–' : m}` })));
+      }
+      extra.push(el('h3', { text: 'County context' }), grid,
+        el('p', { class: 'note', text: (D.context_source || '') + ' These describe the county, not individual people.' }));
+    }
+    box.append(head, ...extra.slice(0, c.need ? 1 : 0), legend, cards, ...extra.slice(c.need ? 1 : 0), el('p', { class: 'note', text: D.source }));
   }
 
   function openCounty(id, push = true) {
@@ -345,13 +373,17 @@ footer { max-width: 1120px; margin: 0 auto; padding: 16px max(16px, env(safe-are
       if (st && c.state !== st) continue;
       for (const [k, e] of Object.entries(c.ind)) {
         if (ind && k !== ind) continue;
-        const ok = lv === 'alert' ? e.level === 'alert' : lv === 'flag' ? (e.level === 'alert' || e.level === 'watch')
+        const flagged = e.level === 'alert' || e.level === 'watch';
+        const subFlag = Object.values(e.subgroups || {}).some(sd => sd.level === 'alert' || sd.level === 'watch');
+        const ok = lv === 'alert' ? e.level === 'alert' : lv === 'flag' ? flagged
+          : lv === 'need' ? (c.need && (flagged || subFlag || (e.risk || 0) >= 0.3))
           : (e.level === 'stable' && (e.risk || 0) >= 0.25);
         if (ok) rows.push({ c, k, e });
       }
     }
     const order = { alert: 0, watch: 1, stable: 2 };
-    rows.sort((a, b) => lv === 'risk' ? (b.e.risk || 0) - (a.e.risk || 0) : (order[a.e.level] - order[b.e.level]) || ((b.e.rr || 0) - (a.e.rr || 0)));
+    const pr = r => (r.c.need && r.c.need.priority === 'high' ? 0 : 1);
+    rows.sort((a, b) => lv === 'need' ? (pr(a) - pr(b)) || (order[a.e.level] - order[b.e.level]) : lv === 'risk' ? (b.e.risk || 0) - (a.e.risk || 0) : (order[a.e.level] - order[b.e.level]) || ((b.e.rr || 0) - (a.e.rr || 0)));
     const body = $('#list'); body.textContent = '';
     for (const r of rows.slice(0, 200)) {
       const tr = el('tr', { class: 'row', tabindex: '0', onclick: () => { openCounty(r.c.id); window.scrollTo({ top: 0, behavior: 'smooth' }); },
@@ -404,7 +436,7 @@ footer { max-width: 1120px; margin: 0 auto; padding: 16px max(16px, env(safe-are
     status('Loading scientific libraries…');
     await py.loadPackage(['numpy', 'pandas', 'scipy', 'scikit-learn', 'pyyaml', 'micropip']);
     status('Installing perinatal-ews…');
-    const wheel = new URL('dist/perinatal_ews-0.2.0-py3-none-any.whl', location.href).href;
+    const wheel = new URL('dist/perinatal_ews-0.3.0-py3-none-any.whl', location.href).href;
     await py.runPythonAsync(`import micropip\nawait micropip.install("${wheel}", deps=False)`);
     return py;
   }

@@ -56,6 +56,7 @@ td { padding: 10px 12px; border-bottom: 1px solid var(--rule); vertical-align: m
 tr:last-child td { border-bottom: 0; }
 td.num, th.num { text-align: right; font-family: var(--font-data); font-variant-numeric: tabular-nums; white-space: nowrap; }
 .place { font-weight: 600; }
+td.why { font-size: 13px; color: var(--ink-2); min-width: 220px; }
 .place small { display: block; font-weight: 400; color: var(--ink-3); font-size: 12px; }
 .pill { display: inline-flex; align-items: center; gap: 6px; padding: 2px 9px 2px 7px; border-radius: 999px; font-size: 12px; font-weight: 600; white-space: nowrap; }
 .pill svg { width: 12px; height: 12px; }
@@ -188,9 +189,72 @@ def _more_note(n: int, shown: int, file: str) -> str:
     return f'<p class="note">Showing the {shown} strongest of {n:,}. The full list is in {escape(file)}.</p>'
 
 
+def _context_section(na, bench, labels: dict, year: int, max_rows: int) -> str:
+    parts = ['<section><h2>County context: need and access</h2>'
+             '<p>Perinatal flags combined with public county data on drug overdose deaths (CDC), substance use treatment '
+             'facilities (SAMHSA FindTreatment.gov) and hospitals with labour and delivery care (CMS). '
+             'These describe places, not people, and are a starting point for programme planning.</p>']
+    if na is not None and len(na):
+        top = na.head(min(max_rows, 25))
+        rows = "".join(
+            f'<tr><td><span class="pill {"alert" if r.priority == "high" else "watch"}">'
+            f'{ICONS["alert" if r.priority == "high" else "watch"]}{"High" if r.priority == "high" else "Review"}</span></td>'
+            f'<td class="place">{escape(r.geo_name)}<small>{escape(str(r.state))} · {escape(r.geo_id)}</small></td>'
+            f'<td class="why">{escape(str(r.perinatal_signals) if isinstance(r.perinatal_signals, str) else "")}'
+            f'{("; " if isinstance(r.perinatal_signals, str) and isinstance(r.forecast_signals, str) else "")}'
+            f'{escape(r.forecast_signals) if isinstance(r.forecast_signals, str) else ""}</td>'
+            f'<td class="why">{escape(r.context_reasons)}</td></tr>' for r in top.itertuples())
+        n_high = int((na["priority"] == "high").sum())
+        parts.append(
+            f'<p><b>{len(na)}</b> counties have a perinatal warning sign together with a high overdose burden, thin '
+            f'treatment access for pregnant and postpartum patients, or thin delivery capacity; <b>{n_high}</b> have both '
+            'a high overdose burden and thin treatment access (marked high).</p>'
+            '<div class="table-wrap"><table><thead><tr><th>Priority</th><th>County</th><th>Perinatal signal</th>'
+            f'<th>Context</th></tr></thead><tbody>{rows}</tbody></table></div>'
+            + _more_note(len(na), len(top), "need_access.csv")
+            + f'<p class="note">Cut-offs, relative to the counties scored: {escape(str(na["thresholds"].iloc[0]))}. '
+              'Facility listings are a 2026 snapshot and may be incomplete; hospital labour-and-delivery status comes from the '
+              'CMS Maternal Morbidity Structural Measure, which not every hospital reports.</p>')
+    if bench is not None:
+        scores, quality = bench
+        if len(quality):
+            qrows = "".join(
+                f"<tr><td>{escape(labels.get(r.indicator, r.indicator))}</td><td class=\"num\">{r.counties}</td>"
+                f'<td class="num">{r.r2_context_model:.2f}</td><td class="num">{r.r2_state_average:.2f}</td></tr>'
+                for r in quality.itertuples())
+            hi = scores[scores["compared_with_similar"] == "higher than similar counties"].sort_values(
+                "z_vs_similar", ascending=False).head(15)
+            hrows = "".join(
+                f'<tr><td class="place">{escape(r.geo_name)}<small>{escape(str(r.state))} · {escape(r.geo_id)}</small></td>'
+                f"<td>{escape(labels.get(r.indicator, r.indicator))}</td><td class=\"num\">{_pct(r.observed_rate)}</td>"
+                f'<td class="num">{_pct(r.context_expected_rate)}</td><td class="num">{r.ratio_to_similar:.2f}×</td></tr>'
+                for r in hi.itertuples())
+            yrs = quality["years_pooled"].iloc[0]
+            parts.append(
+                f'<h2>Compared with similar counties</h2>'
+                f'<p>A machine-learning model predicts each county\'s {yrs} rate from its context alone (adult health, '
+                'poverty, education, insurance, overdose deaths and treatment access). Each prediction comes from a model '
+                'that never saw that county (5-fold cross-validation). Counties well above their prediction do worse than '
+                'places with similar conditions, which a plain ranking cannot show.</p>'
+                '<div class="table-wrap"><table><thead><tr><th>County</th><th>Indicator</th><th class="num">Rate</th>'
+                f'<th class="num">Similar counties</th><th class="num">Ratio</th></tr></thead><tbody>{hrows}</tbody></table></div>'
+                + _more_note(int((scores["compared_with_similar"] == "higher than similar counties").sum()), len(hi),
+                             "context_benchmark.csv")
+                + '<p>How much of the variation between counties the context explains (cross-validated R², births-weighted), '
+                  'compared with simply using the state average:</p>'
+                '<div class="table-wrap"><table><thead><tr><th>Indicator</th><th class="num">Counties</th>'
+                f'<th class="num">R², context model</th><th class="num">R², state average</th></tr></thead><tbody>{qrows}</tbody></table></div>'
+                '<p class="note">Where the context model does no better than the state average, differences between states '
+                '(including how birth certificates are completed) matter more than local conditions, and the comparison '
+                'should be read with care.</p>')
+    parts.append("</section>")
+    return "".join(parts)
+
+
 def build_report(tidy: pd.DataFrame, config: dict, truth: pd.DataFrame | None = None,
                  target_year: int | None = None, title: str = "Perinatal Early Warning",
-                 source_note: str | None = None, max_rows: int = 40, forecast=None) -> str:
+                 source_note: str | None = None, max_rows: int = 40, forecast=None,
+                 need_access=None, benchmark=None) -> str:
     year = int(target_year or tidy["year"].max())
     labels = {k: v["label"] for k, v in config["indicators"].items()}
     subgroups = sorted(s for s in tidy["subgroup"].unique() if s != TOTAL_SUBGROUP)
@@ -218,7 +282,7 @@ def build_report(tidy: pd.DataFrame, config: dict, truth: pd.DataFrame | None = 
     elif source_note:
         synthetic_note = f'<p class="note">{source_note}</p>'
 
-    out = [f'<title>{escape(title)}</title>',
+    out = ['<meta charset="utf-8">', f'<title>{escape(title)}</title>',
            '<meta name="claude:viewport-fit-sides" content="cover">',
            '<link rel="preconnect" href="https://fonts.googleapis.com">',
            '<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500&family=Public+Sans:wght@400;600;650;700&display=swap">',
@@ -291,7 +355,7 @@ The last column is the same gap across all counties combined, for context.</p>
             f'<tr><td class="num">{100 * r.risk:.0f}%</td><td class="num">{r.risk_vs_average:.1f}×</td>'
             f'<td class="place">{escape(r.geo_name)}<small>{escape(str(r.state))} · {escape(r.geo_id)}</small></td>'
             f"<td>{escape(labels.get(r.indicator, r.indicator))}</td><td>{_pill(str(r.level_now))}</td>"
-            f'<td class="num">{_num(r.births)}</td></tr>'
+            f'<td class="num">{_num(r.births)}</td><td class="why">{escape(str(getattr(r, "top_factors", "") or ""))}</td></tr>'
             for r in top.itertuples())
         early = forecast.scores[forecast.scores["level_now"] == "stable"].head(10)
         early_rows = "".join(
@@ -326,7 +390,9 @@ in {fy}, using its recent rates and trend, its detection scores, its size and Me
 and what is happening across its state. These are the 25 highest-risk county-indicators. "vs average" compares the risk with
 the typical chance of being flagged in a year.</p>
 <div class="table-wrap"><table><thead><tr><th class="num">Risk</th><th class="num">vs average</th><th>County</th><th>Indicator</th>
-<th>Now</th><th class="num">Births</th></tr></thead><tbody>{rows}</tbody></table></div>
+<th>Now</th><th class="num">Births</th><th>Main factors (approximate)</th></tr></thead><tbody>{rows}</tbody></table></div>
+<p class="note">Main factors: how much each input raises this county's predicted risk compared with a typical county
+(percentage points), estimated by setting that input to the median and re-scoring. A guide to reading the forecast, not a cause.</p>
 {early_html}
 <h2>How well the forecast works</h2>
 <p>Tested forward in time: to predict each held-out year ({", ".join(str(y) for y in forecast.outcome_years)}), the model was
@@ -336,7 +402,16 @@ trained only on earlier years. It is compared with two simpler methods. Higher A
 <p>Method used for this forecast: <b>{escape(forecast.selected_model)}</b>, chosen because it had the best held-out AUPRC.</p>
 <p class="note">95% bootstrap interval for the gradient-boosted model's AUPRC gain over the better baseline: {escape(gain_txt) or "not available"}.
 An interval that includes zero means the ranking gain is not statistically clear.</p>
+{('<p>County context (health, social, overdose and treatment-access data) was also tested as extra forecast inputs. '
+  'Change in held-out AUPRC from adding it: <b>' + escape(forecast.context_gain) + '</b>. '
+  + ('It improved the forecast and is used.' if forecast.selected_model.endswith('context') else
+     'It did not clearly improve next-year prediction, so the forecast does not use it. County conditions describe '
+     'where rates are high; they say little about which counties will change next year.') + '</p>')
+ if getattr(forecast, "context_used", False) else ''}
 <div class="two">{size_chart}{cal_chart}</div></section>''')
+
+    if need_access is not None or benchmark is not None:
+        out.append(_context_section(need_access, benchmark, labels, year, max_rows))
 
     # System health
     health = [f'<section><h2>System health</h2><p>Checks on the input data and on the detector itself, run every time.</p>']
