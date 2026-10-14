@@ -12,6 +12,7 @@ It produces:
 - a ranked list of **alerts** and **watch** flags, with rate, expected rate, excess cases and trend
 - the same test run **within subgroups** (for example by payer or race and ethnicity), because a change confined to one group can be invisible in the county total
 - **within-county equity gaps** between subgroups
+- a **next-year machine-learning forecast**: the probability that each county will be flagged for each indicator next year, including counties that look stable today, with forward-in-time validation against simpler baselines (see the [model card](docs/model_card.md))
 - a **system health** check on every run: data completeness, distribution shift, a backtest of alert rates, and (on synthetic data) detection sensitivity by county size
 - a self-contained HTML bulletin and CSV outputs
 
@@ -50,7 +51,7 @@ CDC WONDER natality data are free and public. You export one file per indicator.
 perinatal-ews ingest-wonder --file preterm.txt --indicator preterm_birth --out data/preterm.csv
 perinatal-ews ingest-wonder --file pnc.txt --indicator late_no_prenatal_care --out data/pnc.csv \
     --subgroup-column "Source of Payment for Delivery"
-perinatal-ews run --input data/*.csv --out out/
+perinatal-ews run --input data/*.csv --out out/ --forecast
 ```
 
 `ingest-wonder` prints the categories it counted as non-cases. **Check them**: WONDER category labels differ between databases and years. Edit the `wonder` block in a copy of `src/perinatal_ews/default_config.yaml` and pass it with `--config` if anything is misassigned.
@@ -84,6 +85,20 @@ These are statistical flags for follow-up, not confirmed problems. Each needs lo
 
 To reproduce, run [`scripts/fetch_wonder_counties.js`](scripts/fetch_wonder_counties.js) in your browser on the CDC WONDER request form (instructions in the file), then `perinatal-ews run`.
 
+## Next-year forecast (machine learning)
+
+`perinatal-ews run --forecast` trains a gradient-boosted tree model that predicts which counties will be flagged next year. It uses each county's recent rates and trend, detection scores, size, Medicaid share, Medicaid-to-private gap and state-wide trends. It is validated forward in time (trained only on earlier years for each held-out year) against a logistic regression on z-scores and a persistence baseline, and each run uses whichever trainable method has the better held-out average precision.
+
+On the US county data (held-out outcome years 2023 and 2024; next-year flag rate 7–9%):
+
+| Method | AUROC | AUPRC | Brier |
+|---|---|---|---|
+| Gradient-boosted trees (selected) | 0.790 | 0.354 | 0.061 |
+| Logistic regression on z-scores | 0.795 | 0.349 | 0.061 |
+| Persistence (current z only) | 0.777 | 0.335 | 0.082 |
+
+The model's ranking is close to the logistic baseline (the bootstrap interval for the AUPRC gain includes zero), and it is better calibrated than persistence. Most of the predictable signal for next year is already in this year's detection result; the forecast adds calibrated probabilities and surfaces counties that are **stable today but high-risk for 2025**, such as gestational hypertension in Columbia County, GA (64%). Accuracy is highest for large counties (AUROC 0.84) and lowest for small ones (0.68). Details, limitations and monitoring are in the [model card](docs/model_card.md).
+
 ## How detection works
 
 See [docs/methodology.md](docs/methodology.md) for the full method. In short:
@@ -115,14 +130,15 @@ src/perinatal_ews/
   indicators.py    rates, Wilson intervals, NCHS reliability rules
   detect.py        early-warning engine
   equity.py        within-county subgroup gaps
-  monitor.py       data quality, distribution drift, backtest, evaluation
+  monitor.py       data quality, distribution drift, state patterns, backtest, evaluation
+  forecast.py      next-year ML forecast, validation and monitoring
   synthetic.py     fictional data with known injected changes
   report.py        HTML bulletin
   cli.py           command line
 scripts/           CDC WONDER fetch script
 results/2024/      outputs on real 2016–2024 US county data
 tests/             pytest suite
-docs/              methodology
+docs/              methodology and model card
 ```
 
 ## Development
@@ -140,7 +156,7 @@ MIT. See [LICENSE](LICENSE).
 
 If you use this software, please cite it:
 
-> Tejpal, K. (2026). *perinatal-ews: open-source early-warning analytics for county maternal and newborn health* (Version 0.1.0) [Computer software]. Zenodo. https://doi.org/10.5281/zenodo.23374047
+> Tejpal, K. (2026). *perinatal-ews: open-source early-warning analytics for county maternal and newborn health* (Version 0.2.0) [Computer software]. Zenodo. https://doi.org/10.5281/zenodo.23374047
 
 GitHub's "Cite this repository" button gives this in other formats. The software is archived on [Zenodo](https://doi.org/10.5281/zenodo.23374047).
 

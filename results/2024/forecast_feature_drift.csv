@@ -1,0 +1,14 @@
+feature,psi,status
+state_change_vs_national,0.1660819873696937,moderate shift
+apc,0.082494628609991,stable
+state_share_flagged,0.07842541367420323,stable
+logit_rate,0.03181567360741357,stable
+logit_change_2y,0.0295415264029564,stable
+medicaid_share,0.024589830170027215,stable
+relative_risk,0.01083777547867148,stable
+logit_change_1y,0.01049790733817443,stable
+logit_rate_vs_peer,0.009406797544285033,stable
+z,0.00827209207257252,stable
+medicaid_private_ratio,0.007571762010156381,stable
+z_prev,0.007053921721226804,stable
+log_births,0.002824071090292561,stable

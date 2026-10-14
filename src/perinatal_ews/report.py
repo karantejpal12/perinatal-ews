@@ -190,7 +190,7 @@ def _more_note(n: int, shown: int, file: str) -> str:
 
 def build_report(tidy: pd.DataFrame, config: dict, truth: pd.DataFrame | None = None,
                  target_year: int | None = None, title: str = "Perinatal Early Warning",
-                 source_note: str | None = None, max_rows: int = 40) -> str:
+                 source_note: str | None = None, max_rows: int = 40, forecast=None) -> str:
     year = int(target_year or tidy["year"].max())
     labels = {k: v["label"] for k, v in config["indicators"].items()}
     subgroups = sorted(s for s in tidy["subgroup"].unique() if s != TOTAL_SUBGROUP)
@@ -283,6 +283,60 @@ The last column is the same gap across all counties combined, for context.</p>
 <div class="table-wrap"><table><thead><tr><th>County</th><th>Indicator</th><th>Highest</th><th class="num">Rate</th>
 <th>Lowest</th><th class="num">Rate</th><th class="num">Gap</th><th class="num">All counties</th></tr></thead>
 <tbody>{rows}</tbody></table></div></section>''')
+
+    if forecast is not None:
+        fy = forecast.forecast_year
+        top = forecast.scores.head(25)
+        rows = "".join(
+            f'<tr><td class="num">{100 * r.risk:.0f}%</td><td class="num">{r.risk_vs_average:.1f}×</td>'
+            f'<td class="place">{escape(r.geo_name)}<small>{escape(str(r.state))} · {escape(r.geo_id)}</small></td>'
+            f"<td>{escape(labels.get(r.indicator, r.indicator))}</td><td>{_pill(str(r.level_now))}</td>"
+            f'<td class="num">{_num(r.births)}</td></tr>'
+            for r in top.itertuples())
+        early = forecast.scores[forecast.scores["level_now"] == "stable"].head(10)
+        early_rows = "".join(
+            f'<tr><td class="num">{100 * r.risk:.0f}%</td>'
+            f'<td class="place">{escape(r.geo_name)}<small>{escape(str(r.state))} · {escape(r.geo_id)}</small></td>'
+            f"<td>{escape(labels.get(r.indicator, r.indicator))}</td><td class=\"num\">{_num(r.births)}</td></tr>"
+            for r in early.itertuples())
+        early_html = (f'''<h2>Not flagged yet, but high risk</h2>
+<p>County-indicators that look stable in {year} but that the forecast rates as likely to be flagged in {fy}.
+These are the earliest warnings the system can give.</p>
+<div class="table-wrap"><table><thead><tr><th class="num">Risk</th><th>County</th><th>Indicator</th><th class="num">Births</th>
+</tr></thead><tbody>{early_rows}</tbody></table></div>''' if len(early) else "")
+        m = forecast.metrics
+        mrows = "".join(
+            f'<tr><td>{escape(r.model)}</td><td class="num">{r.auroc:.3f}</td><td class="num">{r.auprc:.3f}</td>'
+            f'<td class="num">{r.brier:.3f}</td><td class="num">{100 * r.precision_top10pct:.0f}%</td>'
+            f'<td class="num">{100 * r.recall_top10pct:.0f}%</td></tr>' for r in m.itertuples())
+        gains = forecast.folds.dropna(subset=["auprc_gain_vs_best_baseline_ci95"]) if "auprc_gain_vs_best_baseline_ci95" in forecast.folds else forecast.folds.iloc[0:0]
+        gain_txt = "; ".join(f"{int(r.outcome_year)}: {r.auprc_gain_vs_best_baseline_ci95}" for r in gains.itertuples()
+                             if isinstance(r.auprc_gain_vs_best_baseline_ci95, str) and r.auprc_gain_vs_best_baseline_ci95)
+        bs = forecast.by_size.set_index("size_class").reindex(["small (<1k births)", "medium (1k-5k)", "large (5k+)"]).dropna(how="all")
+        size_chart = _bar_chart([{"small (<1k births)": "Small", "medium (1k-5k)": "Medium", "large (5k+)": "Large"}[i] for i in bs.index],
+                                list(bs["auroc"]), lambda v: f"{v:.2f}", "Forecast accuracy by county size",
+                                "AUROC on held-out years (0.5 = chance, 1 = perfect)", y_max=1.0)
+        cal = forecast.calibration
+        cal_chart = _bar_chart([f"Q{i + 1}" for i in range(len(cal))], list(100 * cal["observed_rate"]),
+                               lambda v: f"{v:.0f}%", "Observed next-year flag rate by risk quintile",
+                               "Held-out years; predicted means: " + ", ".join(f"{100 * v:.1f}%" for v in cal["mean_predicted"]))
+        out.append(f'''<section><h2>{fy} risk forecast</h2>
+<p>A forecasting model estimates the chance that each county will be flagged for each indicator
+in {fy}, using its recent rates and trend, its detection scores, its size and Medicaid share, its Medicaid-to-private gap,
+and what is happening across its state. These are the 25 highest-risk county-indicators. "vs average" compares the risk with
+the typical chance of being flagged in a year.</p>
+<div class="table-wrap"><table><thead><tr><th class="num">Risk</th><th class="num">vs average</th><th>County</th><th>Indicator</th>
+<th>Now</th><th class="num">Births</th></tr></thead><tbody>{rows}</tbody></table></div>
+{early_html}
+<h2>How well the forecast works</h2>
+<p>Tested forward in time: to predict each held-out year ({", ".join(str(y) for y in forecast.outcome_years)}), the model was
+trained only on earlier years. It is compared with two simpler methods. Higher AUROC and AUPRC are better; lower Brier is better.</p>
+<div class="table-wrap"><table><thead><tr><th>Method</th><th class="num">AUROC</th><th class="num">AUPRC</th><th class="num">Brier</th>
+<th class="num">Precision, top 10%</th><th class="num">Recall, top 10%</th></tr></thead><tbody>{mrows}</tbody></table></div>
+<p>Method used for this forecast: <b>{escape(forecast.selected_model)}</b>, chosen because it had the best held-out AUPRC.</p>
+<p class="note">95% bootstrap interval for the gradient-boosted model's AUPRC gain over the better baseline: {escape(gain_txt) or "not available"}.
+An interval that includes zero means the ranking gain is not statistically clear.</p>
+<div class="two">{size_chart}{cal_chart}</div></section>''')
 
     # System health
     health = [f'<section><h2>System health</h2><p>Checks on the input data and on the detector itself, run every time.</p>']

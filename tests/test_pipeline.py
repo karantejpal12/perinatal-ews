@@ -130,3 +130,20 @@ def test_state_clusters_flags_statewide_shift(cfg):
     cl = monitor.state_clusters(res, t, cfg)
     assert ((cl["state"] == state) & (cl["indicator"] == "preterm_birth")).any()
     assert not ((cl["indicator"] != "preterm_birth")).any()
+
+
+def test_forecast_runs_forward_in_time_and_beats_chance(cfg):
+    from perinatal_ews import forecast
+    # Shocks that start in 2022 persist, so next-year flags are partly predictable.
+    tidy, _ = synthetic.generate(seed=7, onset_years=3, n_injected=30)
+    tidy = tidy[tidy["subgroup"] == "All"]
+    r = forecast.run_forecast(tidy, cfg)
+    assert r.forecast_year == 2025
+    assert r.outcome_years == [2023, 2024]
+    assert set(forecast.FEATURES) <= set(r.scores.columns)
+    assert r.scores["risk"].between(0, 1).all()
+    chosen = r.metrics[r.metrics["selected"]].iloc[0]
+    assert chosen["model"] == r.selected_model
+    assert chosen["auroc"] > 0.6
+    assert chosen["auprc"] == r.metrics["auprc"].iloc[:2].max()
+    assert len(r.scores) == tidy[tidy["year"] == 2024].groupby(["indicator", "geo_id"]).ngroups
