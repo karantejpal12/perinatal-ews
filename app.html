@@ -376,6 +376,11 @@ footer { max-width: 1120px; margin: 0 auto; padding: 16px max(16px, env(safe-are
     const m = location.hash.match(/^#county-(\d{5})$/);
     openCounty(m && byId.has(m[1]) ? m[1] : '25013', !!m);
     if (location.hash === '#run') showTab('run');
+    window.addEventListener('hashchange', () => {
+      const h = location.hash.match(/^#county-(\d{5})$/);
+      if (h && byId.has(h[1])) { showTab('explore'); openCounty(h[1], false); }
+      else if (location.hash === '#run') showTab('run');
+    });
   }).catch(() => { $('#load-status').textContent = 'The county data could not be loaded. Refresh the page to try again.'; });
 
   /* ---------- run in browser (Pyodide) ---------- */
