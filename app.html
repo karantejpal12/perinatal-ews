@@ -1,0 +1,459 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>perinatal-ews Explorer</title>
+<meta name="description" content="Search any large US county to see maternal and newborn health trends, 2024 early-warning flags and the 2025 risk forecast, or run perinatal-ews on your own data in the browser.">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500&family=Public+Sans:wght@400;600;700&display=swap">
+<style>
+/* Layout: app shell = top bar with two tabs; Explore = search + county cards + filterable list; Run = upload panel + report frame */
+:root {
+  --bg: #f6f7f9; --surface: #ffffff; --surface-2: #eef1f5; --ink: #14181f; --ink-2: #4a5160; --ink-3: #6b7280;
+  --rule: #dfe3ea; --accent: #2a78d6; --accent-soft: #e3eefb; --expected: #8a919e; --grid: #e6e9ef;
+  --alert: #c23434; --alert-bg: #fbeaea; --watch: #8f6200; --watch-bg: #fdf3dc;
+  --stable: #2f7d32; --stable-bg: #e7f3e8; --na: #6b7280; --na-bg: #eef0f3;
+  --font-body: "Public Sans", "Segoe UI", system-ui, sans-serif;
+  --font-data: "IBM Plex Mono", ui-monospace, Menlo, monospace;
+}
+@media (prefers-color-scheme: dark) { :root {
+  --bg: #121418; --surface: #1a1d22; --surface-2: #22262d; --ink: #eceef2; --ink-2: #b9bfca; --ink-3: #9198a4;
+  --rule: #2c313a; --accent: #4a92ea; --accent-soft: #1b2a40; --expected: #8a919e; --grid: #2a2f37;
+  --alert: #e66767; --alert-bg: #3a2222; --watch: #e0a83a; --watch-bg: #352c18;
+  --stable: #5cbf60; --stable-bg: #1d2e1e; --na: #9198a4; --na-bg: #23272e; color-scheme: dark; } }
+* { box-sizing: border-box; }
+html, body { margin: 0; }
+body { background: var(--bg); color: var(--ink); font-family: var(--font-body); font-size: 15px; line-height: 1.55; }
+a { color: var(--accent); }
+.bar { position: sticky; top: env(safe-area-inset-top, 0px); z-index: 5; background: var(--surface); border-bottom: 1px solid var(--rule); }
+.bar-in { max-width: 1120px; margin: 0 auto; padding-left: max(16px, env(safe-area-inset-left, 0px)); padding-right: max(16px, env(safe-area-inset-right, 0px));
+  display: flex; align-items: center; gap: 16px; flex-wrap: wrap; padding-block: 10px; }
+.brand { font-weight: 700; font-size: 17px; text-decoration: none; color: var(--ink); margin-right: auto; }
+.brand span { font-family: var(--font-data); font-weight: 400; font-size: 12px; color: var(--ink-3); margin-left: 8px; }
+.tabs { display: flex; gap: 4px; background: var(--surface-2); border-radius: 8px; padding: 3px; }
+.tab { border: 0; background: transparent; color: var(--ink-2); font: inherit; font-weight: 600; padding: 7px 14px; border-radius: 6px; cursor: pointer; }
+.tab[aria-selected="true"] { background: var(--surface); color: var(--ink); box-shadow: 0 1px 2px rgba(0,0,0,.08); }
+.tab:focus-visible, button:focus-visible, input:focus-visible, select:focus-visible, .row:focus-visible { outline: 3px solid var(--accent); outline-offset: 2px; }
+.links { display: flex; gap: 14px; font-size: 14px; }
+main { max-width: 1120px; margin: 0 auto; padding-block: 24px 64px; padding-left: max(16px, env(safe-area-inset-left, 0px)); padding-right: max(16px, env(safe-area-inset-right, 0px)); }
+h1 { font-size: clamp(24px, 4vw, 32px); line-height: 1.15; margin: 0 0 6px; text-wrap: balance; }
+h2 { font-size: 19px; margin: 0 0 10px; text-wrap: balance; }
+p { margin: 0 0 10px; color: var(--ink-2); max-width: 72ch; }
+.note { font-size: 13px; color: var(--ink-3); }
+.stack { display: flex; flex-direction: column; gap: 28px; }
+.search { position: relative; max-width: 560px; }
+.search input { width: 100%; font: inherit; font-size: 16px; padding: 12px 14px; border: 1px solid var(--rule); border-radius: 8px; background: var(--surface); color: var(--ink); }
+.sugg { position: absolute; left: 0; right: 0; top: calc(100% + 4px); background: var(--surface); border: 1px solid var(--rule); border-radius: 8px;
+  box-shadow: 0 8px 24px rgba(0,0,0,.12); max-height: 320px; overflow-y: auto; z-index: 4; }
+.sugg button { display: flex; justify-content: space-between; width: 100%; text-align: left; border: 0; background: transparent; padding: 9px 14px; font: inherit; color: var(--ink); cursor: pointer; }
+.sugg button:hover, .sugg button[aria-selected="true"] { background: var(--accent-soft); }
+.sugg small { color: var(--ink-3); font-family: var(--font-data); }
+.county-head { display: flex; flex-wrap: wrap; align-items: baseline; gap: 10px 16px; }
+.county-head .meta { font-family: var(--font-data); font-size: 13px; color: var(--ink-3); }
+.share { border: 1px solid var(--rule); background: var(--surface); color: var(--ink-2); font: inherit; font-size: 13px; padding: 5px 10px; border-radius: 6px; cursor: pointer; }
+.cards { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 420px), 1fr)); gap: 16px; }
+.card { background: var(--surface); border: 1px solid var(--rule); border-radius: 10px; padding: 16px; display: flex; flex-direction: column; gap: 10px; min-width: 0; }
+.card-top { display: flex; justify-content: space-between; align-items: flex-start; gap: 10px; }
+.card h3 { margin: 0; font-size: 16px; }
+.pill { display: inline-flex; align-items: center; gap: 6px; padding: 2px 9px 2px 7px; border-radius: 999px; font-size: 12px; font-weight: 600; white-space: nowrap; }
+.pill svg { width: 12px; height: 12px; }
+.pill.alert { background: var(--alert-bg); color: var(--alert); }
+.pill.watch { background: var(--watch-bg); color: var(--watch); }
+.pill.stable { background: var(--stable-bg); color: var(--stable); }
+.pill.na { background: var(--na-bg); color: var(--na); }
+.nums { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; }
+.nums div { display: flex; flex-direction: column; }
+.nums b { font-family: var(--font-data); font-weight: 500; font-size: 20px; font-variant-numeric: tabular-nums; }
+.nums span { font-size: 12px; color: var(--ink-3); }
+.chart svg { display: block; width: 100%; height: auto; }
+.chart text { font-family: var(--font-data); font-size: 11px; fill: var(--ink-3); }
+.chart .grid { stroke: var(--grid); }
+.chart .line { fill: none; stroke: var(--accent); stroke-width: 2.5; stroke-linejoin: round; stroke-linecap: round; }
+.chart .dot { fill: var(--accent); stroke: var(--surface); stroke-width: 2; }
+.chart .exp { fill: var(--surface); stroke: var(--expected); stroke-width: 2; }
+.chart .hit { fill: transparent; }
+.legend { display: flex; gap: 14px; flex-wrap: wrap; font-size: 12px; color: var(--ink-3); }
+.legend i { display: inline-block; width: 14px; height: 2px; background: var(--accent); vertical-align: middle; margin-right: 5px; }
+.legend i.ring { width: 9px; height: 9px; border-radius: 50%; background: transparent; border: 2px solid var(--expected); }
+.subs { display: flex; flex-wrap: wrap; gap: 6px 14px; font-size: 13px; color: var(--ink-2); }
+.subs b { font-weight: 600; }
+.risk { display: flex; align-items: center; gap: 10px; font-size: 13px; color: var(--ink-2); }
+.risk .track { flex: 1; height: 8px; background: var(--surface-2); border-radius: 4px; overflow: hidden; }
+.risk .fill { height: 100%; background: var(--accent); border-radius: 4px; }
+.risk b { font-family: var(--font-data); font-weight: 500; min-width: 3.5em; text-align: right; }
+.flag-note { font-size: 13px; background: var(--watch-bg); color: var(--ink); border-radius: 6px; padding: 8px 10px; }
+.filters { display: flex; flex-wrap: wrap; gap: 10px; align-items: end; }
+.filters label { display: flex; flex-direction: column; gap: 4px; font-size: 12px; color: var(--ink-3); font-weight: 600; letter-spacing: .02em; }
+select { font: inherit; font-size: 14px; padding: 8px 10px; border: 1px solid var(--rule); border-radius: 6px; background: var(--surface); color: var(--ink); }
+.table-wrap { overflow-x: auto; background: var(--surface); border: 1px solid var(--rule); border-radius: 10px; }
+table { border-collapse: collapse; width: 100%; font-size: 14px; }
+th { text-align: left; font-size: 12px; letter-spacing: .04em; text-transform: uppercase; color: var(--ink-3); padding: 10px 12px; border-bottom: 1px solid var(--rule); white-space: nowrap; }
+td { padding: 9px 12px; border-bottom: 1px solid var(--rule); }
+tr:last-child td { border-bottom: 0; }
+.row { cursor: pointer; }
+.row:hover td { background: var(--accent-soft); }
+td.num, th.num { text-align: right; font-family: var(--font-data); font-variant-numeric: tabular-nums; white-space: nowrap; }
+.panel { background: var(--surface); border: 1px solid var(--rule); border-radius: 10px; padding: 18px; display: flex; flex-direction: column; gap: 12px; }
+.btns { display: flex; flex-wrap: wrap; gap: 10px; align-items: center; }
+.btn { font: inherit; font-weight: 600; font-size: 14px; padding: 9px 14px; border-radius: 6px; border: 1px solid var(--rule); background: var(--surface); color: var(--ink); cursor: pointer; text-decoration: none; }
+.btn.primary { background: var(--accent); color: #fff; border-color: var(--accent); }
+.btn:disabled { opacity: .55; cursor: not-allowed; }
+.status { font-family: var(--font-data); font-size: 13px; color: var(--ink-2); min-height: 1.5em; }
+.check { display: flex; align-items: center; gap: 8px; font-size: 14px; color: var(--ink-2); }
+iframe.report { width: 100%; height: 80vh; border: 1px solid var(--rule); border-radius: 10px; background: #fff; }
+code { font-family: var(--font-data); font-size: 13px; background: var(--surface-2); padding: 1px 5px; border-radius: 4px; }
+footer { max-width: 1120px; margin: 0 auto; padding: 16px max(16px, env(safe-area-inset-right, 0px)) 40px max(16px, env(safe-area-inset-left, 0px)); font-size: 13px; color: var(--ink-3); border-top: 1px solid var(--rule); }
+[hidden] { display: none !important; }
+@media (prefers-reduced-motion: reduce) { * { transition: none !important; } }
+</style>
+</head>
+<body>
+<div class="bar"><div class="bar-in">
+  <a class="brand" href="./">perinatal-ews<span>Explorer</span></a>
+  <div class="tabs" role="tablist">
+    <button class="tab" role="tab" id="tab-explore" aria-selected="true" aria-controls="view-explore">Explore counties</button>
+    <button class="tab" role="tab" id="tab-run" aria-selected="false" aria-controls="view-run">Run on your data</button>
+  </div>
+  <nav class="links"><a href="./">About</a><a href="results/2024/report.html">Full bulletin</a><a href="https://github.com/karantejpal12/perinatal-ews">GitHub</a></nav>
+</div></div>
+
+<main>
+  <!-- EXPLORE -->
+  <section id="view-explore" class="stack" role="tabpanel" aria-labelledby="tab-explore">
+    <div>
+      <h1>Maternal and newborn health, county by county</h1>
+      <p>Search any of 578 US counties with 100,000 or more residents to see 2016–2024 trends, whether 2024 was worse than expected, and the forecast risk for 2025.</p>
+    </div>
+    <div class="search">
+      <input id="q" type="search" placeholder="Search a county, e.g. Hampden or Miami-Dade" autocomplete="off" aria-label="Search counties" role="combobox" aria-expanded="false" aria-controls="sugg">
+      <div class="sugg" id="sugg" role="listbox" hidden></div>
+    </div>
+
+    <div id="county" class="stack" aria-live="polite">
+      <p class="status" id="load-status">Loading county data…</p>
+    </div>
+
+    <div class="stack">
+      <div>
+        <h2>All flagged counties, <span class="yr">2024</span></h2>
+        <p>Filter the list, then select a row to open that county.</p>
+      </div>
+      <div class="filters">
+        <label for="f-ind">Indicator<select id="f-ind"><option value="">All indicators</option></select></label>
+        <label for="f-state">State<select id="f-state"><option value="">All states</option></select></label>
+        <label for="f-level">Status<select id="f-level">
+          <option value="flag">Alert or watch</option><option value="alert">Alert only</option>
+          <option value="risk">Stable now, high 2025 risk</option></select></label>
+      </div>
+      <div class="table-wrap"><table>
+        <thead><tr><th>Status</th><th>County</th><th>Indicator</th><th class="num">Rate</th><th class="num">Expected</th><th class="num">Ratio</th><th class="num">2025 risk</th></tr></thead>
+        <tbody id="list"></tbody>
+      </table></div>
+      <p class="note" id="list-note"></p>
+    </div>
+  </section>
+
+  <!-- RUN -->
+  <section id="view-run" class="stack" role="tabpanel" aria-labelledby="tab-run" hidden>
+    <div>
+      <h1>Run perinatal-ews on your own data</h1>
+      <p>The full tool runs inside your browser. Your file never leaves your computer: nothing is uploaded to any server.
+        The first run downloads the Python engine (about 30 MB, once), which takes a minute.</p>
+    </div>
+    <div class="panel">
+      <h2>1. Choose data</h2>
+      <p>A CSV in the perinatal-ews format, one row per county, year, indicator and subgroup:
+        <code>geo_id, geo_name, state, year, indicator, subgroup, numerator, denominator</code>.
+        Use <code>All</code> as the subgroup for county totals. Indicators: <code>preterm_birth</code>, <code>low_birth_weight</code>,
+        <code>late_no_prenatal_care</code>, <code>gestational_hypertension</code>. At least 6 consecutive years.
+        <a href="https://github.com/karantejpal12/perinatal-ews#using-real-data-cdc-wonder">How to get US county data from CDC WONDER</a>.</p>
+      <div class="btns">
+        <label class="btn" for="file">Choose CSV file</label>
+        <input id="file" type="file" accept=".csv,text/csv" hidden>
+        <span class="note" id="file-name">No file chosen</span>
+        <span class="note">or</span>
+        <button class="btn" id="demo-btn" type="button">Use synthetic demo data</button>
+      </div>
+      <label class="check" for="with-fc"><input type="checkbox" id="with-fc"> Include the next-year forecast (machine learning; adds a few minutes)</label>
+    </div>
+    <div class="panel">
+      <h2>2. Run</h2>
+      <div class="btns">
+        <button class="btn primary" id="run-btn" type="button" disabled>Run analysis</button>
+        <button class="btn" id="dl-report" type="button" hidden>Download report (HTML)</button>
+        <button class="btn" id="dl-csv" type="button" hidden>Download detections (CSV)</button>
+      </div>
+      <div class="status" id="run-status">Choose a file or the demo data to start.</div>
+    </div>
+    <iframe class="report" id="report" title="perinatal-ews report" hidden></iframe>
+    <p class="note">Follow the NCHS data use restrictions when sharing results from CDC data: never publish counts of 9 or fewer.</p>
+  </section>
+</main>
+
+<footer>
+  perinatal-ews by Karan Tejpal · <a href="https://doi.org/10.5281/zenodo.23374647">doi.org/10.5281/zenodo.23374647</a> ·
+  Source: CDC WONDER Natality, 2016–2024 expanded (NCHS). Rates based on fewer than 10 events are not shown.
+  Flags are statistical leads for local follow-up, not confirmed problems, and are not for clinical or individual decisions.
+</footer>
+
+<script>
+(() => {
+  const $ = s => document.querySelector(s);
+  const el = (tag, attrs = {}, ...kids) => {
+    const n = document.createElement(tag);
+    for (const [k, v] of Object.entries(attrs)) {
+      if (k === 'class') n.className = v; else if (k === 'text') n.textContent = v; else if (k.startsWith('on')) n.addEventListener(k.slice(2), v); else n.setAttribute(k, v);
+    }
+    for (const kid of kids.flat()) if (kid != null) n.append(kid instanceof Node ? kid : document.createTextNode(String(kid)));
+    return n;
+  };
+  const pct = (x, d = 1) => (x == null ? '–' : (100 * x).toFixed(d) + '%');
+  const NS = 'http://www.w3.org/2000/svg';
+  const sv = (tag, attrs = {}) => { const n = document.createElementNS(NS, tag); for (const [k, v] of Object.entries(attrs)) n.setAttribute(k, v); return n; };
+  const ICON = {
+    alert: 'M6 1 11.5 11h-11z', watch: null, stable: 'M2 6.5 5 9l5-6'
+  };
+  const LABEL = { alert: 'Alert', watch: 'Watch', stable: 'Stable', 'insufficient data': 'Not enough data' };
+  function pill(level) {
+    const key = level in ICON ? level : 'na';
+    const s = sv('svg', { viewBox: '0 0 12 12', 'aria-hidden': 'true' });
+    if (key === 'watch') s.append(sv('circle', { cx: 6, cy: 6, r: 4.5, fill: 'none', stroke: 'currentColor', 'stroke-width': 2 }));
+    else if (key === 'alert') s.append(sv('path', { d: ICON.alert, fill: 'currentColor' }));
+    else if (key === 'stable') s.append(sv('path', { d: ICON.stable, fill: 'none', stroke: 'currentColor', 'stroke-width': 2 }));
+    else s.append(sv('circle', { cx: 6, cy: 6, r: 2, fill: 'currentColor' }));
+    const p = el('span', { class: 'pill ' + key }); p.append(s, LABEL[level] || level); return p;
+  }
+
+  /* ---------- tabs ---------- */
+  function showTab(which) {
+    for (const t of ['explore', 'run']) {
+      $('#tab-' + t).setAttribute('aria-selected', String(t === which));
+      $('#view-' + t).hidden = t !== which;
+    }
+  }
+  $('#tab-explore').addEventListener('click', () => showTab('explore'));
+  $('#tab-run').addEventListener('click', () => { showTab('run'); if (location.hash !== '#run') history.replaceState(null, '', '#run'); });
+
+  /* ---------- explore ---------- */
+  let D = null, byId = new Map(), patterns = new Set();
+
+  function trendChart(years, trend, expected, label) {
+    const W = 340, H = 150, L = 38, R = 12, T = 12, B = 24;
+    const vals = trend.filter(v => v != null).concat(expected != null ? [expected] : []);
+    if (!vals.length) return el('p', { class: 'note', text: 'Too few events to show a trend.' });
+    let lo = Math.min(...vals), hi = Math.max(...vals);
+    const pad = Math.max((hi - lo) * 0.25, hi * 0.08, 0.002); lo = Math.max(0, lo - pad); hi = hi + pad;
+    const x = i => L + i * (W - L - R) / (years.length - 1), y = v => T + (1 - (v - lo) / (hi - lo)) * (H - T - B);
+    const s = sv('svg', { viewBox: `0 0 ${W} ${H}`, role: 'img', 'aria-label': `${label}: rate by year with expected ${D.year} rate` });
+    for (let k = 0; k <= 3; k++) {
+      const v = lo + (hi - lo) * k / 3, yy = y(v);
+      s.append(sv('line', { class: 'grid', x1: L, x2: W - R, y1: yy, y2: yy }));
+      const t = sv('text', { x: L - 6, y: yy + 4, 'text-anchor': 'end' }); t.textContent = (100 * v).toFixed(v < 0.1 ? 1 : 0) + '%'; s.append(t);
+    }
+    years.forEach((yr, i) => { if (i % 2 === 0 || i === years.length - 1) { const t = sv('text', { x: x(i), y: H - 6, 'text-anchor': 'middle' }); t.textContent = "'" + String(yr).slice(2); s.append(t); } });
+    let dpath = '', started = false;
+    trend.forEach((v, i) => { if (v == null) { started = false; return; } dpath += (started ? 'L' : 'M') + x(i).toFixed(1) + ',' + y(v).toFixed(1); started = true; });
+    s.append(sv('path', { class: 'line', d: dpath }));
+    if (expected != null) {
+      const c = sv('circle', { class: 'exp', cx: x(years.length - 1), cy: y(expected), r: 5 });
+      const tt = sv('title'); tt.textContent = `Expected ${D.year}: ${pct(expected)}`; c.append(tt); s.append(c);
+    }
+    trend.forEach((v, i) => {
+      if (v == null) return;
+      const last = i === trend.length - 1;
+      const d = sv('circle', { class: 'dot', cx: x(i), cy: y(v), r: last ? 4.5 : 3 });
+      s.append(d);
+      const h = sv('circle', { class: 'hit', cx: x(i), cy: y(v), r: 10 });
+      const tt = sv('title'); tt.textContent = `${years[i]}: ${pct(v)}`; h.append(tt); s.append(h);
+    });
+    return s;
+  }
+
+  function renderCounty(c) {
+    const box = $('#county'); box.textContent = '';
+    const head = el('div', { class: 'county-head' },
+      el('h2', { text: `${c.name}, ${c.state}` }),
+      el('span', { class: 'meta', text: `FIPS ${c.id}` }),
+      el('button', { class: 'share', type: 'button', text: 'Copy link to this county', onclick: async (e) => {
+        const url = location.href.split('#')[0] + '#county-' + c.id;
+        try { await navigator.clipboard.writeText(url); e.target.textContent = 'Link copied'; } catch { prompt('Copy this link', url); }
+        setTimeout(() => { e.target.textContent = 'Copy link to this county'; }, 2000);
+      } }));
+    const legend = el('div', { class: 'legend' }, el('span', {}, el('i'), 'Observed rate by year'), el('span', {}, el('i', { class: 'ring' }), `Expected ${D.year} rate`));
+    const cards = el('div', { class: 'cards' });
+    for (const [k, label] of Object.entries(D.indicators)) {
+      const e = c.ind[k]; if (!e) continue;
+      const card = el('article', { class: 'card' });
+      card.append(el('div', { class: 'card-top' }, el('h3', { text: label }), pill(e.level)));
+      card.append(el('div', { class: 'nums' },
+        el('div', {}, el('b', { text: pct(e.rate) }), el('span', { text: `${D.year} rate` })),
+        el('div', {}, el('b', { text: pct(e.expected) }), el('span', { text: 'Expected' })),
+        el('div', {}, el('b', { text: e.rr == null ? '–' : e.rr.toFixed(2) + '×' }), el('span', { text: 'Observed ÷ expected' }))));
+      const ch = el('div', { class: 'chart' }); ch.append(trendChart(D.years, e.trend, e.expected, label)); card.append(ch);
+      const subs = el('div', { class: 'subs' });
+      for (const [s, sd] of Object.entries(e.subgroups || {})) subs.append(el('span', {}, el('b', { text: s + ': ' }), pct(sd.rate), ' · ', LABEL[sd.level] || sd.level));
+      if (subs.childNodes.length) card.append(subs);
+      if (e.risk != null) {
+        const r = el('div', { class: 'risk' }, el('span', { text: `${D.forecast_year} risk of being flagged` }));
+        const tr = el('div', { class: 'track' }); const f = el('div', { class: 'fill' }); f.style.width = Math.max(2, 100 * e.risk) + '%'; tr.append(f);
+        r.append(tr, el('b', { text: pct(e.risk, 0) })); card.append(r);
+      }
+      if (patterns.has(k + '|' + c.state)) card.append(el('div', { class: 'flag-note', text: `Many ${c.state} counties were flagged for this indicator in ${D.year}. The change may be state-wide (policy, coverage or how the state records it) rather than local.` }));
+      if (e.sustained) card.append(el('p', { class: 'note', text: 'Also elevated the year before.' }));
+      cards.append(card);
+    }
+    box.append(head, legend, cards, el('p', { class: 'note', text: D.source }));
+  }
+
+  function openCounty(id, push = true) {
+    const c = byId.get(id); if (!c) return;
+    renderCounty(c);
+    if (push) history.replaceState(null, '', '#county-' + id);
+    $('#q').value = `${c.name}, ${c.state}`;
+  }
+
+  // search
+  let matches = [], active = -1;
+  const q = $('#q'), sugg = $('#sugg');
+  function closeSugg() { sugg.hidden = true; q.setAttribute('aria-expanded', 'false'); active = -1; }
+  function drawSugg() {
+    sugg.textContent = '';
+    matches.forEach((c, i) => sugg.append(el('button', { type: 'button', role: 'option', 'aria-selected': String(i === active),
+      onmousedown: ev => { ev.preventDefault(); openCounty(c.id); closeSugg(); } }, el('span', { text: `${c.name}, ${c.state}` }), el('small', { text: c.id }))));
+    sugg.hidden = !matches.length; q.setAttribute('aria-expanded', String(!!matches.length));
+  }
+  q.addEventListener('input', () => {
+    const s = q.value.trim().toLowerCase(); active = -1;
+    if (!s || !D) { matches = []; return drawSugg(); }
+    matches = D.counties.filter(c => (`${c.name}, ${c.state} ${c.id}`).toLowerCase().includes(s)).slice(0, 12); drawSugg();
+  });
+  q.addEventListener('keydown', e => {
+    if (sugg.hidden) return;
+    if (e.key === 'ArrowDown') { active = Math.min(active + 1, matches.length - 1); drawSugg(); e.preventDefault(); }
+    else if (e.key === 'ArrowUp') { active = Math.max(active - 1, 0); drawSugg(); e.preventDefault(); }
+    else if (e.key === 'Enter') { const c = matches[Math.max(active, 0)]; if (c) { openCounty(c.id); closeSugg(); } }
+    else if (e.key === 'Escape') closeSugg();
+  });
+  q.addEventListener('blur', () => setTimeout(closeSugg, 100));
+
+  // list
+  function drawList() {
+    const ind = $('#f-ind').value, st = $('#f-state').value, lv = $('#f-level').value;
+    const rows = [];
+    for (const c of D.counties) {
+      if (st && c.state !== st) continue;
+      for (const [k, e] of Object.entries(c.ind)) {
+        if (ind && k !== ind) continue;
+        const ok = lv === 'alert' ? e.level === 'alert' : lv === 'flag' ? (e.level === 'alert' || e.level === 'watch')
+          : (e.level === 'stable' && (e.risk || 0) >= 0.25);
+        if (ok) rows.push({ c, k, e });
+      }
+    }
+    const order = { alert: 0, watch: 1, stable: 2 };
+    rows.sort((a, b) => lv === 'risk' ? (b.e.risk || 0) - (a.e.risk || 0) : (order[a.e.level] - order[b.e.level]) || ((b.e.rr || 0) - (a.e.rr || 0)));
+    const body = $('#list'); body.textContent = '';
+    for (const r of rows.slice(0, 200)) {
+      const tr = el('tr', { class: 'row', tabindex: '0', onclick: () => { openCounty(r.c.id); window.scrollTo({ top: 0, behavior: 'smooth' }); },
+        onkeydown: ev => { if (ev.key === 'Enter') { openCounty(r.c.id); window.scrollTo({ top: 0 }); } } },
+        el('td', {}, pill(r.e.level)), el('td', { text: `${r.c.name}, ${r.c.state}` }), el('td', { text: D.indicators[r.k] }),
+        el('td', { class: 'num', text: pct(r.e.rate) }), el('td', { class: 'num', text: pct(r.e.expected) }),
+        el('td', { class: 'num', text: r.e.rr == null ? '–' : r.e.rr.toFixed(2) }), el('td', { class: 'num', text: r.e.risk == null ? '–' : pct(r.e.risk, 0) }));
+      body.append(tr);
+    }
+    $('#list-note').textContent = rows.length ? `${rows.length} result${rows.length > 1 ? 's' : ''}${rows.length > 200 ? ', showing the first 200' : ''}.` : 'No counties match these filters.';
+  }
+
+  fetch('results/2024/explorer.json').then(r => { if (!r.ok) throw new Error(r.status); return r.json(); }).then(data => {
+    D = data;
+    byId = new Map(D.counties.map(c => [c.id, c]));
+    patterns = new Set(D.state_patterns.map(p => p.indicator + '|' + p.state));
+    document.querySelectorAll('.yr').forEach(n => { n.textContent = D.year; });
+    for (const [k, v] of Object.entries(D.indicators)) $('#f-ind').append(el('option', { value: k, text: v }));
+    for (const s of [...new Set(D.counties.map(c => c.state))].sort()) $('#f-state').append(el('option', { value: s, text: s }));
+    ['#f-ind', '#f-state', '#f-level'].forEach(s => $(s).addEventListener('change', drawList));
+    drawList();
+    const m = location.hash.match(/^#county-(\d{5})$/);
+    openCounty(m && byId.has(m[1]) ? m[1] : '25013', !!m);
+    if (location.hash === '#run') showTab('run');
+  }).catch(() => { $('#load-status').textContent = 'The county data could not be loaded. Refresh the page to try again.'; });
+
+  /* ---------- run in browser (Pyodide) ---------- */
+  let py = null, source = null, lastHtml = null, lastCsv = null;
+  const status = t => { $('#run-status').textContent = t; };
+  $('#file').addEventListener('change', async e => {
+    const f = e.target.files[0]; if (!f) return;
+    source = { kind: 'file', name: f.name, text: await f.text() };
+    $('#file-name').textContent = f.name; $('#run-btn').disabled = false; status('Ready. Select Run analysis.');
+  });
+  $('#demo-btn').addEventListener('click', () => {
+    source = { kind: 'demo' }; $('#file-name').textContent = 'Synthetic demo data (150 fictional counties)';
+    $('#run-btn').disabled = false; status('Ready. Select Run analysis.');
+  });
+
+  async function loadEngine() {
+    if (py) return py;
+    status('Downloading the Python engine (first run only)…');
+    await new Promise((res, rej) => { const s = document.createElement('script'); s.src = 'https://cdn.jsdelivr.net/pyodide/v0.26.4/full/pyodide.js'; s.onload = res; s.onerror = rej; document.head.append(s); });
+    py = await loadPyodide();
+    status('Loading scientific libraries…');
+    await py.loadPackage(['numpy', 'pandas', 'scipy', 'scikit-learn', 'pyyaml', 'micropip']);
+    status('Installing perinatal-ews…');
+    const wheel = new URL('dist/perinatal_ews-0.2.0-py3-none-any.whl', location.href).href;
+    await py.runPythonAsync(`import micropip\nawait micropip.install("${wheel}", deps=False)`);
+    return py;
+  }
+
+  $('#run-btn').addEventListener('click', async () => {
+    const btn = $('#run-btn'); btn.disabled = true; $('#dl-report').hidden = true; $('#dl-csv').hidden = true;
+    try {
+      const p = await loadEngine();
+      status(source.kind === 'demo' ? 'Generating demo data and running detection…' : 'Checking your data and running detection…');
+      p.globals.set('SRC_TEXT', source.kind === 'file' ? source.text : '');
+      p.globals.set('IS_DEMO', source.kind === 'demo');
+      p.globals.set('WITH_FC', $('#with-fc').checked);
+      await new Promise(r => setTimeout(r, 30));
+      const out = await p.runPythonAsync(`
+import io, warnings
+warnings.simplefilter("ignore")
+import pandas as pd
+from perinatal_ews import config, synthetic, report, detect, schema
+cfg = config.load_config()
+truth = None
+if IS_DEMO:
+    tidy, truth = synthetic.generate()
+else:
+    tidy = schema.validate(pd.read_csv(io.StringIO(SRC_TEXT), dtype={"geo_id": str}))
+fc = None
+if WITH_FC:
+    from perinatal_ews.forecast import run_forecast
+    fc = run_forecast(tidy, cfg)
+html = report.build_report(tidy, cfg, truth=truth, forecast=fc,
+                           title="Perinatal Early Warning" if IS_DEMO else "Perinatal Early Warning: your data")
+subs = ["All"] + sorted(set(tidy["subgroup"]) - {"All"})
+det = detect.detect(tidy, cfg, subgroups=subs)
+[html, det.to_csv(index=False), int(tidy["geo_id"].nunique()), int(tidy["year"].max())]
+`);
+      const [html, csv, n, yr] = out.toJs(); out.destroy();
+      lastHtml = '<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"></head><body style="margin:0">' + html + '</body></html>';
+      lastCsv = csv;
+      const fr = $('#report'); fr.srcdoc = lastHtml; fr.hidden = false;
+      $('#dl-report').hidden = false; $('#dl-csv').hidden = false;
+      status(`Done: ${n} counties analysed for ${yr}. The report is below.`);
+    } catch (err) {
+      const msg = String(err && err.message || err);
+      const last = msg.trim().split('\n').filter(Boolean).pop() || msg;
+      status('Could not run: ' + last.replace(/^.*Error: /, '') + ' Check that the file has the required columns and at least 6 years.');
+    } finally { btn.disabled = false; }
+  });
+
+  function download(name, text, type) {
+    const a = el('a', { href: URL.createObjectURL(new Blob([text], { type })), download: name });
+    document.body.append(a); a.click(); a.remove();
+  }
+  $('#dl-report').addEventListener('click', () => lastHtml && download('perinatal-ews-report.html', lastHtml, 'text/html'));
+  $('#dl-csv').addEventListener('click', () => lastCsv && download('perinatal-ews-detections.csv', lastCsv, 'text/csv'));
+})();
+</script>
+</body>
+</html>

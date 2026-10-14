@@ -4,7 +4,7 @@
 [![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
 [![Open In Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/github/karantejpal12/perinatal-ews/blob/main/notebooks/perinatal_ews_colab.ipynb)
 
-**Project site and 2024 US county bulletin:** https://karantejpal12.github.io/perinatal-ews/
+**Try it:** [county explorer and in-browser tool](https://karantejpal12.github.io/perinatal-ews/app.html) · [project site](https://karantejpal12.github.io/perinatal-ews/) · [2024 bulletin](https://karantejpal12.github.io/perinatal-ews/results/2024/report.html)
 
 **Open-source early-warning analytics for county maternal and newborn health.**
 
