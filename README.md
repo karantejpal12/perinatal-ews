@@ -1,5 +1,8 @@
 # perinatal-ews
 
+[![DOI](https://zenodo.org/badge/DOI/10.5281/zenodo.23374047.svg)](https://doi.org/10.5281/zenodo.23374047)
+[![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
+
 **Open-source early-warning analytics for county maternal and newborn health.**
 
 `perinatal-ews` scans public natality data every year and flags counties where outcomes such as preterm birth, low birth weight, late or no prenatal care and gestational hypertension are getting worse than their own recent history predicts, after allowing for the trend seen across all counties. It is built for state and local health department epidemiologists, maternal and child health programmes, perinatal quality collaboratives and researchers who need to know *where to look first*.
@@ -114,9 +117,9 @@ MIT. See [LICENSE](LICENSE).
 
 If you use this software, please cite it:
 
-> Tejpal, K. (2026). *perinatal-ews: open-source early-warning analytics for county maternal and newborn health* (Version 0.1.0) [Computer software]. https://github.com/karantejpal12/perinatal-ews
+> Tejpal, K. (2026). *perinatal-ews: open-source early-warning analytics for county maternal and newborn health* (Version 0.1.0) [Computer software]. Zenodo. https://doi.org/10.5281/zenodo.23374047
 
-GitHub's "Cite this repository" button gives this in other formats. A Zenodo DOI will be added with the first tagged release.
+GitHub's "Cite this repository" button gives this in other formats. The software is archived on [Zenodo](https://doi.org/10.5281/zenodo.23374047).
 
 ## Author
 

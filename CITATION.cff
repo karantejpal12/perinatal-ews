@@ -7,6 +7,11 @@ authors:
     given-names: Karan
     orcid: "https://orcid.org/0009-0004-8609-2854"
 version: 0.1.0
+doi: "10.5281/zenodo.23374047"
+identifiers:
+  - type: doi
+    value: "10.5281/zenodo.23374047"
+    description: "Zenodo archive of this software"
 date-released: 2026-10-14
 license: MIT
 repository-code: "https://github.com/karantejpal12/perinatal-ews"
