@@ -1,0 +1,52 @@
+# perinatal-ews default configuration
+#
+# Each indicator is a proportion of births. "higher_is_worse" means an
+# increase is a deterioration. The `wonder` block tells the CDC WONDER
+# parser which grouping column to read and which category labels count
+# toward the numerator. Category labels change between WONDER databases
+# and years, so check them against the column values in your own export.
+
+detection:
+  baseline_years: 3          # prior years pooled to form each county's baseline
+  guard_years: 1             # skip the year just before the target so recent changes are not absorbed
+  watch_z: 2.0               # z-score for a "watch" flag
+  alert_q: 0.05              # Benjamini-Hochberg q-value required for an "alert"
+  min_relative_risk_watch: 1.05
+  min_relative_risk_alert: 1.10
+  adjust_for_reference_trend: true   # compare counties to peers, not to a frozen past
+  min_numerator_reliable: 20         # NCHS: rates on <20 events are unreliable
+  min_numerator_shown: 10            # counts below 10 are suppressed in public files
+
+indicators:
+  late_no_prenatal_care:
+    label: "Late or no prenatal care"
+    description: "Prenatal care began in the 3rd trimester or not at all"
+    direction: higher_is_worse
+    wonder:
+      group_column: "Month Prenatal Care Began"
+      numerator_values: ["7th month", "8th month", "9th month", "10th month", "No prenatal care"]
+      exclude_values: ["Unknown or Not Stated"]
+  preterm_birth:
+    label: "Preterm birth"
+    description: "Born before 37 completed weeks (obstetric estimate)"
+    direction: higher_is_worse
+    wonder:
+      group_column: "OE Gestational Age Recode 10"
+      numerator_values: ["Under 20 weeks", "20 - 27 weeks", "28 - 31 weeks", "32 - 33 weeks", "34 - 36 weeks"]
+      exclude_values: ["Unknown or Not Stated"]
+  low_birth_weight:
+    label: "Low birth weight"
+    description: "Birth weight under 2,500 grams"
+    direction: higher_is_worse
+    wonder:
+      group_column: "Infant Birth Weight 12"
+      numerator_values: ["499 grams or less", "500 - 999 grams", "1000 - 1499 grams", "1500 - 1999 grams", "2000 - 2499 grams"]
+      exclude_values: ["Unknown or Not Stated"]
+  gestational_hypertension:
+    label: "Gestational hypertension"
+    description: "Hypertension first diagnosed during pregnancy"
+    direction: higher_is_worse
+    wonder:
+      group_column: "Gestational Hypertension"
+      numerator_values: ["Yes"]
+      exclude_values: ["Unknown or Not Stated", "Not Reported"]

@@ -1,0 +1,6 @@
+out/
+data/raw/*
+!data/raw/.gitkeep
+__pycache__/
+*.egg-info/
+.pytest_cache/
