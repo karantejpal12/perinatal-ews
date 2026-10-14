@@ -282,18 +282,32 @@ def test_pooling_skips_and_reports_unavailable_years():
 
 
 def test_small_groups_are_combined_and_labelled():
-    from perinatal_ews.pooling import combine_small_groups, pooled_estimates
+    from perinatal_ews.pooling import small_numbers_analysis
 
-    p = combine_small_groups(pooled_estimates(_race_tidy(), window=3))
+    combine = {"Asian or Pacific Islander (combined)": ["Asian", "Native Hawaiian or Other Pacific Islander"]}
+    p, _ = small_numbers_analysis(_race_tidy(), window=3, combine=combine)
     w = p[p.window == "2022-2024"].set_index("subgroup")
     nhpi = "Native Hawaiian or Other Pacific Islander"
-    assert w.loc[nhpi, "status"] != "reliable"                     # about 15 events over 3 years
     combo = "Asian or Pacific Islander (combined)"
+    assert w.loc[nhpi, "status"] != "reliable"                     # about 15 events over 3 years
     assert w.loc[combo, "combined_from"] == "Asian + " + nhpi
     assert w.loc[combo, "denominator"] == w.loc["Asian", "denominator"] + w.loc[nhpi, "denominator"]
     assert w.loc[combo, "status"] == "reliable"
     assert w.loc[nhpi, "report_as"] == combo
     assert w.loc["White", "report_as"] == "White"
+    # A year where a member is suppressed makes the combined year missing, never a partial sum.
+    early = p[(p.subgroup == combo) & (p.window == "2016-2018")].iloc[0]
+    assert "2017" in early["years_missing_or_suppressed"] and "2018" in early["years_missing_or_suppressed"]
+
+
+def test_combined_group_from_source_is_not_recomputed():
+    from perinatal_ews.pooling import add_combined_groups
+
+    t = _race_tidy()
+    combo = "Asian or Pacific Islander (combined)"
+    src = t[t.subgroup == "Asian"].assign(subgroup=combo, numerator=1.0)
+    out = add_combined_groups(pd.concat([t, src]), {combo: ["Asian", "Native Hawaiian or Other Pacific Islander"]})
+    assert (out[out.subgroup == combo]["numerator"] == 1.0).all()
 
 
 def test_compare_windows_only_when_reliable():
@@ -302,3 +316,17 @@ def test_compare_windows_only_when_reliable():
     c = compare_windows(pooled_estimates(_race_tidy(), window=3)).set_index("subgroup")
     assert c.loc["White", "change"] == "no clear change"
     assert c.loc["Native Hawaiian or Other Pacific Islander", "change"].startswith("not compared")
+
+
+def test_published_state_race_results_never_show_small_counts():
+    import json
+    from pathlib import Path
+
+    f = Path(__file__).resolve().parents[1] / "results" / "2024" / "state_race.json"
+    if not f.exists():
+        pytest.skip("state_race.json not built")
+    d = json.loads(f.read_text())
+    shown = [r for st in d["states"].values() for rows in st.values() for r in rows if r["rate"] is not None]
+    assert shown and all(r["n"] >= 20 and r["status"] == "reliable" for r in shown)
+    hidden = [r for st in d["states"].values() for rows in st.values() for r in rows if r["rate"] is None]
+    assert all(r["n"] is None for r in hidden)

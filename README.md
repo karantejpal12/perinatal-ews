@@ -20,6 +20,7 @@ It produces:
 - an **AI assistant** (v0.4) that answers questions about the results in plain language by calling the tool's own data functions, shows each lookup, and checks every figure in its answer against the data (see [AI assistant](docs/ai_assistant.md)); plus plain-language county and state summaries that need no AI model
 - an **interactive county map** (v0.5) of 2024 status, forecast risk, similar-county comparison, county type, overdose deaths, need and access, and unusual data
 - **more machine learning** (v0.5): county types from unsupervised clustering, an Isolation Forest data-quality check, and 90% conformal prediction ranges for the similar-county comparison; every learned component and its validation is listed in [ML and AI methods](docs/ml_methods.md)
+- **small-numbers analysis** (v0.6): state-level mode, multi-year pooling that skips and reports unavailable years, and combining of small racial and ethnic groups, labelled as combined; state results by mother's race for every state (see [small numbers](docs/small_numbers.md))
 - a **state view** with every scored county side by side, state-wide patterns and the need-and-access list
 - a **system health** check on every run: data completeness, distribution shift, a backtest of alert rates, and (on synthetic data) detection sensitivity by county size
 - a self-contained HTML bulletin and CSV outputs
@@ -134,6 +135,18 @@ Sources: CDC PLACES (BRFSS 2023) and ACS 2017–2021 measures, CDC VSRR provisio
 
 Details: [docs/ml_methods.md](docs/ml_methods.md).
 
+## Small numbers: state level, pooled years and combined groups (v0.6)
+
+Built in response to feedback from a state maternal and child health epidemiologist ([#1](https://github.com/karantejpal12/perinatal-ews/issues/1)).
+
+```bash
+perinatal-ews run --input county_tidy.csv --level state --out out/            # state-level detection
+perinatal-ews pooled --input state_race_tidy.csv --window 3 \
+    --unavailable-years 2017,2018 --fill-window --out out/pooled/               # pooled, combined estimates
+```
+
+Pooled estimates skip and list unavailable or suppressed years (never counted as zero); small groups are reported through labelled combined groups or as "insufficient data". The explorer's state view shows pooled 2022–2024 results by mother's race for every state. Details and limitations: [docs/small_numbers.md](docs/small_numbers.md).
+
 ## AI assistant (v0.4)
 
 The explorer's **Ask AI** tab is an AI agent built on Anthropic Claude with tool use. It answers questions such as "Which counties are high priority on the need-and-access list, and why?" by calling six data tools (`search_counties`, `get_county`, `list_counties`, `state_summary`, `national_summary`, `method_info`) that read the published results, so it works from the same numbers as the bulletin. Every lookup is shown, and after each answer every figure is checked against the data the assistant looked up; any figure that cannot be matched is listed for the reader to verify. The site has no server: the reader's own API key goes only from their browser to Anthropic. Without a key, each county and state page opens with a plain-language summary written by fixed rules from the data.
@@ -176,6 +189,7 @@ src/perinatal_ews/
   context.py       county context, need-versus-access list, similar-county benchmark, conformal ranges
   typology.py      county types (clustering)
   anomaly.py       machine-learning data-quality check (Isolation Forest)
+  pooling.py       state level, pooled years, combined groups (small numbers)
   synthetic.py     fictional data with known injected changes
   report.py        HTML bulletin
   cli.py           command line

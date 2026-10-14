@@ -11,10 +11,12 @@ related racial and ethnic groups. This module does the same, transparently:
   unavailable (for example Hawaii PRAMS 2017-2018) are skipped and reported,
   never treated as zero. With `fill_window=True` the window reaches further
   back to collect the requested number of available years.
-- `combine_small_groups` replaces an estimate that is too small (fewer than
-  `min_events` events) with the estimate for a configured combined group, and
-  labels it as combined; if the combined group is still too small the result
-  is marked "insufficient data" rather than reported.
+- `add_combined_groups` adds configured combined groups year by year, before
+  pooling (or keeps combined groups requested directly from the source).
+- `choose_reported` reports each estimate itself if reliable, otherwise the
+  first reliable combined group it belongs to, labelled as combined, otherwise
+  "insufficient data" rather than an unreliable number.
+- `small_numbers_analysis` runs all of the above.
 - `compare_windows` compares the latest pooled window with the one before it
   (rate ratio with a 95% confidence interval), only where both are reliable.
 """
@@ -38,10 +40,14 @@ STATE_NAMES = {
     "VA": "Virginia", "WA": "Washington", "WV": "West Virginia", "WI": "Wisconsin", "WY": "Wyoming",
 }
 
-# Default combinations follow common federal reporting practice; edit in the config for local practice.
+# Default combinations, in the order they are tried. They follow common federal reporting practice and
+# work with CDC WONDER "Single Race 15" or "Single Race 6" groups; pass your own to follow local practice.
+NHOPI_15 = ["Hawaiian", "Guamanian or Chamorro", "Samoan", "Other Pacific Islander"]
+ASIAN_15 = ["Asian Indian", "Chinese", "Filipino", "Japanese", "Korean", "Vietnamese", "Other Asian"]
 DEFAULT_COMBINE = {
-    "Asian or Pacific Islander (combined)": ["Asian", "Native Hawaiian or Other Pacific Islander"],
-    "American Indian, Alaska Native or multiracial (combined)": ["American Indian or Alaska Native", "More than one race"],
+    "Native Hawaiian or Other Pacific Islander (combined)": NHOPI_15,
+    "Asian (combined)": ASIAN_15,
+    "Asian or Pacific Islander (combined)": ASIAN_15 + NHOPI_15 + ["Asian", "Native Hawaiian or Other Pacific Islander"],
 }
 
 
@@ -105,58 +111,78 @@ def pooled_estimates(tidy: pd.DataFrame, window: int = 3, unavailable_years: lis
     out["ci_low"], out["ci_high"] = wilson_interval(out["numerator"], out["denominator"])
     out["status"] = np.select(
         [~ok, out["numerator"] < 10, out["numerator"] < min_events],
-        [f"too few years (<{min_years})", "suppressed (<10 events)", f"unreliable (<{min_events} events)"],
+        [f"too few years with data (<{min_years})", "suppressed (<10 events)", f"unreliable (<{min_events} events)"],
         default="reliable")
     return out
 
 
-def combine_small_groups(pooled: pd.DataFrame, combine: dict | None = None, min_events: int = 20) -> pd.DataFrame:
-    """Add combined-group rows and mark which estimate to report for each original group.
+def add_combined_groups(tidy: pd.DataFrame, combine: dict | None = None) -> pd.DataFrame:
+    """Add combined-group rows, year by year, before pooling.
 
-    Each original subgroup row gets `report_as`: itself if reliable; otherwise the
-    combined group it belongs to, if that combination is reliable; otherwise
-    "insufficient data". Combined rows are added with `combined_from`.
+    For each year, a combined group's count is the sum of its members' counts.
+    If any member's count is suppressed or missing that year, the combined count
+    is missing too (a suppressed cell hides a value from 1 to 9, so the sum is
+    unknown). Combined groups already present in the data, for example requested
+    directly from CDC WONDER, are kept as they are and not recomputed.
     """
     combine = combine if combine is not None else DEFAULT_COMBINE
-    p = pooled.copy()
-    p["combined_from"] = ""
-    keys = ["geo_id", "geo_name", "state", "indicator", "window", "window_end"]
+    present = set(tidy["subgroup"].unique())
+    keys = ["geo_id", "geo_name", "state", "year", "indicator"]
     new = []
     for label, members in combine.items():
-        m = p[p["subgroup"].isin(members)]
-        if m.empty:
+        mem = [m for m in members if m in present]
+        if label in present or len(mem) < 2:
             continue
-        agg = m.groupby(keys).agg(numerator=("numerator", lambda s: s.sum(min_count=len(members)) if s.notna().all() else np.nan),
-                                  denominator=("denominator", "sum"), n_members=("subgroup", "nunique"),
-                                  years_used=("years_used", "first"), years_unavailable=("years_unavailable", "first"),
-                                  years_missing_or_suppressed=("years_missing_or_suppressed", lambda s: ",".join(sorted({x for v in s for x in str(v).split(",") if x}))),
-                                  n_years=("n_years", "min")).reset_index()
-        agg = agg[agg["n_members"] == len([x for x in members if x in set(p["subgroup"])])]
+        m = tidy[tidy["subgroup"].isin(mem)]
+        g = m.groupby(keys)
+        agg = g.agg(numerator=("numerator", "sum"), denominator=("denominator", "sum"),
+                    n=("subgroup", "nunique"), num_missing=("numerator", lambda x: x.isna().any()),
+                    den_missing=("denominator", lambda x: x.isna().any())).reset_index()
+        agg.loc[agg["num_missing"] | (agg["n"] < len(mem)), "numerator"] = np.nan
+        agg.loc[agg["den_missing"] | (agg["n"] < len(mem)), "denominator"] = np.nan
         agg["subgroup"] = label
-        agg["combined_from"] = " + ".join(members)
-        new.append(agg.drop(columns="n_members"))
-    if new:
-        c = pd.concat(new, ignore_index=True)
-        c["rate"] = c["numerator"] / c["denominator"]
-        c["ci_low"], c["ci_high"] = wilson_interval(c["numerator"], c["denominator"])
-        c["status"] = np.where(c["numerator"].isna(), "insufficient data",
-                               np.where(c["numerator"] < min_events, f"unreliable (<{min_events} events)", "reliable"))
-        p = pd.concat([p, c], ignore_index=True)
-    member_of = {m: label for label, ms in combine.items() for m in ms}
-    status = p.set_index(keys + ["subgroup"])["status"]
+        new.append(agg[keys + ["subgroup", "numerator", "denominator"]])
+    return pd.concat([tidy] + new, ignore_index=True) if new else tidy.copy()
+
+
+def choose_reported(pooled: pd.DataFrame, combine: dict | None = None) -> pd.DataFrame:
+    """For each estimate, say what to report: itself if reliable, otherwise the first reliable
+    combined group it belongs to (in the order given), otherwise "insufficient data"."""
+    combine = combine if combine is not None else DEFAULT_COMBINE
+    p = pooled.copy()
+    p["combined_from"] = p["subgroup"].map({k: " + ".join(v) for k, v in combine.items()}).fillna("")
+    member_of: dict[str, list[str]] = {}
+    for label, members in combine.items():
+        for m in members:
+            member_of.setdefault(m, []).append(label)
+    keys = ["geo_id", "indicator", "window"]
+    status = p.set_index(keys + ["subgroup"])["status"].to_dict()
 
     def report_as(r):
-        if r["combined_from"]:
-            return r["subgroup"] if r["status"] == "reliable" else "insufficient data"
         if r["status"] == "reliable":
             return r["subgroup"]
-        lab = member_of.get(r["subgroup"])
-        if lab is not None and status.get(tuple(r[k] for k in keys) + (lab,)) == "reliable":
-            return lab
+        for lab in member_of.get(r["subgroup"], []):
+            if status.get((r["geo_id"], r["indicator"], r["window"], lab)) == "reliable":
+                return lab
         return "insufficient data"
 
     p["report_as"] = p.apply(report_as, axis=1)
     return p
+
+
+def combine_small_groups(pooled: pd.DataFrame, combine: dict | None = None, min_events: int = 20) -> pd.DataFrame:
+    """Backward-compatible wrapper: decide what to report for already pooled estimates."""
+    return choose_reported(pooled, combine)
+
+
+def small_numbers_analysis(tidy: pd.DataFrame, window: int = 3, unavailable_years: list[int] | None = None,
+                           fill_window: bool = False, combine: dict | None = None, min_events: int = 20):
+    """Combine groups year by year, pool years, choose what to report and compare windows."""
+    t = add_combined_groups(tidy, combine)
+    p = pooled_estimates(t, window=window, unavailable_years=unavailable_years, fill_window=fill_window,
+                         min_events=min_events)
+    p = choose_reported(p, combine)
+    return p, compare_windows(p, window=window)
 
 
 def compare_windows(pooled: pd.DataFrame, window: int = 3) -> pd.DataFrame:

@@ -2,7 +2,7 @@
 
 All notable changes to perinatal-ews. Each release is archived on Zenodo (concept DOI [10.5281/zenodo.23374046](https://doi.org/10.5281/zenodo.23374046)). Feedback from users and reviewers is tracked as [GitHub issues](https://github.com/karantejpal12/perinatal-ews/issues) and linked here.
 
-## Unreleased
+## 0.6.0 – 2026-10-14
 
 Changes in response to feedback from a state maternal and child health epidemiologist ([#1](https://github.com/karantejpal12/perinatal-ews/issues/1)):
 
@@ -10,7 +10,10 @@ Changes in response to feedback from a state maternal and child health epidemiol
 - `perinatal-ews pooled`: multi-year pooled estimates. Unavailable, missing or suppressed years are skipped and reported, never treated as zero (`--unavailable-years 2017,2018`); `--fill-window` reaches further back to collect enough years.
 - Small racial and ethnic groups are combined when they have too few events, using configurable combinations, and labelled as combined; results that are still too small are reported as "insufficient data".
 - Comparison of the latest pooled window with the previous one, only when both estimates are reliable.
-- Tests for state aggregation, pooling with a 2017–2018 gap, combining small groups and window comparison.
+- Groups are combined year by year before pooling; a suppressed member makes that combined year missing, never a partial sum. Combined groups requested directly from the source are used as they are.
+- State-level results by mother's race (15 groups) for all states, from CDC WONDER (2016–2024), in the explorer's state view, with pooled 2022–2024 rates, combined groups and change since 2019–2021.
+- `docs/small_numbers.md`.
+- Tests for state aggregation, pooling with a 2017–2018 gap, combining small groups, combined groups from the source, window comparison, and a check that published race results never show a rate based on fewer than 20 events.
 
 ## 0.5.0 – 2026-10-14
 

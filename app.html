@@ -603,10 +603,52 @@ footer { max-width: 1120px; margin: 0 auto; padding: 16px max(16px, env(safe-are
   function highlightOnMap(id) { if (MAP) MAP.paths.classed('sel', f => f.id === id); }
 
   /* ---------- states ---------- */
+  let SR = null, srLoading = null;
+  const RACE_ORDER = ['All', 'White', 'Black', 'American Indian or Alaskan Native',
+    'Asian (combined)', 'Asian Indian', 'Chinese', 'Filipino', 'Japanese', 'Korean', 'Vietnamese', 'Other Asian',
+    'Native Hawaiian or Other Pacific Islander (combined)', 'Hawaiian', 'Guamanian or Chamorro', 'Samoan', 'Other Pacific Islander',
+    'Asian or Pacific Islander (combined)', 'More than one race'];
+  const MEMBER = new Set(['Asian Indian', 'Chinese', 'Filipino', 'Japanese', 'Korean', 'Vietnamese', 'Other Asian', 'Hawaiian', 'Guamanian or Chamorro', 'Samoan', 'Other Pacific Islander']);
+  async function drawRace(st, box) {
+    box.textContent = '';
+    if (!SR) { box.append(el('p', { class: 'status', text: 'Loading race and ethnicity results…' }));
+      try { SR = await (srLoading ||= fetch('results/2024/state_race.json').then(r => r.json())); } catch { box.textContent = 'Race and ethnicity results could not be loaded.'; return; }
+      box.textContent = ''; }
+    const data = SR.states[st]; if (!data) { box.append(el('p', { class: 'note', text: 'No state-level race data for this state.' })); return; }
+    const sel = el('select', { id: 'sr-ind' });
+    for (const [k, v] of Object.entries(D.indicators)) sel.append(el('option', { value: k, text: v }));
+    sel.value = box.dataset.ind || 'preterm_birth';
+    const tableBox = el('div');
+    const draw = () => {
+      box.dataset.ind = sel.value; tableBox.textContent = '';
+      const rows = (data[sel.value] || []).slice().sort((a, b) => RACE_ORDER.indexOf(a.g) - RACE_ORDER.indexOf(b.g));
+      const tb = el('tbody');
+      for (const r of rows) {
+        const ok = r.status === 'reliable';
+        const statusText = ok ? (r.years && r.years.split(',').length < 3 ? `Reliable (years ${r.years})` : 'Reliable')
+          : r.report === 'insufficient data' ? 'Insufficient data' : `Too few events; see ${r.report}`;
+        const ch = !ok ? '–' : r.change === 'higher' ? `Higher (×${r.rr.toFixed(2)})` : r.change === 'lower' ? `Lower (×${r.rr.toFixed(2)})`
+          : r.change === 'no clear change' ? 'No clear change' : 'Not compared (earlier estimate too small)';
+        const name = el('td', { text: r.g }); if (MEMBER.has(r.g)) name.style.paddingLeft = '26px'; if (r.combined || r.g === 'All') name.style.fontWeight = '600';
+        tb.append(el('tr', {}, name, el('td', { class: 'num', text: ok ? `${pct(r.rate)} (${pct(r.lo)}–${pct(r.hi)})` : '–' }),
+          el('td', { class: 'num', text: ok && r.births ? r.births.toLocaleString() : '–' }), el('td', { text: statusText }), el('td', { text: ch })));
+      }
+      tableBox.append(el('div', { class: 'table-wrap' }, el('table', {}, el('thead', {}, el('tr', {},
+        el('th', { text: 'Mother\'s race' }), el('th', { class: 'num', text: `Rate ${SR.window} (95% CI)` }), el('th', { class: 'num', text: 'Births' }),
+        el('th', { text: 'Estimate' }), el('th', { text: `vs ${SR.previous_window}` }))), tb)));
+    };
+    sel.addEventListener('change', draw);
+    box.append(el('h2', { text: `By mother's race, ${SR.window} (state level, pooled)` }),
+      el('p', { text: 'Following how state teams work: results are at state level, three years are pooled, and a group with too few events is reported through a combined group (labelled) or shown as insufficient data, never as an unreliable rate. Years with suppressed counts are skipped and listed.' }),
+      el('div', { class: 'filters' }, el('label', { for: 'sr-ind' }, 'Indicator', sel)), tableBox,
+      el('p', { class: 'note', text: SR.source + ' Mothers who report more than one race are counted in "More than one race", not in each group, which matters especially for Native Hawaiian mothers. Changes between periods are not adjusted for national trends (for example, gestational hypertension rose nationally).' }));
+    draw();
+  }
   function drawState(st) {
     const body = $('#state-body'); body.textContent = '';
     const S = window.EWS.stateSummary(D, st); if (!S) return;
     body.append(el('div', { class: 'summary' }, window.EWS.stateBrief(D, st)));
+    const raceBox = el('div', { class: 'stack' });
     const stats = el('div', { class: 'st-stats' });
     stats.append(el('div', {}, el('b', { text: S.counties }), el('span', { text: 'Counties scored (100,000+ residents)' })));
     for (const [k, v] of Object.entries(S.by_indicator))
@@ -633,8 +675,10 @@ footer { max-width: 1120px; margin: 0 auto; padding: 16px max(16px, env(safe-are
         el('td', { class: 'num', text: pct(maxRisk(c), 0) }),
         el('td', { text: c.need ? (c.need.priority === 'high' ? 'High' : 'Review') : '' })));
     }
-    body.append(el('div', { class: 'table-wrap' }, el('table', {}, el('thead', {}, head), tb)),
-      el('p', { class: 'note', text: `${cs.length} counties. Select a row to open the county. Counties under 100,000 residents are not reported separately by CDC WONDER.` }));
+    body.append(el('h2', { text: 'Counties' }), el('div', { class: 'table-wrap' }, el('table', {}, el('thead', {}, head), tb)),
+      el('p', { class: 'note', text: `${cs.length} counties. Select a row to open the county. Counties under 100,000 residents are not reported separately by CDC WONDER.` }),
+      raceBox);
+    drawRace(st, raceBox);
   }
 
   fetch('results/2024/explorer.json').then(r => { if (!r.ok) throw new Error(r.status); return r.json(); }).then(data => {
@@ -694,7 +738,7 @@ footer { max-width: 1120px; margin: 0 auto; padding: 16px max(16px, env(safe-are
     status('Loading scientific libraries…');
     await py.loadPackage(['numpy', 'pandas', 'scipy', 'scikit-learn', 'pyyaml', 'micropip']);
     status('Installing perinatal-ews…');
-    const wheel = new URL('dist/perinatal_ews-0.5.0-py3-none-any.whl', location.href).href;
+    const wheel = new URL('dist/perinatal_ews-0.6.0-py3-none-any.whl', location.href).href;
     await py.runPythonAsync(`import micropip\nawait micropip.install("${wheel}", deps=False)`);
     return py;
   }

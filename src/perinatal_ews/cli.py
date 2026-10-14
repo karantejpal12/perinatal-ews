@@ -157,20 +157,19 @@ def main(argv: list[str] | None = None) -> None:
 def _pooled(args) -> None:
     import yaml
 
-    from .pooling import combine_small_groups, compare_windows, pooled_estimates, to_state
+    from .pooling import to_state
 
     tidy = pd.concat([load_tidy_csv(f) for f in args.input], ignore_index=True)
     if args.level == "state":
         tidy = to_state(tidy)
     unavailable = [int(y) for y in args.unavailable_years.split(",") if y.strip()]
     combine = yaml.safe_load(Path(args.combine).read_text()) if args.combine else None
-    p = pooled_estimates(tidy, window=args.window, unavailable_years=unavailable, fill_window=args.fill_window,
-                         min_events=args.min_events)
-    p = combine_small_groups(p, combine, min_events=args.min_events)
+    from .pooling import small_numbers_analysis
+    p, c = small_numbers_analysis(tidy, window=args.window, unavailable_years=unavailable,
+                                  fill_window=args.fill_window, combine=combine, min_events=args.min_events)
     out = Path(args.out)
     out.mkdir(parents=True, exist_ok=True)
     p.to_csv(out / "pooled_estimates.csv", index=False)
-    c = compare_windows(p[p["combined_from"].eq("") | p["status"].eq("reliable")], window=args.window)
     c.to_csv(out / "pooled_comparison.csv", index=False)
     latest = p[p["window_end"] == p["window_end"].max()]
     print(f"Pooled {args.window}-year windows: {len(p)} estimates; latest window "

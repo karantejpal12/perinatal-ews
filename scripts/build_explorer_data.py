@@ -26,6 +26,7 @@ def main() -> None:
     ap.add_argument("--results", required=True)
     ap.add_argument("--out", required=True)
     ap.add_argument("--context", default=None, help="data/context/county_context.csv")
+    ap.add_argument("--state-race", default=None, help="folder with pooled_estimates.csv and pooled_comparison.csv")
     a = ap.parse_args()
     res = Path(a.results)
 
@@ -163,7 +164,41 @@ def main() -> None:
     if bench is not None and (res / "context_benchmark_quality.csv").exists():
         payload["benchmark_years"] = str(pd.read_csv(res / "context_benchmark_quality.csv")["years_pooled"].iloc[0])
     Path(a.out).write_text(json.dumps(payload, separators=(",", ":")))
+    if a.state_race:
+        _state_race(Path(a.state_race), Path(a.out).with_name("state_race.json"))
     print(f"wrote {a.out}: {len(out_c)} counties, {Path(a.out).stat().st_size / 1024:.0f} KB")
+
+
+def _state_race(folder: Path, out: Path) -> None:
+    """Latest pooled window by state, race group and indicator, with the change from the previous window."""
+    p = pd.read_csv(folder / "pooled_estimates.csv")
+    c = pd.read_csv(folder / "pooled_comparison.csv")
+    last = p["window_end"].max()
+    p = p[p["window_end"] == last]
+    c = c.set_index(["state", "indicator", "subgroup"])
+    states = {}
+    for r in p.itertuples():
+        ok = r.status == "reliable"
+        rec = {"g": r.subgroup, "rate": _r(r.rate) if ok else None, "lo": _r(r.ci_low) if ok else None,
+               "hi": _r(r.ci_high) if ok else None, "n": int(r.numerator) if ok else None,
+               "births": int(r.denominator) if ok and pd.notna(r.denominator) else None,
+               "status": r.status, "report": r.report_as, "years": str(r.years_used) if pd.notna(r.years_used) else "",
+               "combined": bool(isinstance(r.combined_from, str) and r.combined_from)}
+        k = (r.state, r.indicator, r.subgroup)
+        if k in c.index:
+            x = c.loc[k]
+            rec["change"] = x["change"]
+            if x["change"] in ("higher", "lower", "no clear change"):
+                rec["prev"] = _r(x["previous_rate"])
+                rec["rr"] = _r(x["rate_ratio"], 3)
+        states.setdefault(r.state, {}).setdefault(r.indicator, []).append(rec)
+    win = p["window"].iloc[0]
+    prev = c["previous_window"].iloc[0] if len(c) else ""
+    out.write_text(json.dumps({"window": win, "previous_window": prev, "states": states,
+                               "source": "CDC WONDER Natality, 2016-2024 expanded (NCHS), mother's single race (15 groups), "
+                                         "all Hispanic origins. Pooled over the years shown; years with suppressed counts are skipped."},
+                              separators=(",", ":")))
+    print(f"wrote {out}: {len(states)} states, {out.stat().st_size / 1024:.0f} KB")
 
 
 if __name__ == "__main__":

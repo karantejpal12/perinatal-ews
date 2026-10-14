@@ -6,7 +6,7 @@ authors:
   - family-names: Tejpal
     given-names: Karan
     orcid: "https://orcid.org/0009-0004-8609-2854"
-version: 0.5.0
+version: 0.6.0
 doi: "10.5281/zenodo.23378773"
 identifiers:
   - type: doi
@@ -34,7 +34,9 @@ abstract: >-
   and checks every figure in its answers, and a state view. Version 0.5 adds
   county types from unsupervised clustering, a machine-learning (Isolation
   Forest) data-quality check, cross-conformal 90% prediction ranges for the
-  similar-county comparison, and an interactive county map.
+  similar-county comparison, and an interactive county map. Version 0.6 adds
+  small-numbers analysis: state level, multi-year pooling that reports
+  unavailable years, and combining of small racial and ethnic groups.
 keywords:
   - public health surveillance
   - maternal health

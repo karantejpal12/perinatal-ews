@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "perinatal-ews"
-version = "0.5.0"
+version = "0.6.0"
 description = "Open-source early-warning analytics for county-level maternal and newborn health indicators"
 readme = "README.md"
 license = { text = "MIT" }
