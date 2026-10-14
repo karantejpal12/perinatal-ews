@@ -2,6 +2,9 @@
 
 [![DOI](https://zenodo.org/badge/DOI/10.5281/zenodo.23374647.svg)](https://doi.org/10.5281/zenodo.23374647)
 [![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
+[![Open In Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/github/karantejpal12/perinatal-ews/blob/main/notebooks/perinatal_ews_colab.ipynb)
+
+**Project site and 2024 US county bulletin:** https://karantejpal12.github.io/perinatal-ews/
 
 **Open-source early-warning analytics for county maternal and newborn health.**
 
@@ -19,6 +22,10 @@ It produces:
 This is population surveillance to prompt a closer look by local teams. It is not a clinical tool and makes no statement about individual patients.
 
 ## Quick start
+
+No install needed: open the [Colab notebook](https://colab.research.google.com/github/karantejpal12/perinatal-ews/blob/main/notebooks/perinatal_ews_colab.ipynb) to view the 2024 results, run the demo, or upload your own data.
+
+On your own machine:
 
 ```bash
 pip install -e .

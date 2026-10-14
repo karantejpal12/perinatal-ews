@@ -1,0 +1,118 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>perinatal-ews</title>
+<meta name="description" content="Open-source early-warning analytics for county maternal and newborn health in the United States.">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500&family=Public+Sans:wght@400;600;700&display=swap">
+<style>
+/* Layout: one centred reading column; actions first, evidence second, method and credit last */
+:root {
+  --bg: #f6f7f9; --surface: #ffffff; --ink: #14181f; --ink-2: #4a5160; --ink-3: #6b7280;
+  --rule: #dfe3ea; --accent: #2a78d6; --accent-ink: #ffffff;
+  --font-body: "Public Sans", "Segoe UI", system-ui, sans-serif;
+  --font-data: "IBM Plex Mono", ui-monospace, Menlo, monospace;
+}
+@media (prefers-color-scheme: dark) { :root {
+  --bg: #121418; --surface: #1a1d22; --ink: #eceef2; --ink-2: #b9bfca; --ink-3: #9198a4;
+  --rule: #2c313a; --accent: #3987e5; --accent-ink: #ffffff; color-scheme: dark; } }
+* { box-sizing: border-box; }
+body { margin: 0; background: var(--bg); color: var(--ink); font-family: var(--font-body); font-size: 16px; line-height: 1.6; }
+.page { max-width: 880px; margin: 0 auto; padding-block: 48px 64px;
+  padding-left: max(16px, env(safe-area-inset-left, 0px)); padding-right: max(16px, env(safe-area-inset-right, 0px));
+  display: flex; flex-direction: column; gap: 44px; }
+.eyebrow { font-family: var(--font-data); font-size: 12px; letter-spacing: .08em; text-transform: uppercase; color: var(--ink-3); }
+h1 { font-size: clamp(32px, 6vw, 48px); line-height: 1.1; margin: 6px 0 12px; }
+h2 { font-size: 20px; margin: 0 0 12px; }
+p { margin: 0 0 12px; max-width: 68ch; color: var(--ink-2); }
+a { color: var(--accent); }
+.actions { display: flex; flex-wrap: wrap; gap: 10px; margin-top: 20px; }
+.btn { display: inline-block; padding: 10px 16px; border-radius: 6px; text-decoration: none; font-weight: 600; font-size: 15px;
+  border: 1px solid var(--rule); background: var(--surface); color: var(--ink); }
+.btn.primary { background: var(--accent); border-color: var(--accent); color: var(--accent-ink); }
+.btn:focus-visible { outline: 3px solid var(--accent); outline-offset: 2px; }
+.stats { display: grid; grid-template-columns: repeat(auto-fit, minmax(160px, 1fr)); gap: 1px; background: var(--rule);
+  border: 1px solid var(--rule); border-radius: 8px; overflow: hidden; }
+.stat { background: var(--surface); padding: 16px; }
+.stat b { display: block; font-family: var(--font-data); font-size: 26px; font-weight: 500; font-variant-numeric: tabular-nums; }
+.stat span { font-size: 13px; color: var(--ink-3); }
+ul { margin: 0; padding-left: 20px; color: var(--ink-2); max-width: 68ch; }
+li { margin-bottom: 6px; }
+code { font-family: var(--font-data); font-size: 14px; background: var(--surface); border: 1px solid var(--rule); border-radius: 4px; padding: 1px 5px; }
+pre { background: var(--surface); border: 1px solid var(--rule); border-radius: 8px; padding: 14px; overflow-x: auto; margin: 0; }
+pre code { border: 0; padding: 0; }
+.note { font-size: 14px; color: var(--ink-3); }
+footer { border-top: 1px solid var(--rule); padding-top: 16px; font-size: 14px; color: var(--ink-3); }
+</style>
+</head>
+<body>
+<div class="page">
+  <header>
+    <div class="eyebrow">Open-source public health software · MIT licence</div>
+    <h1>perinatal-ews</h1>
+    <p>Early-warning analytics for county maternal and newborn health. It flags US counties where preterm birth,
+      low birth weight, late or no prenatal care and gestational hypertension are getting worse than their own
+      recent history predicts, checks its own reliability, and forecasts next-year risk.</p>
+    <div class="actions">
+      <a class="btn primary" href="results/2024/report.html">View the 2024 US county bulletin</a>
+      <a class="btn" href="https://colab.research.google.com/github/karantejpal12/perinatal-ews/blob/main/notebooks/perinatal_ews_colab.ipynb">Try it in your browser (Colab)</a>
+      <a class="btn" href="https://github.com/karantejpal12/perinatal-ews">Code and documentation</a>
+    </div>
+  </header>
+
+  <section>
+    <h2>2024 results on real US data</h2>
+    <div class="stats">
+      <div class="stat"><b>578</b><span>US counties (100,000+ residents), 2016–2024</span></div>
+      <div class="stat"><b>97</b><span>Alerts in 2024</span></div>
+      <div class="stat"><b>101</b><span>Watch-list flags</span></div>
+      <div class="stat"><b>6</b><span>State-wide patterns for review</span></div>
+    </div>
+    <p class="note" style="margin-top:10px">Source: CDC WONDER Natality, 2016–2024 expanded (NCHS). Flags are statistical leads for local follow-up, not confirmed problems.</p>
+  </section>
+
+  <section>
+    <h2>Who it is for</h2>
+    <ul>
+      <li>State and county health department epidemiologists</li>
+      <li>Maternal and child health programmes and perinatal quality collaboratives</li>
+      <li>Researchers working with natality data</li>
+    </ul>
+  </section>
+
+  <section>
+    <h2>What it does</h2>
+    <ul>
+      <li><b>Detects</b> county deterioration against each county's own baseline, with empirical-Bayes shrinkage for small counties, national-trend adjustment and false-discovery control.</li>
+      <li><b>Looks inside</b> Medicaid and privately insured births, where a change can be hidden in the county total.</li>
+      <li><b>Separates</b> state-wide patterns, which may reflect policy or recording changes, from local ones.</li>
+      <li><b>Forecasts</b> next-year risk with a machine-learning model validated forward in time against simpler baselines.</li>
+      <li><b>Monitors itself</b>: data quality, distribution drift, backtested alert rates and performance by county size.</li>
+    </ul>
+    <p style="margin-top:12px">Read the <a href="https://github.com/karantejpal12/perinatal-ews/blob/main/docs/methodology.md">methodology</a> and the <a href="https://github.com/karantejpal12/perinatal-ews/blob/main/docs/model_card.md">model card</a>.</p>
+  </section>
+
+  <section>
+    <h2>Run it yourself</h2>
+    <p>With Python 3.10 or newer:</p>
+<pre><code>pip install git+https://github.com/karantejpal12/perinatal-ews
+perinatal-ews demo --out demo        # synthetic demo, opens demo/report.html
+perinatal-ews run --input your_data.csv --out results --forecast</code></pre>
+    <p class="note" style="margin-top:10px">Instructions for downloading county data from CDC WONDER are in the README.</p>
+  </section>
+
+  <section>
+    <h2>Cite</h2>
+    <p>Tejpal, K. (2026). <i>perinatal-ews: open-source early-warning analytics for county maternal and newborn health</i>
+      (Version 0.2.0) [Computer software]. Zenodo. <a href="https://doi.org/10.5281/zenodo.23374647">https://doi.org/10.5281/zenodo.23374647</a></p>
+  </section>
+
+  <footer>
+    Karan Tejpal · <a href="https://orcid.org/0009-0004-8609-2854">ORCID 0009-0004-8609-2854</a> ·
+    Population surveillance tool; not for clinical or individual decisions.
+  </footer>
+</div>
+</body>
+</html>
