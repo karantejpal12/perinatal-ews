@@ -133,6 +133,15 @@ footer { max-width: 1120px; margin: 0 auto; padding: 16px max(16px, env(safe-are
 .chip { font: inherit; font-size: 13px; padding: 6px 11px; border-radius: 999px; border: 1px solid var(--rule); background: var(--surface); color: var(--ink); cursor: pointer; text-align: left; }
 .ai-row { display: flex; gap: 8px; flex-wrap: wrap; align-items: center; }
 .ai-row input[type=password], .ai-row input[type=text], .ai-row input[type=search] { flex: 1 1 260px; font: inherit; font-size: 15px; padding: 10px 12px; border: 1px solid var(--rule); border-radius: 8px; background: var(--surface); color: var(--ink); min-width: 0; }
+.map-wrap { position: relative; background: var(--surface); border: 1px solid var(--rule); border-radius: 10px; padding: 8px; }
+.map-wrap svg { display: block; width: 100%; height: auto; }
+.map-wrap .st { fill: var(--surface-2); stroke: var(--rule); stroke-width: .8; }
+.map-wrap .stl { fill: none; stroke: var(--ink-3); stroke-width: .6; stroke-opacity: .7; pointer-events: none; }
+.map-wrap .co { stroke: var(--surface); stroke-width: .35; cursor: pointer; }
+.map-wrap .co:hover, .map-wrap .co.sel { stroke: var(--ink); stroke-width: 1.4; }
+.map-tip { position: absolute; pointer-events: none; background: var(--ink); color: var(--bg); font-size: 12.5px; padding: 6px 9px; border-radius: 6px; max-width: 260px; line-height: 1.35; }
+.map-legend { display: flex; flex-wrap: wrap; gap: 6px 14px; font-size: 12.5px; color: var(--ink-2); align-items: center; }
+.map-legend i { display: inline-block; width: 12px; height: 12px; border-radius: 3px; vertical-align: -2px; margin-right: 5px; }
 [hidden] { display: none !important; }
 @media (prefers-reduced-motion: reduce) { * { transition: none !important; } }
 </style>
@@ -154,7 +163,24 @@ footer { max-width: 1120px; margin: 0 auto; padding: 16px max(16px, env(safe-are
   <section id="view-explore" class="stack" role="tabpanel" aria-labelledby="tab-explore">
     <div>
       <h1>Maternal and newborn health, county by county</h1>
-      <p>Search any of 578 US counties with 100,000 or more residents to see 2016–2024 trends, whether 2024 was worse than expected, the forecast risk for 2025, and county context such as overdose deaths and access to opioid treatment and delivery care.</p>
+      <p>Use the map or search any of 578 US counties with 100,000 or more residents to see 2016–2024 trends, whether 2024 was worse than expected, the forecast risk for 2025, and county context such as overdose deaths and access to opioid treatment and delivery care.</p>
+    </div>
+    <div class="stack" style="gap:10px">
+      <div class="filters">
+        <label for="m-metric">Map shows<select id="m-metric">
+          <option value="status">2024 status</option>
+          <option value="risk">2025 risk of being flagged (forecast)</option>
+          <option value="similar">Compared with similar counties</option>
+          <option value="type">County type (clustering)</option>
+          <option value="overdose">Drug overdose death rate</option>
+          <option value="need">Need and access</option>
+          <option value="unusual">Unusual data (ML data check)</option>
+        </select></label>
+        <label for="m-ind" id="m-ind-wrap">Indicator<select id="m-ind"></select></label>
+      </div>
+      <div class="map-wrap" id="map"><p class="status" id="map-status">Loading map…</p></div>
+      <div class="map-legend" id="map-legend"></div>
+      <p class="note" id="map-note" style="margin:0">Only the 578 counties with 100,000+ residents are scored; other areas are shown in grey. Select a county to open it.</p>
     </div>
     <div class="search">
       <input id="q" type="search" placeholder="Search a county, e.g. Hampden or Miami-Dade" autocomplete="off" aria-label="Search counties" role="combobox" aria-expanded="false" aria-controls="sugg">
@@ -299,6 +325,7 @@ footer { max-width: 1120px; margin: 0 auto; padding: 16px max(16px, env(safe-are
   Flags are statistical leads for local follow-up, not confirmed problems, and are not for clinical or individual decisions.
 </footer>
 
+<script src="https://cdn.jsdelivr.net/npm/d3@7.9.0/dist/d3.min.js"></script>
 <script src="js/ews-tools.js"></script>
 <script src="js/assistant.js"></script>
 <script>
@@ -410,13 +437,16 @@ footer { max-width: 1120px; margin: 0 auto; padding: 16px max(16px, env(safe-are
       if (e.factors) card.append(el('p', { class: 'why', text: `Main forecast factors (approximate): ${e.factors}` }));
       if (e.similar && e.similar.expected != null) card.append(el('p', { class: 'why', text:
         `Compared with counties with similar health, social and access conditions (${D.benchmark_years || 'recent years'}): ` +
-        `${pct(e.similar.rate)} vs ${pct(e.similar.expected)}, ${e.similar.verdict}.` }));
+        `${pct(e.similar.rate)} vs ${pct(e.similar.expected)}` + (e.similar.low != null ? ` (90% range ${pct(e.similar.low)}–${pct(e.similar.high)})` : '') + `, ${e.similar.verdict}.` }));
       cards.append(card);
     }
-    const extra = [];
+    const extra = [], top = [];
+    if (c.type && D.types) top.push(el('div', { class: 'flag-note', style: 'background:var(--accent-soft)' },
+      el('b', { text: `County type ${c.type} of ${Object.keys(D.types).length} ` }), `(machine-learning clustering): ${D.types[c.type].description}.`));
+    if (c.unusual) top.push(el('div', { class: 'flag-note', text: `Unusual ${D.year} data (machine-learning check): ${c.unusual}. Confirm the data before acting on this county's flags.` }));
     const brief = el('div', { class: 'summary' }, window.EWS.countyBrief(D, c),
       el('small', {}, 'Summary written from the data by fixed rules. ', el('a', { href: '#ask', onclick: () => showTab('ask') }, 'Ask the AI assistant'), ' for more.'));
-    if (c.need) extra.push(el('div', { class: 'need' + (c.need.priority === 'high' ? ' high' : '') },
+    if (c.need) top.push(el('div', { class: 'need' + (c.need.priority === 'high' ? ' high' : '') },
       el('b', { text: c.need.priority === 'high' ? 'Need and access: high priority for review. ' : 'Need and access: for review. ' }),
       `A perinatal warning sign here coincides with: ${c.need.reasons}.`));
     if (c.ctx && D.context_fields) {
@@ -431,12 +461,13 @@ footer { max-width: 1120px; margin: 0 auto; padding: 16px max(16px, env(safe-are
       extra.push(el('h3', { text: 'County context' }), grid,
         el('p', { class: 'note', text: (D.context_source || '') + ' These describe the county, not individual people.' }));
     }
-    box.append(head, brief, ...extra.slice(0, c.need ? 1 : 0), legend, cards, ...extra.slice(c.need ? 1 : 0), el('p', { class: 'note', text: D.source }));
+    box.append(head, brief, ...top, legend, cards, ...extra, el('p', { class: 'note', text: D.source }));
   }
 
   function openCounty(id, push = true) {
     const c = byId.get(id); if (!c) return;
     renderCounty(c);
+    highlightOnMap(id);
     if (push) history.replaceState(null, '', '#county-' + id);
     $('#q').value = `${c.name}, ${c.state}`;
   }
@@ -496,6 +527,81 @@ footer { max-width: 1120px; margin: 0 auto; padding: 16px max(16px, env(safe-are
     $('#list-note').textContent = rows.length ? `${rows.length} result${rows.length > 1 ? 's' : ''}${rows.length > 200 ? ', showing the first 200' : ''}.` : 'No counties match these filters.';
   }
 
+  /* ---------- map ---------- */
+  let MAP = null;
+  const PAL = {
+    alert: '#d03b3b', watch: '#e2a03a', stable: '#9cc9a3', none: 'var(--surface-2)',
+    higher: '#c2410c', lower: '#2a78d6', inline: '#c9d3df',
+    high: '#d03b3b', review: '#e2a03a',
+    types: ['#2a78d6', '#e2a03a', '#7c4dbd', '#1f9e89', '#d03b3b', '#8a6d3b', '#5b6b7a', '#c2185b'],
+  };
+  const seq = (t) => d3.interpolateRgb('#e8eff8', '#0b4f9c')(Math.max(0, Math.min(1, t)));
+  function mapValue(c, metric, ind) {
+    const e = c.ind[ind];
+    if (metric === 'status') return e ? { color: PAL[e.level] || PAL.none, text: LABEL[e.level] || e.level } : null;
+    if (metric === 'risk') return e && e.risk != null ? { color: seq(e.risk / 0.6), text: `${pct(e.risk, 0)} risk of a ${D.forecast_year} flag` } : null;
+    if (metric === 'similar') {
+      if (!e || !e.similar) return null;
+      const v = /higher/.test(e.similar.verdict) ? 'higher' : /lower/.test(e.similar.verdict) ? 'lower' : 'inline';
+      return { color: PAL[v], text: `${pct(e.similar.rate)} vs ${pct(e.similar.expected)} in similar counties (${e.similar.verdict})` };
+    }
+    if (metric === 'type') return c.type ? { color: PAL.types[(c.type - 1) % 8], text: `Type ${c.type}: ${(D.types[c.type] || {}).description || ''}` } : null;
+    if (metric === 'overdose') { const v = c.ctx && c.ctx.overdose_rate_2024; return v != null ? { color: seq(v / 60), text: `${v.toFixed(1)} overdose deaths per 100,000 (2024)` } : null; }
+    if (metric === 'need') return c.need ? { color: PAL[c.need.priority], text: c.need.priority === 'high' ? 'High priority: ' + c.need.reasons : 'For review: ' + c.need.reasons } : { color: PAL.inline, text: 'Not on the list' };
+    if (metric === 'unusual') return c.unusual ? { color: PAL.review, text: 'Unusual record: ' + c.unusual } : { color: PAL.inline, text: 'Nothing unusual found' };
+    return null;
+  }
+  function legend(metric) {
+    const box = $('#map-legend'); box.textContent = '';
+    const item = (color, text) => box.append(el('span', {}, (() => { const i = el('i'); i.style.background = color; return i; })(), text));
+    if (metric === 'status') { item(PAL.alert, 'Alert'); item(PAL.watch, 'Watch'); item(PAL.stable, 'Stable'); }
+    else if (metric === 'risk') [0, 0.15, 0.3, 0.45, 0.6].forEach(v => item(seq(v / 0.6), v === 0.6 ? '60%+' : pct(v, 0)));
+    else if (metric === 'similar') { item(PAL.higher, 'Higher than similar counties'); item(PAL.inline, 'In line'); item(PAL.lower, 'Lower'); }
+    else if (metric === 'type') Object.entries(D.types || {}).forEach(([t, v]) => item(PAL.types[(t - 1) % 8], `Type ${t} (${v.counties}): ${v.description}`));
+    else if (metric === 'overdose') [0, 15, 30, 45, 60].forEach(v => item(seq(v / 60), v === 60 ? '60+' : String(v)));
+    else if (metric === 'need') { item(PAL.high, 'High priority'); item(PAL.review, 'For review'); item(PAL.inline, 'Not listed'); }
+    else if (metric === 'unusual') { item(PAL.review, `Unusual ${D.year} record`); item(PAL.inline, 'Nothing unusual'); }
+    item('var(--surface-2)', 'Not scored');
+  }
+  function drawMap() {
+    if (!MAP || !window.d3) return;
+    const metric = $('#m-metric').value, ind = $('#m-ind').value;
+    $('#m-ind-wrap').hidden = !['status', 'risk', 'similar'].includes(metric);
+    MAP.paths.each(function (f) {
+      const c = byId.get(f.id); const v = c && mapValue(c, metric, ind);
+      this.setAttribute('fill', v ? v.color : 'var(--surface-2)');
+      this.__tip = c ? `${c.name}, ${c.state}` + (v ? ' · ' + v.text : '') : '';
+    });
+    legend(metric);
+  }
+  async function initMap() {
+    try {
+      if (!window.d3) throw new Error('map library not loaded');
+      const [co, st] = await Promise.all(['results/map/counties.json', 'results/map/states.json'].map(u => fetch(u).then(r => r.json())));
+      const W = 975, H = 610;
+      const proj = d3.geoAlbersUsa().fitSize([W, H], st);
+      const path = d3.geoPath(proj);
+      const wrap = $('#map'); wrap.textContent = '';
+      const svg = d3.select(wrap).append('svg').attr('viewBox', `0 0 ${W} ${H}`).attr('role', 'img')
+        .attr('aria-label', 'Map of US counties with 100,000+ residents, coloured by the selected measure');
+      svg.append('g').selectAll('path').data(st.features).join('path').attr('class', 'st').attr('d', path);
+      const tip = el('div', { class: 'map-tip', hidden: '' }); wrap.append(tip);
+      const paths = svg.append('g').selectAll('path').data(co.features).join('path').attr('class', 'co').attr('d', path)
+        .attr('tabindex', 0)
+        .on('mousemove', function (ev) {
+          const r = wrap.getBoundingClientRect(); tip.textContent = this.__tip; tip.hidden = false;
+          const x = Math.min(ev.clientX - r.left + 12, r.width - 270); tip.style.left = Math.max(4, x) + 'px'; tip.style.top = (ev.clientY - r.top + 12) + 'px';
+        })
+        .on('mouseleave', () => { tip.hidden = true; })
+        .on('click', (ev, f) => { openCounty(f.id); $('#county').scrollIntoView({ behavior: 'smooth' }); })
+        .on('keydown', (ev, f) => { if (ev.key === 'Enter') { openCounty(f.id); $('#county').scrollIntoView(); } });
+      svg.append('g').selectAll('path').data(st.features).join('path').attr('class', 'stl').attr('d', path);
+      MAP = { paths };
+      drawMap();
+    } catch (e) { $('#map').textContent = 'The map could not be loaded. The county search and lists below still work.'; }
+  }
+  function highlightOnMap(id) { if (MAP) MAP.paths.classed('sel', f => f.id === id); }
+
   /* ---------- states ---------- */
   function drawState(st) {
     const body = $('#state-body'); body.textContent = '';
@@ -545,6 +651,10 @@ footer { max-width: 1120px; margin: 0 auto; padding: 16px max(16px, env(safe-are
     $('#st-pick').value = 'GA';
     ['#st-pick', '#st-sort', '#st-only'].forEach(s => $(s).addEventListener('change', () => { drawState($('#st-pick').value); history.replaceState(null, '', '#state-' + $('#st-pick').value); }));
     window.initAssistant(D);
+    for (const [k, v] of Object.entries(D.indicators)) $('#m-ind').append(el('option', { value: k, text: v }));
+    $('#m-ind').value = 'gestational_hypertension';
+    ['#m-metric', '#m-ind'].forEach(s => $(s).addEventListener('change', drawMap));
+    initMap();
     const route = () => {
       const st = location.hash.match(/^#state-([A-Z]{2})$/);
       if (st && states.includes(st[1])) { $('#st-pick').value = st[1]; showTab('states'); drawState(st[1]); return true; }
@@ -584,7 +694,7 @@ footer { max-width: 1120px; margin: 0 auto; padding: 16px max(16px, env(safe-are
     status('Loading scientific libraries…');
     await py.loadPackage(['numpy', 'pandas', 'scipy', 'scikit-learn', 'pyyaml', 'micropip']);
     status('Installing perinatal-ews…');
-    const wheel = new URL('dist/perinatal_ews-0.4.0-py3-none-any.whl', location.href).href;
+    const wheel = new URL('dist/perinatal_ews-0.5.0-py3-none-any.whl', location.href).href;
     await py.runPythonAsync(`import micropip\nawait micropip.install("${wheel}", deps=False)`);
     return py;
   }
@@ -613,7 +723,9 @@ fc = None
 if WITH_FC:
     from perinatal_ews.forecast import run_forecast
     fc = run_forecast(tidy, cfg)
-html = report.build_report(tidy, cfg, truth=truth, forecast=fc,
+from perinatal_ews.anomaly import record_anomalies
+an = record_anomalies(tidy)
+html = report.build_report(tidy, cfg, truth=truth, forecast=fc, anomalies=an,
                            title="Perinatal Early Warning" if IS_DEMO else "Perinatal Early Warning: your data")
 subs = ["All"] + sorted(set(tidy["subgroup"]) - {"All"})
 det = detect.detect(tidy, cfg, subgroups=subs)

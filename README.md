@@ -4,7 +4,7 @@
 [![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
 [![Open In Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/github/karantejpal12/perinatal-ews/blob/main/notebooks/perinatal_ews_colab.ipynb)
 
-**Try it:** [county explorer and in-browser tool](https://karantejpal12.github.io/perinatal-ews/app.html) · [AI assistant](https://karantejpal12.github.io/perinatal-ews/app.html#ask) · [state view](https://karantejpal12.github.io/perinatal-ews/app.html#state-GA) · [project site](https://karantejpal12.github.io/perinatal-ews/) · [2024 bulletin](https://karantejpal12.github.io/perinatal-ews/results/2024/report.html)
+**Try it:** [county map and explorer](https://karantejpal12.github.io/perinatal-ews/app.html) · [AI assistant](https://karantejpal12.github.io/perinatal-ews/app.html#ask) · [state view](https://karantejpal12.github.io/perinatal-ews/app.html#state-GA) · [project site](https://karantejpal12.github.io/perinatal-ews/) · [2024 bulletin](https://karantejpal12.github.io/perinatal-ews/results/2024/report.html)
 
 **Open-source early-warning analytics for county maternal and newborn health.**
 
@@ -18,6 +18,8 @@ It produces:
 - a **next-year machine-learning forecast**: the probability that each county will be flagged for each indicator next year, including counties that look stable today, with forward-in-time validation against simpler baselines (see the [model card](docs/model_card.md))
 - **county context** (v0.3): drug overdose deaths, opioid treatment capacity for pregnant and postpartum patients, hospitals with labour and delivery care, adult health and social conditions, from public CDC, SAMHSA and CMS data; a **cross-validated machine-learning comparison with similar counties**; and a **need-versus-access review list** (see [county context](docs/county_context.md))
 - an **AI assistant** (v0.4) that answers questions about the results in plain language by calling the tool's own data functions, shows each lookup, and checks every figure in its answer against the data (see [AI assistant](docs/ai_assistant.md)); plus plain-language county and state summaries that need no AI model
+- an **interactive county map** (v0.5) of 2024 status, forecast risk, similar-county comparison, county type, overdose deaths, need and access, and unusual data
+- **more machine learning** (v0.5): county types from unsupervised clustering, an Isolation Forest data-quality check, and 90% conformal prediction ranges for the similar-county comparison; every learned component and its validation is listed in [ML and AI methods](docs/ml_methods.md)
 - a **state view** with every scored county side by side, state-wide patterns and the need-and-access list
 - a **system health** check on every run: data completeness, distribution shift, a backtest of alert rates, and (on synthetic data) detection sensitivity by county size
 - a self-contained HTML bulletin and CSV outputs
@@ -113,11 +115,24 @@ The model's ranking is close to the logistic baseline (the bootstrap interval fo
 
 `perinatal-ews run --context data/context/county_context.csv` joins public county data to the results. Every measure describes a place, not a person.
 
-- **Compared with similar counties.** A gradient-boosted model predicts each county's 2022–2024 rate from its context alone, with 5-fold cross-validation so no county is judged by a model that saw it. Context explains far more of the variation than the state average for low birth weight (cross-validated R² 0.61 vs 0.23) and preterm birth (0.55 vs 0.34), but not for gestational hypertension (0.22 vs 0.22), where differences between states, including how the item is recorded, dominate. 106 county-indicators are higher than counties with similar conditions.
+- **Compared with similar counties.** A gradient-boosted model predicts each county's 2022–2024 rate from its context alone, with 5-fold cross-validation so no county is judged by a model that saw it. Context explains far more of the variation than the state average for low birth weight (cross-validated R² 0.61 vs 0.23) and preterm birth (0.55 vs 0.34), but not for gestational hypertension (0.22 vs 0.22), where differences between states, including how the item is recorded, dominate. 120 county-indicators are above the 90% prediction range for counties with similar conditions.
 - **Need and access review list.** 122 counties have a perinatal warning sign together with a high drug overdose burden, thin treatment access for pregnant and postpartum patients, or thin delivery capacity. Six have both a top-quarter overdose rate and thin treatment access: King County WA, Madison County IN, Monroe County NY, Ascension Parish LA, Monroe County IN and Comanche County OK. 89 of the 578 counties have no listed facility that offers buprenorphine or methadone, accepts Medicaid and runs a programme for pregnant or postpartum patients.
 - **Context in the forecast.** Tested as extra forecast inputs, county context did not clearly improve next-year prediction (AUPRC −0.006, 95% CI −0.033 to +0.024), so the forecast keeps the base model. County conditions explain where rates are high; recent changes in a county's own data explain which counties change next. Each forecast now lists its main factors.
 
 Sources: CDC PLACES (BRFSS 2023) and ACS 2017–2021 measures, CDC VSRR provisional county overdose deaths 2020–2024, SAMHSA FindTreatment.gov listings, CMS Maternal Health – Hospital. To rebuild: run [`scripts/fetch_county_context.js`](scripts/fetch_county_context.js) in a browser on each site, then `python scripts/build_county_context.py` (needs `pip install shapely`). Methods and limitations: [docs/county_context.md](docs/county_context.md).
+
+## Machine learning and AI at a glance
+
+| Component | Method | Validated result on US data |
+|---|---|---|
+| Next-year forecast | Gradient-boosted trees | AUROC 0.790, AUPRC 0.354, forward in time |
+| Similar-county comparison | Gradient-boosted regression, 5-fold CV | R² 0.61 vs 0.23 (low birth weight), 0.55 vs 0.34 (preterm) |
+| Prediction ranges | Cross-conformal prediction | 90.1–90.5% coverage (target 90%) |
+| County types | k-means clustering | 4 types, bootstrap ARI 0.78 |
+| Data-quality check | Isolation Forest | 65–67% of injected single-indicator errors found (synthetic), 0.5% false flags |
+| AI assistant | LLM agent with tool use | Every figure checked against the data |
+
+Details: [docs/ml_methods.md](docs/ml_methods.md).
 
 ## AI assistant (v0.4)
 
@@ -158,7 +173,9 @@ src/perinatal_ews/
   equity.py        within-county subgroup gaps
   monitor.py       data quality, distribution drift, state patterns, backtest, evaluation
   forecast.py      next-year ML forecast, validation, explanations and monitoring
-  context.py       county context, need-versus-access list, similar-county benchmark
+  context.py       county context, need-versus-access list, similar-county benchmark, conformal ranges
+  typology.py      county types (clustering)
+  anomaly.py       machine-learning data-quality check (Isolation Forest)
   synthetic.py     fictional data with known injected changes
   report.py        HTML bulletin
   cli.py           command line
@@ -167,7 +184,8 @@ scripts/           CDC WONDER and county context fetch and build scripts
 data/context/      county_context.csv (public county context table)
 results/2024/      outputs on real 2016–2024 US county data
 tests/             pytest suite
-docs/              methodology, model card, county context and AI assistant
+docs/              methodology, model card, ML and AI methods, county context, AI assistant
+results/map/       simplified county and state outlines for the map
 ```
 
 ## Development

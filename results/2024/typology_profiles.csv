@@ -1,0 +1,65 @@
+type,feature,label,mean_z
+1,level_gestational_hypertension,gestational hypertension level,0.122
+1,level_late_no_prenatal_care,late prenatal care level,-0.051
+1,level_low_birth_weight,low birth weight level,0.045
+1,level_preterm_birth,preterm birth level,0.126
+1,log_births,county size (births),-0.074
+1,bphigh,adult high blood pressure,0.028
+1,obesity,adult obesity,0.069
+1,diabetes,adult diabetes,-0.072
+1,csmoking,adult smoking,0.28
+1,access2,uninsured adults,0.069
+1,acs_pov150,poverty,-0.022
+1,acs_nohsdp,no high-school diploma,-0.057
+1,acs_sngpnt,single-parent households,-0.045
+1,acs_broad,no broadband,0.208
+1,overdose_rate_2024,overdose deaths,0.122
+1,treatment_access,"MOUD access for pregnant patients (per 1,000 births)",0.262
+2,level_gestational_hypertension,gestational hypertension level,-0.365
+2,level_late_no_prenatal_care,late prenatal care level,-0.598
+2,level_low_birth_weight,low birth weight level,-0.782
+2,level_preterm_birth,preterm birth level,-0.786
+2,log_births,county size (births),0.424
+2,bphigh,adult high blood pressure,-0.832
+2,obesity,adult obesity,-0.984
+2,diabetes,adult diabetes,-0.806
+2,csmoking,adult smoking,-0.998
+2,access2,uninsured adults,-0.244
+2,acs_pov150,poverty,-0.942
+2,acs_nohsdp,no high-school diploma,-0.433
+2,acs_sngpnt,single-parent households,-0.681
+2,acs_broad,no broadband,-0.76
+2,overdose_rate_2024,overdose deaths,-0.498
+2,treatment_access,"MOUD access for pregnant patients (per 1,000 births)",0.051
+3,level_gestational_hypertension,gestational hypertension level,0.256
+3,level_late_no_prenatal_care,late prenatal care level,0.562
+3,level_low_birth_weight,low birth weight level,1.263
+3,level_preterm_birth,preterm birth level,1.189
+3,log_births,county size (births),-0.058
+3,bphigh,adult high blood pressure,1.432
+3,obesity,adult obesity,0.858
+3,diabetes,adult diabetes,1.213
+3,csmoking,adult smoking,1.005
+3,access2,uninsured adults,0.379
+3,acs_pov150,poverty,0.997
+3,acs_nohsdp,no high-school diploma,0.526
+3,acs_sngpnt,single-parent households,1.181
+3,acs_broad,no broadband,1.074
+3,overdose_rate_2024,overdose deaths,0.473
+3,treatment_access,"MOUD access for pregnant patients (per 1,000 births)",0.221
+4,level_gestational_hypertension,gestational hypertension level,-1.002
+4,level_late_no_prenatal_care,late prenatal care level,0.724
+4,level_low_birth_weight,low birth weight level,0.058
+4,level_preterm_birth,preterm birth level,0.106
+4,log_births,county size (births),1.21
+4,bphigh,adult high blood pressure,0.261
+4,obesity,adult obesity,0.031
+4,diabetes,adult diabetes,1.235
+4,csmoking,adult smoking,-0.124
+4,access2,uninsured adults,2.001
+4,acs_pov150,poverty,0.911
+4,acs_nohsdp,no high-school diploma,1.912
+4,acs_sngpnt,single-parent households,1.092
+4,acs_broad,no broadband,0.485
+4,overdose_rate_2024,overdose deaths,-0.292
+4,treatment_access,"MOUD access for pregnant patients (per 1,000 births)",-0.479

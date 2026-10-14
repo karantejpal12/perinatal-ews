@@ -189,7 +189,7 @@ def _more_note(n: int, shown: int, file: str) -> str:
     return f'<p class="note">Showing the {shown} strongest of {n:,}. The full list is in {escape(file)}.</p>'
 
 
-def _context_section(na, bench, labels: dict, year: int, max_rows: int) -> str:
+def _context_section(na, bench, labels: dict, year: int, max_rows: int, typology=None) -> str:
     parts = ['<section><h2>County context: need and access</h2>'
              '<p>Perinatal flags combined with public county data on drug overdose deaths (CDC), substance use treatment '
              'facilities (SAMHSA FindTreatment.gov) and hospitals with labour and delivery care (CMS). '
@@ -227,7 +227,9 @@ def _context_section(na, bench, labels: dict, year: int, max_rows: int) -> str:
             hrows = "".join(
                 f'<tr><td class="place">{escape(r.geo_name)}<small>{escape(str(r.state))} · {escape(r.geo_id)}</small></td>'
                 f"<td>{escape(labels.get(r.indicator, r.indicator))}</td><td class=\"num\">{_pct(r.observed_rate)}</td>"
-                f'<td class="num">{_pct(r.context_expected_rate)}</td><td class="num">{r.ratio_to_similar:.2f}×</td></tr>'
+                f'<td class="num">{_pct(r.context_expected_rate)}</td>'
+                f'<td class="num">{_pct(getattr(r, "similar_range_low", np.nan))}–{_pct(getattr(r, "similar_range_high", np.nan))}</td>'
+                f'<td class="num">{r.ratio_to_similar:.2f}×</td></tr>'
                 for r in hi.itertuples())
             yrs = quality["years_pooled"].iloc[0]
             parts.append(
@@ -235,9 +237,12 @@ def _context_section(na, bench, labels: dict, year: int, max_rows: int) -> str:
                 f'<p>A machine-learning model predicts each county\'s {yrs} rate from its context alone (adult health, '
                 'poverty, education, insurance, overdose deaths and treatment access). Each prediction comes from a model '
                 'that never saw that county (5-fold cross-validation). Counties well above their prediction do worse than '
-                'places with similar conditions, which a plain ranking cannot show.</p>'
-                '<div class="table-wrap"><table><thead><tr><th>County</th><th>Indicator</th><th class="num">Rate</th>'
-                f'<th class="num">Similar counties</th><th class="num">Ratio</th></tr></thead><tbody>{hrows}</tbody></table></div>'
+                'places with similar conditions, which a plain ranking cannot show. Each county gets a 90% range for counties '
+                'like it (cross-conformal prediction); counties above the range are listed'
+                + (f'. Across indicators the ranges contained {100 * quality["interval_empirical_coverage"].mean():.1f}% of counties, against a 90% target.</p>'
+                   if "interval_empirical_coverage" in quality else '.</p>')
+                + '<div class="table-wrap"><table><thead><tr><th>County</th><th>Indicator</th><th class="num">Rate</th>'
+                f'<th class="num">Similar counties</th><th class="num">90% range</th><th class="num">Ratio</th></tr></thead><tbody>{hrows}</tbody></table></div>'
                 + _more_note(int((scores["compared_with_similar"] == "higher than similar counties").sum()), len(hi),
                              "context_benchmark.csv")
                 + '<p>How much of the variation between counties the context explains (cross-validated R², births-weighted), '
@@ -247,6 +252,20 @@ def _context_section(na, bench, labels: dict, year: int, max_rows: int) -> str:
                 '<p class="note">Where the context model does no better than the state average, differences between states '
                 '(including how birth certificates are completed) matter more than local conditions, and the comparison '
                 'should be read with care.</p>')
+    if typology is not None:
+        assign, summary, _, q = typology
+        trows = "".join(f'<tr><td class="num">{r.type}</td><td class="num">{r.counties}</td><td>{escape(r.description)}</td></tr>'
+                        for r in summary.itertuples())
+        parts.append(
+            '<h2>County types</h2>'
+            '<p>Unsupervised machine learning (k-means clustering) groups counties by their perinatal outcomes, size, '
+            'adult health, social conditions, overdose burden and treatment access, giving each county a peer group. '
+            f'The number of types ({q["k"]}) was chosen by silhouette score; on 50 bootstrap resamples the grouping '
+            f'agreed with the full-data grouping with a median adjusted Rand index of {q["bootstrap_ari_median"]:.2f}.</p>'
+            '<div class="table-wrap"><table><thead><tr><th class="num">Type</th><th class="num">Counties</th>'
+            f'<th>What sets it apart (compared with all scored counties)</th></tr></thead><tbody>{trows}</tbody></table></div>'
+            f'<p class="note">Counties sit on a continuum (silhouette {q["silhouette"]:.2f}), so types are a convenient summary, '
+            'not sharp categories. Each county\'s type is in county_typology.csv and on its explorer page.</p>')
     parts.append("</section>")
     return "".join(parts)
 
@@ -254,7 +273,7 @@ def _context_section(na, bench, labels: dict, year: int, max_rows: int) -> str:
 def build_report(tidy: pd.DataFrame, config: dict, truth: pd.DataFrame | None = None,
                  target_year: int | None = None, title: str = "Perinatal Early Warning",
                  source_note: str | None = None, max_rows: int = 40, forecast=None,
-                 need_access=None, benchmark=None) -> str:
+                 need_access=None, benchmark=None, typology=None, anomalies=None) -> str:
     year = int(target_year or tidy["year"].max())
     labels = {k: v["label"] for k, v in config["indicators"].items()}
     subgroups = sorted(s for s in tidy["subgroup"].unique() if s != TOTAL_SUBGROUP)
@@ -411,7 +430,7 @@ An interval that includes zero means the ranking gain is not statistically clear
 <div class="two">{size_chart}{cal_chart}</div></section>''')
 
     if need_access is not None or benchmark is not None:
-        out.append(_context_section(need_access, benchmark, labels, year, max_rows))
+        out.append(_context_section(need_access, benchmark, labels, year, max_rows, typology))
 
     # System health
     health = [f'<section><h2>System health</h2><p>Checks on the input data and on the detector itself, run every time.</p>']
@@ -423,6 +442,21 @@ An interval that includes zero means the ranking gain is not statistically clear
                        f"<td>{escape(r.issue)}</td><td>{escape(r.detail)}</td></tr>" for r in dq.head(25).itertuples())
         health.append('<div class="table-wrap"><table><thead><tr><th>Indicator</th><th>County</th><th>Issue</th>'
                       f"<th>Detail</th></tr></thead><tbody>{rows}</tbody></table></div>")
+
+    if anomalies is not None:
+        an = anomalies[anomalies["year"] == year]
+        arows = "".join(f'<tr><td class="place">{escape(str(r.geo_name))}<small>{escape(str(r.state))} · {escape(r.geo_id)}</small></td>'
+                        f'<td>{escape(r.why_unusual or "combination of small differences")}</td></tr>' for r in an.head(15).itertuples())
+        health.append(
+            f'<p><b>Unusual records (machine-learning check).</b> An Isolation Forest trained on every county-year record '
+            f'flags records that do not look like the rest of the data, such as a rate that jumps in one indicator only or '
+            f'a category that collapses. {len(anomalies)} of all county-year records were flagged, {len(an)} of them in {year}. '
+            'The check cannot tell a data error from a real, sharp change (many of these also appear as alerts), so treat '
+            'them as records to verify with the data provider, especially where a state may have changed how it records an item. '
+            'On synthetic data with injected '
+            'errors it found about two-thirds of single-indicator errors that the births-change rule misses, with 0.5% false flags.</p>'
+            + ('<div class="table-wrap"><table><thead><tr><th>County</th><th>Why unusual</th></tr></thead>'
+               f'<tbody>{arows}</tbody></table></div>' if len(an) else ''))
 
     rows = "".join(
         f"<tr><td>{escape(labels.get(r.indicator, r.indicator))}</td><td class=\"num\">{_pct(r.median_rate_baseline)}</td>"

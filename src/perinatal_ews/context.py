@@ -220,7 +220,7 @@ BENCHMARK_COLUMNS = {
 
 
 def benchmark(tidy: pd.DataFrame, ctx: pd.DataFrame, config: dict, year: int | None = None,
-              pool_years: int = 3, n_splits: int = 5, seed: int = 0):
+              pool_years: int = 3, n_splits: int = 5, seed: int = 0, coverage: float = 0.90):
     """Context-adjusted benchmark: is a county's rate higher than counties with similar conditions?
 
     For each indicator, a gradient-boosted regression model predicts each county's
@@ -229,6 +229,12 @@ def benchmark(tidy: pd.DataFrame, ctx: pd.DataFrame, config: dict, year: int | N
     are out-of-fold (K-fold cross-validation), so a county is never compared with
     a model that saw it. The ratio observed / predicted then says whether the
     county does worse or better than places like it, which a raw ranking cannot.
+
+    Each county also gets a 90% prediction range for "counties like this one"
+    (cross-conformal prediction on normalised residuals): the range a county's
+    rate would fall in 90% of the time if it behaved like similar counties. A
+    county is "higher/lower than similar counties" when its rate is outside the
+    range. Empirical coverage of the ranges is reported.
 
     Returns (scores, quality): scores per county-indicator, and cross-validated
     R-squared for the context model against a state-average baseline.
@@ -256,7 +262,9 @@ def benchmark(tidy: pd.DataFrame, ctx: pd.DataFrame, config: dict, year: int | N
         pred = np.full(len(gi), np.nan)
         pred_state = np.full(len(gi), np.nan)
         kf = KFold(n_splits=n_splits, shuffle=True, random_state=seed)
-        for tr, te in kf.split(X):
+        fold = np.zeros(len(gi), dtype=int)
+        for f_i, (tr, te) in enumerate(kf.split(X)):
+            fold[te] = f_i
             m = HistGradientBoostingRegressor(max_iter=300, learning_rate=0.05, max_leaf_nodes=15,
                                               min_samples_leaf=20, l2_regularization=1.0, random_state=seed)
             m.fit(X[tr], y[tr], sample_weight=w[tr])
@@ -271,18 +279,35 @@ def benchmark(tidy: pd.DataFrame, ctx: pd.DataFrame, config: dict, year: int | N
             yb = np.average(y, weights=w)
             return 1 - np.sum(w * (y - pr) ** 2) / np.sum(w * (y - yb) ** 2)
 
-        quality.append({"indicator": ind, "counties": len(gi), "years_pooled": f"{yrs[0]}-{yrs[-1]}",
-                        "r2_context_model": r2(pred), "r2_state_average": r2(pred_state)})
         exp = 1 / (1 + np.exp(-pred))
         e_cases = exp * w
         se = np.sqrt(e_cases * (1 - exp))
         # Residual spread the model does not explain, so the z-score is not over-confident.
         resid_sd = np.sqrt(np.average((p - exp) ** 2, weights=w))
         z = (gi["numerator"] - e_cases) / np.sqrt(se ** 2 + (resid_sd * w) ** 2)
-        rows.append(gi.assign(observed_rate=p, context_expected_rate=exp, ratio_to_similar=p / exp,
-                              z_vs_similar=z,
-                              compared_with_similar=np.where(z >= 1.96, "higher than similar counties",
-                                                             np.where(z <= -1.96, "lower than similar counties",
+
+        # Cross-conformal prediction interval (normalised residuals, log-odds scale). Each county's
+        # interval width uses the residuals of the *other* folds only, so coverage is honest.
+        v = 1 / gi["numerator"].to_numpy(float) + 1 / (w - gi["numerator"].to_numpy(float))
+        s2 = max(np.average((y - pred) ** 2, weights=w) - np.average(v, weights=w), 1e-4)
+        sigma = np.sqrt(v + s2)
+        score = np.abs(y - pred) / sigma
+        alpha = 1 - coverage
+        q = np.empty(len(gi))
+        for f_i in np.unique(fold):
+            other = score[fold != f_i]
+            lvl = min(1.0, np.ceil((len(other) + 1) * (1 - alpha)) / len(other))
+            q[fold == f_i] = np.quantile(other, lvl, method="higher")
+        lo = 1 / (1 + np.exp(-(pred - q * sigma)))
+        hi = 1 / (1 + np.exp(-(pred + q * sigma)))
+        inside = (p >= lo) & (p <= hi)
+        quality.append({"indicator": ind, "counties": len(gi), "years_pooled": f"{yrs[0]}-{yrs[-1]}",
+                        "r2_context_model": r2(pred), "r2_state_average": r2(pred_state),
+                        "interval_target_coverage": coverage, "interval_empirical_coverage": float(inside.mean())})
+        rows.append(gi.assign(observed_rate=p, context_expected_rate=exp, similar_range_low=lo, similar_range_high=hi,
+                              ratio_to_similar=p / exp, z_vs_similar=z,
+                              compared_with_similar=np.where(p > hi, "higher than similar counties",
+                                                             np.where(p < lo, "lower than similar counties",
                                                                       "in line with similar counties"))))
     scores = pd.concat(rows, ignore_index=True) if rows else pd.DataFrame()
     return scores, pd.DataFrame(quality)

@@ -1,0 +1,46 @@
+{
+  "k": 4,
+  "silhouette": 0.1510974569719087,
+  "bootstrap_ari_median": 0.7823844566186868,
+  "bootstrap_ari_p10": 0.5832290623246222,
+  "features": [
+    "level_gestational_hypertension",
+    "level_late_no_prenatal_care",
+    "level_low_birth_weight",
+    "level_preterm_birth",
+    "log_births",
+    "bphigh",
+    "obesity",
+    "diabetes",
+    "csmoking",
+    "access2",
+    "acs_pov150",
+    "acs_nohsdp",
+    "acs_sngpnt",
+    "acs_broad",
+    "overdose_rate_2024",
+    "treatment_access"
+  ],
+  "k_search": [
+    {
+      "k": 4,
+      "silhouette": 0.1511
+    },
+    {
+      "k": 5,
+      "silhouette": 0.1457
+    },
+    {
+      "k": 6,
+      "silhouette": 0.1239
+    },
+    {
+      "k": 7,
+      "silhouette": 0.1217
+    },
+    {
+      "k": 8,
+      "silhouette": 0.1179
+    }
+  ]
+}

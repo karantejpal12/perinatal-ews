@@ -18,7 +18,7 @@ Every measure describes a county, not a person. Nothing here says anything about
 
 ## 1. Compared with similar counties (machine learning)
 
-For each indicator, a gradient-boosted regression model predicts a county's pooled 2022–2024 rate (log-odds, weighted by births) from its context alone. Predictions are out-of-fold from 5-fold cross-validation, so no county is judged by a model that saw it. The ratio of the observed rate to the predicted rate says whether the county does better or worse than counties with similar health, social and access conditions. A county is "higher than similar counties" when z ≥ 1.96, where the variance includes binomial noise and the spread the model does not explain.
+For each indicator, a gradient-boosted regression model predicts a county's pooled 2022–2024 rate (log-odds, weighted by births) from its context alone. Predictions are out-of-fold from 5-fold cross-validation, so no county is judged by a model that saw it. The ratio of the observed rate to the predicted rate says whether the county does better or worse than counties with similar health, social and access conditions. A county is "higher than similar counties" when its rate is above its 90% prediction range (see below).
 
 How much of the between-county variation the context explains (cross-validated R², births-weighted), compared with using the state average:
 
@@ -31,7 +31,7 @@ How much of the between-county variation the context explains (cross-validated R
 
 Context explains low birth weight and preterm birth far better than geography alone. For gestational hypertension it does no better than the state average, which is consistent with differences between states, including how this birth-certificate item is recorded, mattering more than local conditions; comparisons for that indicator should be read with care.
 
-Results for 2024: 106 county-indicators are higher than similar counties, 51 lower, and 2,154 in line.
+Each county also gets a 90% prediction range for counties like it (cross-conformal prediction; empirical coverage 90.1–90.5%), and is higher or lower than similar counties when its rate is outside that range. Results for 2024: 120 county-indicators are higher than similar counties, 104 lower, and 2,087 in line.
 
 ## 2. Need and access review list
 

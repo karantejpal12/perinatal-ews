@@ -33,6 +33,9 @@ def _run(tidy: pd.DataFrame, cfg: dict, out: Path, year: int | None, truth: pd.D
     if subgroups:
         subgroup_gaps(tidy, cfg, year).to_csv(out / "subgroup_gaps.csv", index=False)
     data_quality(tidy, year).to_csv(out / "data_quality.csv", index=False)
+    from .anomaly import record_anomalies
+    anomalies = record_anomalies(tidy)
+    anomalies.to_csv(out / "data_anomalies.csv", index=False)
     distribution_drift(tidy, cfg, year).to_csv(out / "distribution_drift.csv", index=False)
     backtest(tidy, cfg).to_csv(out / "backtest.csv", index=False)
     if truth is not None:
@@ -51,7 +54,7 @@ def _run(tidy: pd.DataFrame, cfg: dict, out: Path, year: int | None, truth: pd.D
         fc.scores.to_csv(out / "forecast_scores.csv", index=False)
         for name in ("metrics", "folds", "by_size", "by_indicator", "calibration", "importance", "feature_drift"):
             getattr(fc, name).to_csv(out / f"forecast_{name}.csv", index=False)
-    na = bench = None
+    na = bench = typ = None
     if ctx is not None:
         from .context import benchmark, need_access
         na = need_access(res, ctx, fc.scores if fc is not None else None,
@@ -60,11 +63,19 @@ def _run(tidy: pd.DataFrame, cfg: dict, out: Path, year: int | None, truth: pd.D
         bench = benchmark(tidy, ctx, cfg, year)
         bench[0].to_csv(out / "context_benchmark.csv", index=False)
         bench[1].to_csv(out / "context_benchmark_quality.csv", index=False)
+        from .typology import county_typology
+        typ = county_typology(tidy, ctx)
+        typ[0].to_csv(out / "county_typology.csv", index=False)
+        typ[1].to_csv(out / "typology_summary.csv", index=False)
+        typ[2].to_csv(out / "typology_profiles.csv", index=False)
+        import json
+        (out / "typology_quality.json").write_text(json.dumps(typ[3], indent=2))
         if fc is not None:
             fc.metrics.to_csv(out / "forecast_metrics.csv", index=False)
     (out / "report.html").write_text(build_report(tidy, cfg, truth=truth, target_year=year, title=title,
                                                   source_note=source_note, forecast=fc, need_access=na,
-                                                  benchmark=bench))
+                                                  benchmark=bench, typology=typ,
+                                                  anomalies=anomalies))
     total = res[res["subgroup"] == TOTAL_SUBGROUP]
     print(f"Scored {total['geo_id'].nunique()} counties: "
           f"{int((total['level'] == 'alert').sum())} alerts, {int((total['level'] == 'watch').sum())} watch. "

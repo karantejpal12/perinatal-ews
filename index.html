@@ -57,7 +57,7 @@ footer { border-top: 1px solid var(--rule); padding-top: 16px; font-size: 14px; 
       recent history predicts, checks its own reliability, forecasts next-year risk, and shows where warning signs
       meet high overdose burden or thin access to treatment and delivery care.</p>
     <div class="actions">
-      <a class="btn primary" href="app.html">Open the county explorer</a>
+      <a class="btn primary" href="app.html">Open the county map and explorer</a>
       <a class="btn" href="app.html#ask">Ask the AI assistant</a>
       <a class="btn" href="app.html#state-GA">State view</a>
       <a class="btn" href="app.html#run">Run it on your data</a>
@@ -95,11 +95,13 @@ footer { border-top: 1px solid var(--rule); padding-top: 16px; font-size: 14px; 
       <li><b>Looks inside</b> Medicaid and privately insured births, where a change can be hidden in the county total.</li>
       <li><b>Separates</b> state-wide patterns, which may reflect policy or recording changes, from local ones.</li>
       <li><b>Adds county context</b>: drug overdose deaths, opioid treatment for pregnant and postpartum patients, hospitals with labour and delivery care, and adult health and social conditions, from public CDC, SAMHSA and CMS data. A machine-learning model compares each county with counties in similar conditions.</li>
+      <li><b>Groups counties into types</b> with unsupervised clustering, <b>checks the input data</b> with an anomaly-detection model, and gives <b>90% prediction ranges</b> (conformal prediction) for the comparison with similar counties.</li>
       <li><b>Answers questions</b> through an AI assistant that looks up the published data with the tool's own functions, shows each lookup and checks every figure in its answer against the data.</li>
       <li><b>Forecasts</b> next-year risk with a machine-learning model validated forward in time against simpler baselines.</li>
       <li><b>Monitors itself</b>: data quality, distribution drift, backtested alert rates and performance by county size.</li>
     </ul>
     <p style="margin-top:12px">Read the <a href="https://github.com/karantejpal12/perinatal-ews/blob/main/docs/methodology.md">methodology</a> the <a href="https://github.com/karantejpal12/perinatal-ews/blob/main/docs/model_card.md">model card</a>,
+      the <a href="https://github.com/karantejpal12/perinatal-ews/blob/main/docs/ml_methods.md">ML and AI methods summary</a>,
       the <a href="https://github.com/karantejpal12/perinatal-ews/blob/main/docs/ai_assistant.md">AI assistant design</a> and the <a href="https://github.com/karantejpal12/perinatal-ews/blob/main/docs/county_context.md">county context methods</a>.</p>
   </section>
 

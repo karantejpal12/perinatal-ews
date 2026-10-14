@@ -38,6 +38,10 @@ def main() -> None:
     na = (pd.read_csv(res / "need_access.csv", dtype={"geo_id": str}).set_index("geo_id")
           if (res / "need_access.csv").exists() else None)
     ctx = (pd.read_csv(a.context, dtype={"geo_id": str}).set_index("geo_id") if a.context else None)
+    typ = (pd.read_csv(res / "county_typology.csv", dtype={"geo_id": str}).set_index("geo_id")
+           if (res / "county_typology.csv").exists() else None)
+    anom = (pd.read_csv(res / "data_anomalies.csv", dtype={"geo_id": str})
+            if (res / "data_anomalies.csv").exists() else None)
     year = int(det["year"].max())
     years = sorted(int(y) for y in tidy["year"].unique())
 
@@ -99,7 +103,8 @@ def main() -> None:
             if bench is not None and (c.geo_id, k) in bench.index:
                 b = bench.loc[(c.geo_id, k)]
                 entry["similar"] = {"rate": _r(b["observed_rate"]), "expected": _r(b["context_expected_rate"]),
-                                    "verdict": b["compared_with_similar"], "years": None}
+                                    "low": _r(b.get("similar_range_low")), "high": _r(b.get("similar_range_high")),
+                                    "verdict": b["compared_with_similar"]}
             ind[k] = entry
         rec = {"id": c.geo_id, "name": c.geo_name, "state": c.state, "ind": ind}
         if ctx is not None and c.geo_id in ctx.index:
@@ -107,6 +112,12 @@ def main() -> None:
             rec["ctx"] = {k: (_r(row[k], 1) if pd.notna(row[k]) else None) for k in CTX_FIELDS if k in ctx.columns}
             births = max((e.get("births") or 0) for e in ind.values()) if ind else 0
             rec["births"] = births or None
+        if typ is not None and c.geo_id in typ.index:
+            rec["type"] = int(typ.at[c.geo_id, "type"])
+        if anom is not None:
+            an = anom[(anom["geo_id"] == c.geo_id) & (anom["year"] == year)]
+            if len(an):
+                rec["unusual"] = str(an["why_unusual"].iloc[0]) if isinstance(an["why_unusual"].iloc[0], str) else "unusual combination of values"
         if na is not None and c.geo_id in na.index:
             n = na.loc[c.geo_id]
             rec["need"] = {"priority": n["priority"], "reasons": n["context_reasons"]}
@@ -135,6 +146,11 @@ def main() -> None:
                            "drug overdose deaths; SAMHSA FindTreatment.gov facility listings (Oct 2026); CMS Maternal "
                            "Health - Hospital (Maternal Morbidity Structural Measure)."),
     }
+    if (res / "typology_summary.csv").exists():
+        ts = pd.read_csv(res / "typology_summary.csv")
+        payload["types"] = {int(r.type): {"counties": int(r.counties), "description": r.description} for r in ts.itertuples()}
+        tq = json.loads((res / "typology_quality.json").read_text())
+        payload["types_quality"] = {k: tq[k] for k in ("k", "silhouette", "bootstrap_ari_median")}
     if (res / "forecast_metrics.csv").exists():
         m = pd.read_csv(res / "forecast_metrics.csv")
         payload["forecast_metrics"] = [{"model": r.model, "auroc": _r(r.auroc, 3), "auprc": _r(r.auprc, 3),

@@ -1,0 +1,106 @@
+geo_id,year,anomaly_score,unusual,why_unusual,geo_name,state
+06059,2017,0.6652,True,distance from usual level of late no prenatal care (high); distance from usual level of low birth weight (low),Orange County,CA
+06059,2020,0.6265,True,year-on-year change in late no prenatal care (low); year-on-year change in gestational hypertension (high),Orange County,CA
+06059,2018,0.6193,True,distance from usual level of late no prenatal care (high); distance from usual level of gestational hypertension (low),Orange County,CA
+13051,2024,0.6193,True,distance from usual level of late no prenatal care (high); year-on-year change in late no prenatal care (high),Chatham County,GA
+17031,2024,0.6142,True,distance from usual level of late no prenatal care (high); year-on-year change in late no prenatal care (high),Cook County,IL
+32003,2021,0.5926,True,year-on-year change in low birth weight (high); year-on-year change in preterm birth (high),Clark County,NV
+48113,2017,0.5915,True,year-on-year change in gestational hypertension (high); year-on-year change in preterm birth (high),Dallas County,TX
+12057,2021,0.5884,True,distance from usual level of late no prenatal care (high); year-on-year change in late no prenatal care (high),Hillsborough County,FL
+12031,2024,0.5871,True,distance from usual level of late no prenatal care (high); year-on-year change in late no prenatal care (high),Duval County,FL
+51059,2020,0.587,True,year-on-year change in gestational hypertension (high); year-on-year change in late no prenatal care (low),Fairfax County,VA
+47157,2018,0.5869,True,year-on-year change in late no prenatal care (low); distance from usual level of late no prenatal care (low),Shelby County,TN
+06059,2016,0.5829,True,distance from usual level of late no prenatal care (high); distance from usual level of gestational hypertension (low),Orange County,CA
+51059,2018,0.5797,True,year-on-year change in preterm birth (low); distance from usual level of late no prenatal care (low),Fairfax County,VA
+47157,2021,0.5795,True,year-on-year change in late no prenatal care (high); distance from usual level of late no prenatal care (high),Shelby County,TN
+48201,2020,0.5791,True,year-on-year change in gestational hypertension (high); distance from usual level of late no prenatal care (high),Harris County,TX
+48029,2018,0.5783,True,year-on-year change in late no prenatal care (low); distance from usual level of late no prenatal care (low),Bexar County,TX
+45079,2021,0.5761,True,distance from usual level of late no prenatal care (high); year-on-year change in late no prenatal care (high),Richland County,SC
+06059,2019,0.5759,True,distance from usual level of late no prenatal care (high); year-on-year change in late no prenatal care (high),Orange County,CA
+12086,2024,0.5711,True,distance from usual level of late no prenatal care (high); year-on-year change in late no prenatal care (high),Miami-Dade County,FL
+04013,2024,0.5649,True,distance from usual level of gestational hypertension (high); distance from usual level of late no prenatal care (high),Maricopa County,AZ
+06025,2023,0.5647,True,year-on-year change in late no prenatal care (low); distance from usual level of late no prenatal care (low),Imperial County,CA
+48201,2021,0.5636,True,year-on-year change in late no prenatal care (low); births (high),Harris County,TX
+13063,2021,0.5623,True,year-on-year change in late no prenatal care (low); distance from usual level of low birth weight (high),Clayton County,GA
+47187,2020,0.5605,True,distance from usual level of late no prenatal care (high); year-on-year change in late no prenatal care (high),Williamson County,TN
+47157,2017,0.5604,True,distance from usual level of late no prenatal care (high); year-on-year change in late no prenatal care (high),Shelby County,TN
+48201,2017,0.5604,True,distance from usual level of preterm birth (low); distance from usual level of gestational hypertension (low),Harris County,TX
+32003,2018,0.56,True,distance from usual level of low birth weight (low); distance from usual level of preterm birth (low),Clark County,NV
+48201,2018,0.5594,True,distance from usual level of gestational hypertension (low); distance from usual level of late no prenatal care (low),Harris County,TX
+48439,2024,0.5572,True,distance from usual level of gestational hypertension (high); year-on-year change in low birth weight (low),Tarrant County,TX
+05119,2021,0.5569,True,distance from usual level of late no prenatal care (high); year-on-year change in late no prenatal care (high),Pulaski County,AR
+16055,2023,0.5565,True,year-on-year change in gestational hypertension (low); rate of gestational hypertension (low),Kootenai County,ID
+48029,2024,0.5563,True,distance from usual level of late no prenatal care (high); year-on-year change in late no prenatal care (high),Bexar County,TX
+48215,2024,0.5563,True,distance from usual level of late no prenatal care (high); year-on-year change in late no prenatal care (high),Hidalgo County,TX
+45063,2021,0.5558,True,distance from usual level of late no prenatal care (high); year-on-year change in late no prenatal care (high),Lexington County,SC
+45079,2022,0.5552,True,year-on-year change in late no prenatal care (low); year-on-year change in gestational hypertension (high),Richland County,SC
+22055,2024,0.5544,True,distance from usual level of late no prenatal care (high); distance from usual level of low birth weight (high),Lafayette Parish,LA
+13077,2022,0.5534,True,year-on-year change in gestational hypertension (low); rate of gestational hypertension (low),Coweta County,GA
+06037,2017,0.5529,True,distance from usual level of gestational hypertension (low); births (high),Los Angeles County,CA
+51013,2024,0.5527,True,year-on-year change in low birth weight (low); year-on-year change in preterm birth (low),Arlington County,VA
+06085,2021,0.5517,True,distance from usual level of preterm birth (high); year-on-year change in gestational hypertension (high),Santa Clara County,CA
+06097,2017,0.5517,True,distance from usual level of gestational hypertension (low),Sonoma County,CA
+06019,2017,0.5516,True,distance from usual level of gestational hypertension (low); distance from usual level of late no prenatal care (low),Fresno County,CA
+42003,2023,0.551,True,distance from usual level of gestational hypertension (high); distance from usual level of late no prenatal care (high),Allegheny County,PA
+06059,2021,0.5504,True,year-on-year change in preterm birth (high); year-on-year change in low birth weight (high),Orange County,CA
+06037,2024,0.5502,True,distance from usual level of gestational hypertension (high); births (high),Los Angeles County,CA
+06037,2016,0.55,True,distance from usual level of gestational hypertension (low); births (high),Los Angeles County,CA
+06037,2022,0.5498,True,distance from usual level of gestational hypertension (high); distance from usual level of low birth weight (high),Los Angeles County,CA
+08101,2018,0.5484,True,distance from usual level of preterm birth (high); distance from usual level of low birth weight (high),Pueblo County,CO
+12095,2023,0.5475,True,distance from usual level of late no prenatal care (high); distance from usual level of low birth weight (high),Orange County,FL
+54039,2024,0.5465,True,rate of preterm birth (high); distance from usual level of preterm birth (high),Kanawha County,WV
+06037,2021,0.5461,True,births (high); year-on-year change in gestational hypertension (high),Los Angeles County,CA
+06065,2024,0.5438,True,distance from usual level of gestational hypertension (high); distance from usual level of low birth weight (high),Riverside County,CA
+12086,2022,0.5427,True,distance from usual level of late no prenatal care (high); year-on-year change in late no prenatal care (high),Miami-Dade County,FL
+36047,2021,0.5426,True,year-on-year change in gestational hypertension (high); year-on-year change in late no prenatal care (high),Kings County,NY
+06037,2020,0.5424,True,year-on-year change in gestational hypertension (high); year-on-year change in late no prenatal care (low),Los Angeles County,CA
+12086,2023,0.5421,True,distance from usual level of late no prenatal care (high); year-on-year change in late no prenatal care (high),Miami-Dade County,FL
+48201,2016,0.5415,True,distance from usual level of preterm birth (low); distance from usual level of gestational hypertension (low),Harris County,TX
+13245,2024,0.5406,True,distance from usual level of late no prenatal care (high); year-on-year change in late no prenatal care (high),Richmond County,GA
+36087,2018,0.5402,True,rate of preterm birth (low); year-on-year change in preterm birth (low),Rockland County,NY
+13121,2021,0.5398,True,distance from usual level of late no prenatal care (low); year-on-year change in late no prenatal care (low),Fulton County,GA
+04013,2021,0.5394,True,distance from usual level of preterm birth (high); births (high),Maricopa County,AZ
+06029,2020,0.5393,True,year-on-year change in preterm birth (low); year-on-year change in low birth weight (low),Kern County,CA
+42003,2022,0.539,True,distance from usual level of late no prenatal care (high); distance from usual level of gestational hypertension (high),Allegheny County,PA
+48141,2024,0.5386,True,distance from usual level of preterm birth (high); distance from usual level of low birth weight (high),El Paso County,TX
+04013,2023,0.5386,True,distance from usual level of low birth weight (high); distance from usual level of preterm birth (high),Maricopa County,AZ
+48439,2023,0.5385,True,distance from usual level of gestational hypertension (high); year-on-year change in gestational hypertension (high),Tarrant County,TX
+34025,2021,0.5383,True,year-on-year change in low birth weight (low); distance from usual level of low birth weight (low),Monmouth County,NJ
+55131,2017,0.5379,True,year-on-year change in preterm birth (low); rate of low birth weight (low),Washington County,WI
+48029,2022,0.5378,True,year-on-year change in late no prenatal care (high); distance from usual level of late no prenatal care (high),Bexar County,TX
+48491,2018,0.5371,True,distance from usual level of late no prenatal care (low); year-on-year change in low birth weight (low),Williamson County,TX
+12057,2017,0.5358,True,year-on-year change in late no prenatal care (high); distance from usual level of gestational hypertension (low),Hillsborough County,FL
+13057,2021,0.5354,True,distance from usual level of late no prenatal care (high); year-on-year change in late no prenatal care (high),Cherokee County,GA
+15003,2023,0.5351,True,year-on-year change in gestational hypertension (high); distance from usual level of gestational hypertension (high),Honolulu County,HI
+06019,2016,0.5339,True,distance from usual level of gestational hypertension (low); rate of gestational hypertension (low),Fresno County,CA
+08031,2022,0.5335,True,distance from usual level of preterm birth (high); distance from usual level of low birth weight (high),Denver County,CO
+47157,2023,0.5335,True,distance from usual level of late no prenatal care (high); year-on-year change in late no prenatal care (high),Shelby County,TN
+18003,2022,0.5326,True,distance from usual level of low birth weight (high); distance from usual level of preterm birth (high),Allen County,IN
+11001,2024,0.5325,True,distance from usual level of late no prenatal care (high); year-on-year change in gestational hypertension (low),District of Columbia,DC
+22017,2018,0.5314,True,rate of preterm birth (high); distance from usual level of low birth weight (low),Caddo Parish,LA
+12095,2021,0.5312,True,year-on-year change in late no prenatal care (high); distance from usual level of late no prenatal care (high),Orange County,FL
+36109,2019,0.5292,True,rate of preterm birth (low); rate of low birth weight (low),Tompkins County,NY
+55117,2017,0.529,True,,Sheboygan County,WI
+39035,2024,0.529,True,distance from usual level of gestational hypertension (high); year-on-year change in gestational hypertension (high),Cuyahoga County,OH
+42101,2023,0.5289,True,distance from usual level of gestational hypertension (high); year-on-year change in gestational hypertension (high),Philadelphia County,PA
+06081,2018,0.5289,True,distance from usual level of gestational hypertension (low); rate of late no prenatal care (low),San Mateo County,CA
+48439,2020,0.5288,True,year-on-year change in late no prenatal care (high); distance from usual level of late no prenatal care (high),Tarrant County,TX
+48423,2021,0.5288,True,distance from usual level of late no prenatal care (high); year-on-year change in late no prenatal care (high),Smith County,TX
+36005,2020,0.5285,True,year-on-year change in late no prenatal care (low); distance from usual level of late no prenatal care (low),Bronx County,NY
+21117,2020,0.5282,True,year-on-year change in low birth weight (low); distance from usual level of low birth weight (low),Kenton County,KY
+48113,2019,0.528,True,year-on-year change in late no prenatal care (high); distance from usual level of gestational hypertension (high),Dallas County,TX
+37133,2021,0.5276,True,distance from usual level of late no prenatal care (high); year-on-year change in late no prenatal care (high),Onslow County,NC
+12099,2020,0.5273,True,year-on-year change in late no prenatal care (low); distance from usual level of late no prenatal care (low),Palm Beach County,FL
+12095,2024,0.5272,True,distance from usual level of late no prenatal care (high); distance from usual level of low birth weight (high),Orange County,FL
+48113,2018,0.5272,True,distance from usual level of gestational hypertension (high); distance from usual level of late no prenatal care (low),Dallas County,TX
+42003,2024,0.5268,True,distance from usual level of late no prenatal care (high); distance from usual level of gestational hypertension (high),Allegheny County,PA
+06037,2023,0.5265,True,distance from usual level of low birth weight (high); distance from usual level of gestational hypertension (high),Los Angeles County,CA
+04019,2018,0.5263,True,distance from usual level of late no prenatal care (high); year-on-year change in preterm birth (high),Pima County,AZ
+48439,2016,0.5258,True,distance from usual level of late no prenatal care (low); distance from usual level of gestational hypertension (low),Tarrant County,TX
+36005,2017,0.5257,True,year-on-year change in gestational hypertension (low); distance from usual level of gestational hypertension (low),Bronx County,NY
+13151,2024,0.5255,True,distance from usual level of late no prenatal care (high); year-on-year change in late no prenatal care (high),Henry County,GA
+48201,2019,0.5252,True,distance from usual level of gestational hypertension (low); births (high),Harris County,TX
+08031,2023,0.525,True,distance from usual level of late no prenatal care (high); year-on-year change in late no prenatal care (high),Denver County,CO
+46099,2023,0.525,True,distance from usual level of preterm birth (high); year-on-year change in preterm birth (high),Minnehaha County,SD
+17031,2023,0.5243,True,distance from usual level of gestational hypertension (high); births (high),Cook County,IL
+21093,2021,0.5242,True,year-on-year change in late no prenatal care (high); distance from usual level of late no prenatal care (high),Hardin County,KY

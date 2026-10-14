@@ -1,0 +1,579 @@
+geo_id,type,type_description,typicality
+01003,1,Close to average on most measures,0.652
+01015,3,"Higher adult high blood pressure, low birth weight level, adult diabetes",0.801
+01055,3,"Higher adult high blood pressure, low birth weight level, adult diabetes",0.185
+01069,3,"Higher adult high blood pressure, low birth weight level, adult diabetes",0.384
+01073,3,"Higher adult high blood pressure, low birth weight level, adult diabetes",0.578
+01081,3,"Higher adult high blood pressure, low birth weight level, adult diabetes",0.562
+01089,3,"Higher adult high blood pressure, low birth weight level, adult diabetes",0.176
+01097,3,"Higher adult high blood pressure, low birth weight level, adult diabetes",0.569
+01101,3,"Higher adult high blood pressure, low birth weight level, adult diabetes",0.029
+01103,3,"Higher adult high blood pressure, low birth weight level, adult diabetes",0.202
+01117,1,Close to average on most measures,0.227
+01125,3,"Higher adult high blood pressure, low birth weight level, adult diabetes",0.931
+02020,1,Close to average on most measures,0.265
+04003,1,Close to average on most measures,0.235
+04005,1,Close to average on most measures,0.054
+04013,2,"Higher county size (births); lower adult smoking, adult obesity",0.062
+04015,1,Close to average on most measures,0.093
+04017,3,"Higher adult high blood pressure, low birth weight level, adult diabetes",0.005
+04019,1,Close to average on most measures,0.304
+04021,1,Close to average on most measures,0.806
+04025,2,"Higher county size (births); lower adult smoking, adult obesity",0.057
+04027,4,"Higher uninsured adults, no high-school diploma, adult diabetes; lower gestational hypertension level, MOUD access for pregnant patients (per 1,000 births)",0.119
+05007,1,Close to average on most measures,0.381
+05045,1,Close to average on most measures,0.713
+05119,3,"Higher adult high blood pressure, low birth weight level, adult diabetes",0.839
+05125,1,Close to average on most measures,0.196
+05131,3,"Higher adult high blood pressure, low birth weight level, adult diabetes",0.36
+05143,4,"Higher uninsured adults, no high-school diploma, adult diabetes; lower gestational hypertension level, MOUD access for pregnant patients (per 1,000 births)",0.159
+06001,2,"Higher county size (births); lower adult smoking, adult obesity",0.424
+06007,1,Close to average on most measures,0.315
+06013,2,"Higher county size (births); lower adult smoking, adult obesity",0.67
+06017,2,"Higher county size (births); lower adult smoking, adult obesity",0.438
+06019,4,"Higher uninsured adults, no high-school diploma, adult diabetes; lower gestational hypertension level, MOUD access for pregnant patients (per 1,000 births)",0.522
+06023,1,Close to average on most measures,0.114
+06025,4,"Higher uninsured adults, no high-school diploma, adult diabetes; lower gestational hypertension level, MOUD access for pregnant patients (per 1,000 births)",0.012
+06029,4,"Higher uninsured adults, no high-school diploma, adult diabetes; lower gestational hypertension level, MOUD access for pregnant patients (per 1,000 births)",0.234
+06031,4,"Higher uninsured adults, no high-school diploma, adult diabetes; lower gestational hypertension level, MOUD access for pregnant patients (per 1,000 births)",0.076
+06037,4,"Higher uninsured adults, no high-school diploma, adult diabetes; lower gestational hypertension level, MOUD access for pregnant patients (per 1,000 births)",0.035
+06039,4,"Higher uninsured adults, no high-school diploma, adult diabetes; lower gestational hypertension level, MOUD access for pregnant patients (per 1,000 births)",0.087
+06041,2,"Higher county size (births); lower adult smoking, adult obesity",0.118
+06047,4,"Higher uninsured adults, no high-school diploma, adult diabetes; lower gestational hypertension level, MOUD access for pregnant patients (per 1,000 births)",0.284
+06053,4,"Higher uninsured adults, no high-school diploma, adult diabetes; lower gestational hypertension level, MOUD access for pregnant patients (per 1,000 births)",0.1
+06055,2,"Higher county size (births); lower adult smoking, adult obesity",0.626
+06059,2,"Higher county size (births); lower adult smoking, adult obesity",0.128
+06061,2,"Higher county size (births); lower adult smoking, adult obesity",0.389
+06065,4,"Higher uninsured adults, no high-school diploma, adult diabetes; lower gestational hypertension level, MOUD access for pregnant patients (per 1,000 births)",0.216
+06067,2,"Higher county size (births); lower adult smoking, adult obesity",0.232
+06071,4,"Higher uninsured adults, no high-school diploma, adult diabetes; lower gestational hypertension level, MOUD access for pregnant patients (per 1,000 births)",0.597
+06073,2,"Higher county size (births); lower adult smoking, adult obesity",0.256
+06075,2,"Higher county size (births); lower adult smoking, adult obesity",0.033
+06077,4,"Higher uninsured adults, no high-school diploma, adult diabetes; lower gestational hypertension level, MOUD access for pregnant patients (per 1,000 births)",0.678
+06079,2,"Higher county size (births); lower adult smoking, adult obesity",0.978
+06081,2,"Higher county size (births); lower adult smoking, adult obesity",0.116
+06083,2,"Higher county size (births); lower adult smoking, adult obesity",0.19
+06085,2,"Higher county size (births); lower adult smoking, adult obesity",0.135
+06087,2,"Higher county size (births); lower adult smoking, adult obesity",0.488
+06089,1,Close to average on most measures,0.602
+06095,2,"Higher county size (births); lower adult smoking, adult obesity",0.696
+06097,2,"Higher county size (births); lower adult smoking, adult obesity",0.824
+06099,4,"Higher uninsured adults, no high-school diploma, adult diabetes; lower gestational hypertension level, MOUD access for pregnant patients (per 1,000 births)",0.4
+06107,4,"Higher uninsured adults, no high-school diploma, adult diabetes; lower gestational hypertension level, MOUD access for pregnant patients (per 1,000 births)",0.047
+06111,2,"Higher county size (births); lower adult smoking, adult obesity",0.573
+06113,2,"Higher county size (births); lower adult smoking, adult obesity",0.631
+08001,1,Close to average on most measures,0.266
+08005,2,"Higher county size (births); lower adult smoking, adult obesity",0.194
+08013,2,"Higher county size (births); lower adult smoking, adult obesity",0.097
+08031,2,"Higher county size (births); lower adult smoking, adult obesity",0.036
+08035,2,"Higher county size (births); lower adult smoking, adult obesity",0.08
+08041,2,"Higher county size (births); lower adult smoking, adult obesity",0.228
+08059,2,"Higher county size (births); lower adult smoking, adult obesity",0.536
+08069,2,"Higher county size (births); lower adult smoking, adult obesity",0.592
+08077,1,Close to average on most measures,0.479
+08101,1,Close to average on most measures,0.206
+08123,1,Close to average on most measures,0.675
+09001,2,"Higher county size (births); lower adult smoking, adult obesity",0.642
+09003,1,Close to average on most measures,0.872
+09005,2,"Higher county size (births); lower adult smoking, adult obesity",0.446
+09007,2,"Higher county size (births); lower adult smoking, adult obesity",0.313
+09009,1,Close to average on most measures,0.827
+09011,1,Close to average on most measures,0.542
+09013,2,"Higher county size (births); lower adult smoking, adult obesity",0.595
+09015,1,Close to average on most measures,0.512
+10001,3,"Higher adult high blood pressure, low birth weight level, adult diabetes",0.377
+10003,1,Close to average on most measures,0.704
+10005,1,Close to average on most measures,0.934
+11001,1,Close to average on most measures,0.066
+12001,1,Close to average on most measures,0.611
+12005,1,Close to average on most measures,0.924
+12009,1,Close to average on most measures,0.63
+12011,4,"Higher uninsured adults, no high-school diploma, adult diabetes; lower gestational hypertension level, MOUD access for pregnant patients (per 1,000 births)",0.426
+12015,1,Close to average on most measures,0.526
+12017,1,Close to average on most measures,0.427
+12019,1,Close to average on most measures,0.415
+12021,2,"Higher county size (births); lower adult smoking, adult obesity",0.218
+12031,3,"Higher adult high blood pressure, low birth weight level, adult diabetes",0.225
+12033,3,"Higher adult high blood pressure, low birth weight level, adult diabetes",0.673
+12053,1,Close to average on most measures,0.609
+12057,4,"Higher uninsured adults, no high-school diploma, adult diabetes; lower gestational hypertension level, MOUD access for pregnant patients (per 1,000 births)",0.585
+12061,1,Close to average on most measures,0.337
+12069,1,Close to average on most measures,0.708
+12071,1,Close to average on most measures,0.393
+12073,3,"Higher adult high blood pressure, low birth weight level, adult diabetes",0.161
+12081,1,Close to average on most measures,0.6
+12083,1,Close to average on most measures,0.356
+12085,2,"Higher county size (births); lower adult smoking, adult obesity",0.408
+12086,4,"Higher uninsured adults, no high-school diploma, adult diabetes; lower gestational hypertension level, MOUD access for pregnant patients (per 1,000 births)",0.199
+12091,1,Close to average on most measures,0.856
+12095,4,"Higher uninsured adults, no high-school diploma, adult diabetes; lower gestational hypertension level, MOUD access for pregnant patients (per 1,000 births)",0.388
+12097,4,"Higher uninsured adults, no high-school diploma, adult diabetes; lower gestational hypertension level, MOUD access for pregnant patients (per 1,000 births)",0.841
+12099,4,"Higher uninsured adults, no high-school diploma, adult diabetes; lower gestational hypertension level, MOUD access for pregnant patients (per 1,000 births)",0.197
+12101,1,Close to average on most measures,0.794
+12103,1,Close to average on most measures,0.744
+12105,4,"Higher uninsured adults, no high-school diploma, adult diabetes; lower gestational hypertension level, MOUD access for pregnant patients (per 1,000 births)",0.682
+12109,2,"Higher county size (births); lower adult smoking, adult obesity",0.991
+12111,4,"Higher uninsured adults, no high-school diploma, adult diabetes; lower gestational hypertension level, MOUD access for pregnant patients (per 1,000 births)",0.647
+12113,1,Close to average on most measures,0.803
+12115,2,"Higher county size (births); lower adult smoking, adult obesity",0.901
+12117,2,"Higher county size (births); lower adult smoking, adult obesity",0.74
+12127,1,Close to average on most measures,0.863
+13015,1,Close to average on most measures,0.242
+13021,3,"Higher adult high blood pressure, low birth weight level, adult diabetes",0.073
+13045,3,"Higher adult high blood pressure, low birth weight level, adult diabetes",0.452
+13051,3,"Higher adult high blood pressure, low birth weight level, adult diabetes",0.495
+13057,2,"Higher county size (births); lower adult smoking, adult obesity",0.706
+13059,3,"Higher adult high blood pressure, low birth weight level, adult diabetes",0.244
+13063,3,"Higher adult high blood pressure, low birth weight level, adult diabetes",0.01
+13067,2,"Higher county size (births); lower adult smoking, adult obesity",0.32
+13073,1,Close to average on most measures,0.365
+13077,1,Close to average on most measures,0.021
+13089,4,"Higher uninsured adults, no high-school diploma, adult diabetes; lower gestational hypertension level, MOUD access for pregnant patients (per 1,000 births)",0.192
+13097,3,"Higher adult high blood pressure, low birth weight level, adult diabetes",0.17
+13113,2,"Higher county size (births); lower adult smoking, adult obesity",0.019
+13117,2,"Higher county size (births); lower adult smoking, adult obesity",0.808
+13121,1,Close to average on most measures,0.042
+13135,4,"Higher uninsured adults, no high-school diploma, adult diabetes; lower gestational hypertension level, MOUD access for pregnant patients (per 1,000 births)",0.699
+13139,4,"Higher uninsured adults, no high-school diploma, adult diabetes; lower gestational hypertension level, MOUD access for pregnant patients (per 1,000 births)",0.367
+13151,3,"Higher adult high blood pressure, low birth weight level, adult diabetes",0.069
+13153,3,"Higher adult high blood pressure, low birth weight level, adult diabetes",0.291
+13185,3,"Higher adult high blood pressure, low birth weight level, adult diabetes",0.045
+13215,3,"Higher adult high blood pressure, low birth weight level, adult diabetes",0.18
+13223,1,Close to average on most measures,0.567
+13245,3,"Higher adult high blood pressure, low birth weight level, adult diabetes",0.104
+13313,4,"Higher uninsured adults, no high-school diploma, adult diabetes; lower gestational hypertension level, MOUD access for pregnant patients (per 1,000 births)",0.109
+15001,1,Close to average on most measures,0.23
+15003,2,"Higher county size (births); lower adult smoking, adult obesity",0.149
+15009,2,"Higher county size (births); lower adult smoking, adult obesity",0.661
+16001,2,"Higher county size (births); lower adult smoking, adult obesity",0.728
+16019,1,Close to average on most measures,0.571
+16027,1,Close to average on most measures,0.55
+16055,2,"Higher county size (births); lower adult smoking, adult obesity",0.067
+17019,1,Close to average on most measures,0.82
+17031,4,"Higher uninsured adults, no high-school diploma, adult diabetes; lower gestational hypertension level, MOUD access for pregnant patients (per 1,000 births)",0.078
+17037,1,Close to average on most measures,0.332
+17043,2,"Higher county size (births); lower adult smoking, adult obesity",0.877
+17089,2,"Higher county size (births); lower adult smoking, adult obesity",0.386
+17091,3,"Higher adult high blood pressure, low birth weight level, adult diabetes",0.587
+17093,2,"Higher county size (births); lower adult smoking, adult obesity",0.209
+17097,2,"Higher county size (births); lower adult smoking, adult obesity",0.986
+17099,1,Close to average on most measures,0.865
+17111,2,"Higher county size (births); lower adult smoking, adult obesity",0.95
+17113,1,Close to average on most measures,0.87
+17115,3,"Higher adult high blood pressure, low birth weight level, adult diabetes",0.299
+17119,1,Close to average on most measures,0.879
+17143,1,Close to average on most measures,0.946
+17161,1,Close to average on most measures,0.182
+17163,3,"Higher adult high blood pressure, low birth weight level, adult diabetes",0.888
+17167,3,"Higher adult high blood pressure, low birth weight level, adult diabetes",0.215
+17179,1,Close to average on most measures,0.545
+17197,2,"Higher county size (births); lower adult smoking, adult obesity",0.749
+17201,3,"Higher adult high blood pressure, low birth weight level, adult diabetes",0.984
+18003,1,Close to average on most measures,0.178
+18019,1,Close to average on most measures,0.145
+18035,3,"Higher adult high blood pressure, low birth weight level, adult diabetes",0.524
+18039,4,"Higher uninsured adults, no high-school diploma, adult diabetes; lower gestational hypertension level, MOUD access for pregnant patients (per 1,000 births)",0.22
+18057,2,"Higher county size (births); lower adult smoking, adult obesity",0.517
+18063,2,"Higher county size (births); lower adult smoking, adult obesity",0.277
+18081,1,Close to average on most measures,0.848
+18089,3,"Higher adult high blood pressure, low birth weight level, adult diabetes",0.99
+18091,3,"Higher adult high blood pressure, low birth weight level, adult diabetes",0.976
+18095,3,"Higher adult high blood pressure, low birth weight level, adult diabetes",0.732
+18097,3,"Higher adult high blood pressure, low birth weight level, adult diabetes",0.618
+18105,1,Close to average on most measures,0.486
+18127,1,Close to average on most measures,0.907
+18141,1,Close to average on most measures,0.965
+18157,1,Close to average on most measures,0.919
+18163,3,"Higher adult high blood pressure, low birth weight level, adult diabetes",0.92
+18167,3,"Higher adult high blood pressure, low birth weight level, adult diabetes",0.49
+19013,1,Close to average on most measures,0.616
+19103,2,"Higher county size (births); lower adult smoking, adult obesity",0.668
+19113,2,"Higher county size (births); lower adult smoking, adult obesity",0.583
+19153,1,Close to average on most measures,0.908
+19163,1,Close to average on most measures,0.644
+19193,3,"Higher adult high blood pressure, low birth weight level, adult diabetes",0.623
+20045,2,"Higher county size (births); lower adult smoking, adult obesity",0.318
+20091,2,"Higher county size (births); lower adult smoking, adult obesity",0.625
+20173,1,Close to average on most measures,0.787
+20177,1,Close to average on most measures,0.472
+20209,3,"Higher adult high blood pressure, low birth weight level, adult diabetes",0.514
+21015,1,Close to average on most measures,0.31
+21067,1,Close to average on most measures,0.694
+21093,3,"Higher adult high blood pressure, low birth weight level, adult diabetes",0.064
+21111,3,"Higher adult high blood pressure, low birth weight level, adult diabetes",0.443
+21117,1,Close to average on most measures,0.417
+21227,1,Close to average on most measures,0.175
+22005,3,"Higher adult high blood pressure, low birth weight level, adult diabetes",0.263
+22015,3,"Higher adult high blood pressure, low birth weight level, adult diabetes",0.154
+22017,3,"Higher adult high blood pressure, low birth weight level, adult diabetes",0.017
+22019,3,"Higher adult high blood pressure, low birth weight level, adult diabetes",0.955
+22033,3,"Higher adult high blood pressure, low birth weight level, adult diabetes",0.58
+22051,3,"Higher adult high blood pressure, low birth weight level, adult diabetes",0.917
+22055,3,"Higher adult high blood pressure, low birth weight level, adult diabetes",0.945
+22063,3,"Higher adult high blood pressure, low birth weight level, adult diabetes",0.484
+22071,3,"Higher adult high blood pressure, low birth weight level, adult diabetes",0.189
+22073,3,"Higher adult high blood pressure, low birth weight level, adult diabetes",0.031
+22079,3,"Higher adult high blood pressure, low birth weight level, adult diabetes",0.048
+22103,1,Close to average on most measures,0.922
+22105,3,"Higher adult high blood pressure, low birth weight level, adult diabetes",0.638
+22109,3,"Higher adult high blood pressure, low birth weight level, adult diabetes",0.529
+23001,1,Close to average on most measures,0.272
+23005,2,"Higher county size (births); lower adult smoking, adult obesity",0.308
+23011,1,Close to average on most measures,0.502
+23019,1,Close to average on most measures,0.246
+23031,2,"Higher county size (births); lower adult smoking, adult obesity",0.837
+24003,2,"Higher county size (births); lower adult smoking, adult obesity",0.766
+24005,1,Close to average on most measures,0.548
+24013,2,"Higher county size (births); lower adult smoking, adult obesity",0.606
+24015,1,Close to average on most measures,0.088
+24017,1,Close to average on most measures,0.138
+24021,2,"Higher county size (births); lower adult smoking, adult obesity",0.849
+24025,2,"Higher county size (births); lower adult smoking, adult obesity",0.211
+24027,2,"Higher county size (births); lower adult smoking, adult obesity",0.685
+24031,2,"Higher county size (births); lower adult smoking, adult obesity",0.341
+24033,4,"Higher uninsured adults, no high-school diploma, adult diabetes; lower gestational hypertension level, MOUD access for pregnant patients (per 1,000 births)",0.14
+24037,1,Close to average on most measures,0.635
+24043,3,"Higher adult high blood pressure, low birth weight level, adult diabetes",0.516
+24510,3,"Higher adult high blood pressure, low birth weight level, adult diabetes",0.028
+25001,2,"Higher county size (births); lower adult smoking, adult obesity",0.111
+25003,1,Close to average on most measures,0.074
+25005,1,Close to average on most measures,0.478
+25009,2,"Higher county size (births); lower adult smoking, adult obesity",0.683
+25013,1,Close to average on most measures,0.349
+25015,2,"Higher county size (births); lower adult smoking, adult obesity",0.358
+25017,2,"Higher county size (births); lower adult smoking, adult obesity",0.476
+25021,2,"Higher county size (births); lower adult smoking, adult obesity",0.72
+25023,2,"Higher county size (births); lower adult smoking, adult obesity",0.993
+25025,1,Close to average on most measures,0.102
+25027,2,"Higher county size (births); lower adult smoking, adult obesity",0.614
+26005,1,Close to average on most measures,0.997
+26017,1,Close to average on most measures,0.967
+26021,3,"Higher adult high blood pressure, low birth weight level, adult diabetes",0.811
+26025,3,"Higher adult high blood pressure, low birth weight level, adult diabetes",0.875
+26045,1,Close to average on most measures,0.334
+26049,3,"Higher adult high blood pressure, low birth weight level, adult diabetes",0.913
+26065,1,Close to average on most measures,0.958
+26075,1,Close to average on most measures,0.734
+26077,1,Close to average on most measures,0.957
+26081,1,Close to average on most measures,0.294
+26093,2,"Higher county size (births); lower adult smoking, adult obesity",0.221
+26099,1,Close to average on most measures,0.836
+26115,1,Close to average on most measures,0.701
+26121,3,"Higher adult high blood pressure, low birth weight level, adult diabetes",0.81
+26125,2,"Higher county size (births); lower adult smoking, adult obesity",0.858
+26139,2,"Higher county size (births); lower adult smoking, adult obesity",0.574
+26145,3,"Higher adult high blood pressure, low birth weight level, adult diabetes",0.915
+26147,1,Close to average on most measures,0.747
+26161,2,"Higher county size (births); lower adult smoking, adult obesity",0.9
+26163,3,"Higher adult high blood pressure, low birth weight level, adult diabetes",0.42
+27003,2,"Higher county size (births); lower adult smoking, adult obesity",0.867
+27037,2,"Higher county size (births); lower adult smoking, adult obesity",0.746
+27053,2,"Higher county size (births); lower adult smoking, adult obesity",0.692
+27109,2,"Higher county size (births); lower adult smoking, adult obesity",0.298
+27123,1,Close to average on most measures,0.817
+27137,1,Close to average on most measures,0.329
+27139,2,"Higher county size (births); lower adult smoking, adult obesity",0.628
+27145,1,Close to average on most measures,0.855
+27163,2,"Higher county size (births); lower adult smoking, adult obesity",0.581
+27171,2,"Higher county size (births); lower adult smoking, adult obesity",0.355
+28033,3,"Higher adult high blood pressure, low birth weight level, adult diabetes",0.346
+28047,3,"Higher adult high blood pressure, low birth weight level, adult diabetes",0.933
+28049,3,"Higher adult high blood pressure, low birth weight level, adult diabetes",0.007
+28059,3,"Higher adult high blood pressure, low birth weight level, adult diabetes",0.505
+28121,1,Close to average on most measures,0.04
+29019,1,Close to average on most measures,0.825
+29047,1,Close to average on most measures,0.869
+29071,1,Close to average on most measures,0.785
+29077,1,Close to average on most measures,0.657
+29095,3,"Higher adult high blood pressure, low birth weight level, adult diabetes",0.709
+29097,3,"Higher adult high blood pressure, low birth weight level, adult diabetes",0.448
+29099,1,Close to average on most measures,0.429
+29183,2,"Higher county size (births); lower adult smoking, adult obesity",0.73
+29189,1,Close to average on most measures,0.348
+29510,3,"Higher adult high blood pressure, low birth weight level, adult diabetes",0.306
+30063,2,"Higher county size (births); lower adult smoking, adult obesity",0.519
+30111,1,Close to average on most measures,0.905
+31055,1,Close to average on most measures,0.407
+31109,2,"Higher county size (births); lower adult smoking, adult obesity",0.311
+31153,2,"Higher county size (births); lower adult smoking, adult obesity",0.061
+32003,4,"Higher uninsured adults, no high-school diploma, adult diabetes; lower gestational hypertension level, MOUD access for pregnant patients (per 1,000 births)",0.434
+32031,1,Close to average on most measures,0.5
+33011,2,"Higher county size (births); lower adult smoking, adult obesity",0.633
+33013,2,"Higher county size (births); lower adult smoking, adult obesity",0.666
+33015,2,"Higher county size (births); lower adult smoking, adult obesity",0.76
+33017,2,"Higher county size (births); lower adult smoking, adult obesity",0.68
+34001,1,Close to average on most measures,0.398
+34003,2,"Higher county size (births); lower adult smoking, adult obesity",0.607
+34005,2,"Higher county size (births); lower adult smoking, adult obesity",0.998
+34007,1,Close to average on most measures,0.69
+34011,3,"Higher adult high blood pressure, low birth weight level, adult diabetes",0.37
+34013,4,"Higher uninsured adults, no high-school diploma, adult diabetes; lower gestational hypertension level, MOUD access for pregnant patients (per 1,000 births)",0.45
+34015,2,"Higher county size (births); lower adult smoking, adult obesity",0.725
+34017,4,"Higher uninsured adults, no high-school diploma, adult diabetes; lower gestational hypertension level, MOUD access for pregnant patients (per 1,000 births)",0.362
+34019,2,"Higher county size (births); lower adult smoking, adult obesity",0.131
+34021,2,"Higher county size (births); lower adult smoking, adult obesity",0.533
+34023,2,"Higher county size (births); lower adult smoking, adult obesity",0.882
+34025,2,"Higher county size (births); lower adult smoking, adult obesity",0.893
+34027,2,"Higher county size (births); lower adult smoking, adult obesity",0.285
+34029,2,"Higher county size (births); lower adult smoking, adult obesity",0.055
+34031,4,"Higher uninsured adults, no high-school diploma, adult diabetes; lower gestational hypertension level, MOUD access for pregnant patients (per 1,000 births)",0.929
+34035,2,"Higher county size (births); lower adult smoking, adult obesity",0.702
+34037,2,"Higher county size (births); lower adult smoking, adult obesity",0.737
+34039,4,"Higher uninsured adults, no high-school diploma, adult diabetes; lower gestational hypertension level, MOUD access for pregnant patients (per 1,000 births)",0.287
+34041,2,"Higher county size (births); lower adult smoking, adult obesity",0.884
+35001,1,Close to average on most measures,0.391
+35013,4,"Higher uninsured adults, no high-school diploma, adult diabetes; lower gestational hypertension level, MOUD access for pregnant patients (per 1,000 births)",0.372
+35043,1,Close to average on most measures,0.874
+35045,3,"Higher adult high blood pressure, low birth weight level, adult diabetes",0.016
+35049,1,Close to average on most measures,0.026
+36001,1,Close to average on most measures,0.671
+36005,4,"Higher uninsured adults, no high-school diploma, adult diabetes; lower gestational hypertension level, MOUD access for pregnant patients (per 1,000 births)",0.014
+36007,1,Close to average on most measures,0.697
+36013,1,Close to average on most measures,0.099
+36027,2,"Higher county size (births); lower adult smoking, adult obesity",0.763
+36029,1,Close to average on most measures,0.561
+36045,1,Close to average on most measures,0.988
+36047,4,"Higher uninsured adults, no high-school diploma, adult diabetes; lower gestational hypertension level, MOUD access for pregnant patients (per 1,000 births)",0.083
+36055,1,Close to average on most measures,0.258
+36059,2,"Higher county size (births); lower adult smoking, adult obesity",0.413
+36061,2,"Higher county size (births); lower adult smoking, adult obesity",0.107
+36063,1,Close to average on most measures,0.654
+36065,1,Close to average on most measures,0.926
+36067,1,Close to average on most measures,0.953
+36069,2,"Higher county size (births); lower adult smoking, adult obesity",0.163
+36071,2,"Higher county size (births); lower adult smoking, adult obesity",0.649
+36075,1,Close to average on most measures,0.711
+36081,4,"Higher uninsured adults, no high-school diploma, adult diabetes; lower gestational hypertension level, MOUD access for pregnant patients (per 1,000 births)",0.095
+36083,1,Close to average on most measures,0.796
+36085,2,"Higher county size (births); lower adult smoking, adult obesity",0.253
+36087,2,"Higher county size (births); lower adult smoking, adult obesity",0.038
+36089,1,Close to average on most measures,0.092
+36091,2,"Higher county size (births); lower adult smoking, adult obesity",0.41
+36093,1,Close to average on most measures,0.789
+36103,2,"Higher county size (births); lower adult smoking, adult obesity",0.464
+36109,2,"Higher county size (births); lower adult smoking, adult obesity",0.152
+36111,2,"Higher county size (births); lower adult smoking, adult obesity",0.777
+36119,2,"Higher county size (births); lower adult smoking, adult obesity",0.509
+37001,3,"Higher adult high blood pressure, low birth weight level, adult diabetes",0.663
+37019,1,Close to average on most measures,0.676
+37021,1,Close to average on most measures,0.324
+37025,1,Close to average on most measures,0.979
+37035,1,Close to average on most measures,0.818
+37049,3,"Higher adult high blood pressure, low birth weight level, adult diabetes",0.77
+37051,3,"Higher adult high blood pressure, low birth weight level, adult diabetes",0.791
+37057,3,"Higher adult high blood pressure, low birth weight level, adult diabetes",0.768
+37063,1,Close to average on most measures,0.813
+37067,3,"Higher adult high blood pressure, low birth weight level, adult diabetes",0.765
+37071,3,"Higher adult high blood pressure, low birth weight level, adult diabetes",0.912
+37081,3,"Higher adult high blood pressure, low birth weight level, adult diabetes",0.952
+37085,3,"Higher adult high blood pressure, low birth weight level, adult diabetes",0.689
+37089,1,Close to average on most measures,0.469
+37097,1,Close to average on most measures,0.363
+37101,1,Close to average on most measures,0.894
+37119,1,Close to average on most measures,0.144
+37129,1,Close to average on most measures,0.419
+37133,1,Close to average on most measures,0.396
+37135,2,"Higher county size (births); lower adult smoking, adult obesity",0.735
+37147,3,"Higher adult high blood pressure, low birth weight level, adult diabetes",0.938
+37151,3,"Higher adult high blood pressure, low birth weight level, adult diabetes",0.521
+37155,3,"Higher adult high blood pressure, low birth weight level, adult diabetes",0.0
+37159,3,"Higher adult high blood pressure, low birth weight level, adult diabetes",0.507
+37179,2,"Higher county size (births); lower adult smoking, adult obesity",0.779
+37183,2,"Higher county size (births); lower adult smoking, adult obesity",0.503
+37191,3,"Higher adult high blood pressure, low birth weight level, adult diabetes",0.981
+38017,2,"Higher county size (births); lower adult smoking, adult obesity",0.497
+39003,3,"Higher adult high blood pressure, low birth weight level, adult diabetes",0.439
+39007,3,"Higher adult high blood pressure, low birth weight level, adult diabetes",0.043
+39017,1,Close to average on most measures,0.948
+39023,3,"Higher adult high blood pressure, low birth weight level, adult diabetes",0.394
+39025,1,Close to average on most measures,0.834
+39029,3,"Higher adult high blood pressure, low birth weight level, adult diabetes",0.187
+39035,3,"Higher adult high blood pressure, low birth weight level, adult diabetes",0.462
+39041,2,"Higher county size (births); lower adult smoking, adult obesity",0.559
+39045,1,Close to average on most measures,0.772
+39049,1,Close to average on most measures,0.26
+39057,1,Close to average on most measures,0.637
+39061,1,Close to average on most measures,0.54
+39085,1,Close to average on most measures,0.83
+39089,1,Close to average on most measures,0.971
+39093,1,Close to average on most measures,0.51
+39095,3,"Higher adult high blood pressure, low birth weight level, adult diabetes",0.799
+39099,3,"Higher adult high blood pressure, low birth weight level, adult diabetes",0.374
+39103,2,"Higher county size (births); lower adult smoking, adult obesity",0.325
+39109,1,Close to average on most measures,0.474
+39113,3,"Higher adult high blood pressure, low birth weight level, adult diabetes",0.557
+39133,1,Close to average on most measures,0.604
+39139,3,"Higher adult high blood pressure, low birth weight level, adult diabetes",0.289
+39151,1,Close to average on most measures,0.843
+39153,1,Close to average on most measures,0.715
+39155,3,"Higher adult high blood pressure, low birth weight level, adult diabetes",0.251
+39165,2,"Higher county size (births); lower adult smoking, adult obesity",0.939
+39169,1,Close to average on most measures,0.133
+39173,1,Close to average on most measures,0.455
+40017,1,Close to average on most measures,0.433
+40027,1,Close to average on most measures,0.742
+40031,3,"Higher adult high blood pressure, low birth weight level, adult diabetes",0.121
+40109,4,"Higher uninsured adults, no high-school diploma, adult diabetes; lower gestational hypertension level, MOUD access for pregnant patients (per 1,000 births)",0.538
+40143,1,Close to average on most measures,0.716
+41005,2,"Higher county size (births); lower adult smoking, adult obesity",0.927
+41017,2,"Higher county size (births); lower adult smoking, adult obesity",0.804
+41019,1,Close to average on most measures,0.27
+41029,1,Close to average on most measures,0.798
+41039,1,Close to average on most measures,0.412
+41043,1,Close to average on most measures,0.336
+41047,1,Close to average on most measures,0.343
+41051,2,"Higher county size (births); lower adult smoking, adult obesity",0.223
+41067,2,"Higher county size (births); lower adult smoking, adult obesity",0.832
+42001,1,Close to average on most measures,0.125
+42003,1,Close to average on most measures,0.457
+42007,1,Close to average on most measures,0.822
+42011,1,Close to average on most measures,0.853
+42013,1,Close to average on most measures,0.147
+42017,2,"Higher county size (births); lower adult smoking, adult obesity",0.612
+42019,2,"Higher county size (births); lower adult smoking, adult obesity",0.351
+42021,1,Close to average on most measures,0.09
+42027,1,Close to average on most measures,0.024
+42029,2,"Higher county size (births); lower adult smoking, adult obesity",0.969
+42041,2,"Higher county size (births); lower adult smoking, adult obesity",0.718
+42043,1,Close to average on most measures,0.943
+42045,1,Close to average on most measures,0.599
+42049,1,Close to average on most measures,0.431
+42051,3,"Higher adult high blood pressure, low birth weight level, adult diabetes",0.112
+42055,1,Close to average on most measures,0.213
+42069,1,Close to average on most measures,0.687
+42071,2,"Higher county size (births); lower adult smoking, adult obesity",0.166
+42075,1,Close to average on most measures,0.941
+42077,1,Close to average on most measures,0.995
+42079,1,Close to average on most measures,0.564
+42081,1,Close to average on most measures,0.445
+42085,1,Close to average on most measures,0.436
+42089,1,Close to average on most measures,0.972
+42091,2,"Higher county size (births); lower adult smoking, adult obesity",0.936
+42095,1,Close to average on most measures,0.891
+42101,3,"Higher adult high blood pressure, low birth weight level, adult diabetes",0.059
+42107,1,Close to average on most measures,0.382
+42125,1,Close to average on most measures,0.754
+42129,1,Close to average on most measures,0.566
+42133,1,Close to average on most measures,0.974
+44003,2,"Higher county size (births); lower adult smoking, adult obesity",0.173
+44007,1,Close to average on most measures,0.422
+44009,2,"Higher county size (births); lower adult smoking, adult obesity",0.071
+45003,1,Close to average on most measures,0.753
+45007,1,Close to average on most measures,0.721
+45013,2,"Higher county size (births); lower adult smoking, adult obesity",0.405
+45015,3,"Higher adult high blood pressure, low birth weight level, adult diabetes",0.896
+45019,1,Close to average on most measures,0.543
+45035,1,Close to average on most measures,0.751
+45041,3,"Higher adult high blood pressure, low birth weight level, adult diabetes",0.201
+45045,1,Close to average on most measures,0.756
+45051,1,Close to average on most measures,0.739
+45063,1,Close to average on most measures,0.86
+45077,1,Close to average on most measures,0.237
+45079,3,"Higher adult high blood pressure, low birth weight level, adult diabetes",0.493
+45083,3,"Higher adult high blood pressure, low birth weight level, adult diabetes",0.844
+45085,3,"Higher adult high blood pressure, low birth weight level, adult diabetes",0.881
+45091,1,Close to average on most measures,0.903
+46099,1,Close to average on most measures,0.773
+46103,1,Close to average on most measures,0.889
+47009,1,Close to average on most measures,0.588
+47037,1,Close to average on most measures,0.254
+47065,1,Close to average on most measures,0.465
+47093,1,Close to average on most measures,0.292
+47125,3,"Higher adult high blood pressure, low birth weight level, adult diabetes",0.46
+47149,1,Close to average on most measures,0.886
+47157,3,"Higher adult high blood pressure, low birth weight level, adult diabetes",0.142
+47163,3,"Higher adult high blood pressure, low birth weight level, adult diabetes",0.168
+47165,1,Close to average on most measures,0.846
+47179,1,Close to average on most measures,0.156
+47187,2,"Higher county size (births); lower adult smoking, adult obesity",0.303
+47189,1,Close to average on most measures,0.983
+48027,4,"Higher uninsured adults, no high-school diploma, adult diabetes; lower gestational hypertension level, MOUD access for pregnant patients (per 1,000 births)",0.208
+48029,4,"Higher uninsured adults, no high-school diploma, adult diabetes; lower gestational hypertension level, MOUD access for pregnant patients (per 1,000 births)",0.483
+48039,1,Close to average on most measures,0.247
+48041,4,"Higher uninsured adults, no high-school diploma, adult diabetes; lower gestational hypertension level, MOUD access for pregnant patients (per 1,000 births)",0.249
+48061,4,"Higher uninsured adults, no high-school diploma, adult diabetes; lower gestational hypertension level, MOUD access for pregnant patients (per 1,000 births)",0.003
+48085,2,"Higher county size (births); lower adult smoking, adult obesity",0.491
+48091,2,"Higher county size (births); lower adult smoking, adult obesity",0.379
+48113,4,"Higher uninsured adults, no high-school diploma, adult diabetes; lower gestational hypertension level, MOUD access for pregnant patients (per 1,000 births)",0.535
+48121,2,"Higher county size (births); lower adult smoking, adult obesity",0.645
+48135,4,"Higher uninsured adults, no high-school diploma, adult diabetes; lower gestational hypertension level, MOUD access for pregnant patients (per 1,000 births)",0.13
+48139,4,"Higher uninsured adults, no high-school diploma, adult diabetes; lower gestational hypertension level, MOUD access for pregnant patients (per 1,000 births)",0.296
+48141,4,"Higher uninsured adults, no high-school diploma, adult diabetes; lower gestational hypertension level, MOUD access for pregnant patients (per 1,000 births)",0.157
+48157,2,"Higher county size (births); lower adult smoking, adult obesity",0.052
+48167,1,Close to average on most measures,0.401
+48181,1,Close to average on most measures,0.481
+48183,3,"Higher adult high blood pressure, low birth weight level, adult diabetes",0.261
+48187,1,Close to average on most measures,0.164
+48201,4,"Higher uninsured adults, no high-school diploma, adult diabetes; lower gestational hypertension level, MOUD access for pregnant patients (per 1,000 births)",0.24
+48209,1,Close to average on most measures,0.239
+48215,4,"Higher uninsured adults, no high-school diploma, adult diabetes; lower gestational hypertension level, MOUD access for pregnant patients (per 1,000 births)",0.002
+48245,3,"Higher adult high blood pressure, low birth weight level, adult diabetes",0.441
+48251,1,Close to average on most measures,0.28
+48257,4,"Higher uninsured adults, no high-school diploma, adult diabetes; lower gestational hypertension level, MOUD access for pregnant patients (per 1,000 births)",0.656
+48303,4,"Higher uninsured adults, no high-school diploma, adult diabetes; lower gestational hypertension level, MOUD access for pregnant patients (per 1,000 births)",0.862
+48309,4,"Higher uninsured adults, no high-school diploma, adult diabetes; lower gestational hypertension level, MOUD access for pregnant patients (per 1,000 births)",0.962
+48329,4,"Higher uninsured adults, no high-school diploma, adult diabetes; lower gestational hypertension level, MOUD access for pregnant patients (per 1,000 births)",0.344
+48339,2,"Higher county size (births); lower adult smoking, adult obesity",0.275
+48355,4,"Higher uninsured adults, no high-school diploma, adult diabetes; lower gestational hypertension level, MOUD access for pregnant patients (per 1,000 births)",0.531
+48367,2,"Higher county size (births); lower adult smoking, adult obesity",0.552
+48375,4,"Higher uninsured adults, no high-school diploma, adult diabetes; lower gestational hypertension level, MOUD access for pregnant patients (per 1,000 births)",0.022
+48381,1,Close to average on most measures,0.375
+48423,4,"Higher uninsured adults, no high-school diploma, adult diabetes; lower gestational hypertension level, MOUD access for pregnant patients (per 1,000 births)",0.619
+48439,4,"Higher uninsured adults, no high-school diploma, adult diabetes; lower gestational hypertension level, MOUD access for pregnant patients (per 1,000 births)",0.369
+48441,3,"Higher adult high blood pressure, low birth weight level, adult diabetes",0.64
+48451,4,"Higher uninsured adults, no high-school diploma, adult diabetes; lower gestational hypertension level, MOUD access for pregnant patients (per 1,000 births)",0.126
+48453,2,"Higher county size (births); lower adult smoking, adult obesity",0.498
+48479,4,"Higher uninsured adults, no high-school diploma, adult diabetes; lower gestational hypertension level, MOUD access for pregnant patients (per 1,000 births)",0.009
+48485,4,"Higher uninsured adults, no high-school diploma, adult diabetes; lower gestational hypertension level, MOUD access for pregnant patients (per 1,000 births)",0.403
+48491,2,"Higher county size (births); lower adult smoking, adult obesity",0.898
+49005,2,"Higher county size (births); lower adult smoking, adult obesity",0.651
+49011,2,"Higher county size (births); lower adult smoking, adult obesity",0.91
+49035,2,"Higher county size (births); lower adult smoking, adult obesity",0.727
+49049,2,"Higher county size (births); lower adult smoking, adult obesity",0.775
+49053,2,"Higher county size (births); lower adult smoking, adult obesity",0.204
+49057,2,"Higher county size (births); lower adult smoking, adult obesity",0.792
+50007,2,"Higher county size (births); lower adult smoking, adult obesity",0.081
+51013,2,"Higher county size (births); lower adult smoking, adult obesity",0.123
+51041,1,Close to average on most measures,0.659
+51059,2,"Higher county size (births); lower adult smoking, adult obesity",0.317
+51087,1,Close to average on most measures,0.621
+51107,2,"Higher county size (births); lower adult smoking, adult obesity",0.171
+51153,2,"Higher county size (births); lower adult smoking, adult obesity",0.137
+51177,1,Close to average on most measures,0.547
+51179,2,"Higher county size (births); lower adult smoking, adult obesity",0.554
+51510,2,"Higher county size (births); lower adult smoking, adult obesity",0.784
+51550,1,Close to average on most measures,0.151
+51650,3,"Higher adult high blood pressure, low birth weight level, adult diabetes",0.758
+51700,3,"Higher adult high blood pressure, low birth weight level, adult diabetes",0.555
+51710,3,"Higher adult high blood pressure, low birth weight level, adult diabetes",0.851
+51760,3,"Higher adult high blood pressure, low birth weight level, adult diabetes",0.829
+51810,1,Close to average on most measures,0.339
+53005,2,"Higher county size (births); lower adult smoking, adult obesity",0.471
+53011,2,"Higher county size (births); lower adult smoking, adult obesity",0.78
+53015,1,Close to average on most measures,0.664
+53033,2,"Higher county size (births); lower adult smoking, adult obesity",0.085
+53035,2,"Higher county size (births); lower adult smoking, adult obesity",0.761
+53053,1,Close to average on most measures,0.282
+53057,2,"Higher county size (births); lower adult smoking, adult obesity",0.593
+53061,2,"Higher county size (births); lower adult smoking, adult obesity",0.782
+53063,2,"Higher county size (births); lower adult smoking, adult obesity",0.33
+53067,2,"Higher county size (births); lower adult smoking, adult obesity",0.458
+53073,2,"Higher county size (births); lower adult smoking, adult obesity",0.268
+53077,4,"Higher uninsured adults, no high-school diploma, adult diabetes; lower gestational hypertension level, MOUD access for pregnant patients (per 1,000 births)",0.106
+54003,1,Close to average on most measures,0.353
+54039,3,"Higher adult high blood pressure, low birth weight level, adult diabetes",0.05
+55009,1,Close to average on most measures,0.528
+55025,2,"Higher county size (births); lower adult smoking, adult obesity",0.273
+55039,1,Close to average on most measures,0.59
+55059,1,Close to average on most measures,0.964
+55063,1,Close to average on most measures,0.183
+55073,1,Close to average on most measures,0.301
+55079,3,"Higher adult high blood pressure, low birth weight level, adult diabetes",0.576
+55087,2,"Higher county size (births); lower adult smoking, adult obesity",0.279
+55101,1,Close to average on most measures,0.453
+55105,1,Close to average on most measures,0.96
+55117,2,"Higher county size (births); lower adult smoking, adult obesity",0.322
+55127,1,Close to average on most measures,0.467
+55131,2,"Higher county size (births); lower adult smoking, adult obesity",0.327
+55133,2,"Higher county size (births); lower adult smoking, adult obesity",0.723
+55139,1,Close to average on most measures,0.815

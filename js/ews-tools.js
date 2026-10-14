@@ -50,7 +50,9 @@
     }
     return { fips: c.id, county: c.name, state: c.state, data_year: D.year, forecast_year: D.forecast_year,
       indicators: ind, county_context: c.ctx || null, context_median_of_scored_counties: D.context_median || null,
-      need_and_access: c.need || null };
+      need_and_access: c.need || null,
+      county_type: c.type ? { type: c.type, description: (D.types || {})[c.type] ? D.types[c.type].description : null } : null,
+      unusual_data_this_year: c.unusual || null };
   }
 
   function countyBrief(D, c) {
@@ -73,6 +75,7 @@
     const hi = Object.entries(c.ind).filter(([, e]) => e.similar && /higher/.test(e.similar.verdict));
     if (hi.length) parts.push(`Compared with counties in similar conditions, ${hi.map(([k, e]) => `${indLabel(D, k).toLowerCase()} is higher (${pct(e.similar.rate)} vs ${pct(e.similar.expected)})`).join('; ')}.`);
     if (c.need) parts.push(`Need and access (${c.need.priority === 'high' ? 'high priority' : 'for review'}): ${c.need.reasons}.`);
+    if (c.unusual) parts.push(`The machine-learning data check found this county's ${D.year} record unusual (${c.unusual}); confirm the data before acting on its flags.`);
     parts.push('These are statistical flags for local follow-up, not confirmed problems.');
     return parts.join(' ');
   }
@@ -121,7 +124,8 @@
           : f === 'subgroup_flag' ? subFlagged(e) : f === 'high_next_year_risk' ? (e.risk || 0) >= 0.3
           : f === 'stable_but_high_risk' ? e.level === 'stable' && (e.risk || 0) >= 0.25
           : f === 'need_and_access' ? !!c.need && (flagged(e) || subFlagged(e) || (e.risk || 0) >= 0.3)
-          : f === 'higher_than_similar' ? !!(e.similar && /higher/.test(e.similar.verdict)) : false;
+          : f === 'higher_than_similar' ? !!(e.similar && /higher/.test(e.similar.verdict))
+          : f === 'unusual_data' ? !!c.unusual : false;
         if (ok) rows.push({ county: c.name, state: c.state, fips: c.id, indicator: indLabel(D, k), status: e.level,
           rate: e.rate, expected_rate: e.expected, observed_vs_expected: e.rr, next_year_risk: e.risk ?? null,
           similar_counties_rate: e.similar ? e.similar.expected : null, need_priority: c.need ? c.need.priority : null });
@@ -144,6 +148,7 @@
       need_and_access_counties: D.counties.filter(c => c.need).length,
       need_and_access_high_priority: D.counties.filter(c => c.need && c.need.priority === 'high').map(c => `${c.name}, ${c.state}`),
       forecast_validation: D.forecast_metrics || null, similar_county_model_fit: D.benchmark_quality || null,
+      county_types: D.types || null, county_types_quality: D.types_quality || null,
       sources: [D.source, D.context_source].filter(Boolean) };
   }
 
@@ -152,6 +157,9 @@
     forecast: 'A gradient-boosted tree model predicts whether each county will be flagged next year from recent rates, trends, detection scores, size, payer mix and state-wide changes. It is validated forward in time (trained only on earlier years) against logistic regression and persistence baselines. County context did not clearly improve it, so it is not used in the forecast.',
     similar_counties: 'A gradient-boosted regression model predicts each county\'s 2022-2024 rate from its health, social, overdose and access context alone, using 5-fold cross-validation so no county is judged by a model that saw it. Rates well above the prediction are "higher than similar counties".',
     need_and_access: 'Counties with a perinatal flag (or next-year risk >= 30%) plus a top-quarter overdose death rate, thin treatment access for pregnant/postpartum patients (no or bottom-quarter facilities offering buprenorphine or methadone, accepting Medicaid, with a pregnancy programme), or thin delivery capacity. High priority = high overdose burden and thin treatment access.',
+    county_types: 'Unsupervised k-means clustering groups the 578 counties into peer types by recent indicator levels, county size, adult health, social conditions, overdose burden and treatment access. The number of types was chosen by silhouette score and checked for stability on 50 bootstrap resamples (adjusted Rand index). Types are a summary of a continuum, not sharp categories.',
+    data_anomalies: 'An Isolation Forest (unsupervised anomaly detection) scores every county-year record; the 2% least typical are flagged, with the features that make them unusual. It complements the rule that flags births changing by more than 30%: on synthetic data with injected errors it found about two-thirds of single-indicator errors the rule misses, with 0.5% false flags.',
+    prediction_ranges: 'For the similar-county comparison, each county gets a 90% range for counties like it, from cross-conformal prediction on normalised residuals. Counties outside the range are higher or lower than similar counties. On the real data the ranges contained 90-91% of counties.',
     limitations: 'County data come from CDC WONDER natality for counties with 100,000+ residents; counts of 9 or fewer are suppressed. Flags are statistical leads, not confirmed problems. Context measures describe places, not people, and are associations, not causes. The tool is not for clinical or individual decisions.',
   };
 
@@ -166,7 +174,7 @@
       run: (D, a) => { const c = findCounty(D, a.fips); return c ? { ...countyRecord(D, c), plain_language_brief: countyBrief(D, c) } : { error: 'County not found. Use search_counties. Only counties with 100,000+ residents are included.' }; } },
     { name: 'list_counties', description: 'List county-indicator results matching a filter, optionally within one state and/or indicator.',
       input_schema: { type: 'object', properties: {
-        filter: { type: 'string', enum: ['flagged', 'alert', 'subgroup_flag', 'high_next_year_risk', 'stable_but_high_risk', 'need_and_access', 'higher_than_similar'] },
+        filter: { type: 'string', enum: ['flagged', 'alert', 'subgroup_flag', 'high_next_year_risk', 'stable_but_high_risk', 'need_and_access', 'higher_than_similar', 'unusual_data'] },
         state: { type: 'string', description: 'Two-letter state code' },
         indicator: { type: 'string', enum: ['late_no_prenatal_care', 'preterm_birth', 'low_birth_weight', 'gestational_hypertension'] },
         limit: { type: 'integer', description: 'Max rows (default 25, max 100)' } }, required: ['filter'] },

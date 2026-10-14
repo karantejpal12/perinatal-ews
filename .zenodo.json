@@ -1,7 +1,7 @@
 {
   "title": "perinatal-ews: open-source early-warning analytics for county maternal and newborn health",
   "upload_type": "software",
-  "description": "<p>perinatal-ews scans public natality data and flags counties where maternal and newborn outcomes (preterm birth, low birth weight, late or no prenatal care, gestational hypertension) are worse than their own recent history and the all-county trend predict.</p><p>It uses empirical-Bayes shrinkage, overdispersion modelling and Benjamini-Hochberg false-discovery-rate control; repeats detection within subgroups; reports within-county equity gaps; and monitors its own data quality, distribution drift and detection performance by county size. It is population surveillance to help health departments decide where to look first, not a clinical tool.</p><p>Version 0.3 adds county context from public CDC, SAMHSA and CMS data (adult health, social factors, drug overdose deaths, treatment facilities offering medications for opioid use disorder to pregnant and postpartum patients, and hospitals with labour and delivery care); a cross-validated machine-learning model that compares each county with counties in similar conditions; context-aware forecast evaluation; and a need-versus-access review list for programme planning.</p><p>Version 0.4 adds an AI assistant in the web explorer: a large language model agent that answers plain-language questions by calling the tool's own data functions over the published results, shows each lookup, and checks every figure in its answers against the data; plus rule-based county and state summaries and a state view.</p>",
+  "description": "<p>perinatal-ews scans public natality data and flags counties where maternal and newborn outcomes (preterm birth, low birth weight, late or no prenatal care, gestational hypertension) are worse than their own recent history and the all-county trend predict.</p><p>It uses empirical-Bayes shrinkage, overdispersion modelling and Benjamini-Hochberg false-discovery-rate control; repeats detection within subgroups; reports within-county equity gaps; and monitors its own data quality, distribution drift and detection performance by county size. It is population surveillance to help health departments decide where to look first, not a clinical tool.</p><p>Version 0.3 adds county context from public CDC, SAMHSA and CMS data (adult health, social factors, drug overdose deaths, treatment facilities offering medications for opioid use disorder to pregnant and postpartum patients, and hospitals with labour and delivery care); a cross-validated machine-learning model that compares each county with counties in similar conditions; context-aware forecast evaluation; and a need-versus-access review list for programme planning.</p><p>Version 0.4 adds an AI assistant in the web explorer: a large language model agent that answers plain-language questions by calling the tool's own data functions over the published results, shows each lookup, and checks every figure in its answers against the data; plus rule-based county and state summaries and a state view.</p><p>Version 0.5 adds county types from unsupervised k-means clustering (with silhouette-based selection and bootstrap stability), an Isolation Forest data-quality check validated on injected errors, cross-conformal 90% prediction ranges for the similar-county comparison (empirical coverage 90-91%), and an interactive county map.</p>",
   "creators": [
     {
       "name": "Tejpal, Karan",
@@ -22,8 +22,11 @@
     "maternity care access",
     "machine learning",
     "large language models",
-    "AI agents"
+    "AI agents",
+    "clustering",
+    "anomaly detection",
+    "conformal prediction"
   ],
   "access_right": "open",
-  "version": "0.4.0"
+  "version": "0.5.0"
 }

@@ -201,3 +201,36 @@ def test_context_features_never_use_future_overdose_data():
     assert np.isnan(out.loc[0, "ctx_overdose_rate"])       # before any data: missing, not a later year
     assert out.loc[1, "ctx_overdose_rate"] == 21.0
     assert out.loc[2, "ctx_overdose_rate"] == 24.0         # latest available, never beyond
+
+
+def test_benchmark_conformal_ranges_have_honest_coverage(cfg, data):
+    from perinatal_ews.context import benchmark
+
+    tidy, _ = data
+    scores, quality = benchmark(tidy, _synthetic_context(tidy), cfg)
+    assert (quality["interval_empirical_coverage"] > 0.80).all()
+    assert (scores["similar_range_low"] <= scores["context_expected_rate"]).all()
+    assert (scores["context_expected_rate"] <= scores["similar_range_high"]).all()
+    outside = scores["compared_with_similar"] != "in line with similar counties"
+    assert ((scores["observed_rate"] > scores["similar_range_high"]) | (scores["observed_rate"] < scores["similar_range_low"]))[outside].all()
+
+
+def test_typology_groups_are_stable_and_described(data):
+    from perinatal_ews.typology import county_typology
+
+    tidy, _ = data
+    assign, summary, profiles, quality = county_typology(tidy, _synthetic_context(tidy))
+    assert 4 <= quality["k"] <= 8
+    assert set(assign["geo_id"]) == set(tidy["geo_id"])
+    assert summary["counties"].sum() == tidy["geo_id"].nunique()
+    assert summary["description"].str.len().gt(0).all()
+
+
+def test_anomaly_model_finds_injected_errors_the_rule_misses():
+    from perinatal_ews.anomaly import validate_on_synthetic
+
+    v = validate_on_synthetic(seed=7).set_index("error_type")
+    assert v.loc["category_collapse", "found_by_model_pct"] >= 50
+    assert v.loc["one_rate_spike", "found_by_model_pct"] >= 50
+    assert v.loc["births_drop", "found_by_either_pct"] == 100
+    assert v.loc["false flags on clean records (%)", "found_by_model_pct"] <= 2
