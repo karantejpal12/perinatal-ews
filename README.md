@@ -1,6 +1,6 @@
 # perinatal-ews
 
-[![DOI](https://zenodo.org/badge/DOI/10.5281/zenodo.23374047.svg)](https://doi.org/10.5281/zenodo.23374047)
+[![DOI](https://zenodo.org/badge/DOI/10.5281/zenodo.23374647.svg)](https://doi.org/10.5281/zenodo.23374647)
 [![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
 
 **Open-source early-warning analytics for county maternal and newborn health.**
@@ -156,9 +156,9 @@ MIT. See [LICENSE](LICENSE).
 
 If you use this software, please cite it:
 
-> Tejpal, K. (2026). *perinatal-ews: open-source early-warning analytics for county maternal and newborn health* (Version 0.2.0) [Computer software]. Zenodo. https://doi.org/10.5281/zenodo.23374047
+> Tejpal, K. (2026). *perinatal-ews: open-source early-warning analytics for county maternal and newborn health* (Version 0.2.0) [Computer software]. Zenodo. https://doi.org/10.5281/zenodo.23374647
 
-GitHub's "Cite this repository" button gives this in other formats. The software is archived on [Zenodo](https://doi.org/10.5281/zenodo.23374047).
+GitHub's "Cite this repository" button gives this in other formats. The software is archived on Zenodo: [v0.2.0](https://doi.org/10.5281/zenodo.23374647) · [v0.1.0](https://doi.org/10.5281/zenodo.23374047).
 
 ## Author
 

@@ -7,10 +7,10 @@ authors:
     given-names: Karan
     orcid: "https://orcid.org/0009-0004-8609-2854"
 version: 0.2.0
-doi: "10.5281/zenodo.23374047"
+doi: "10.5281/zenodo.23374647"
 identifiers:
   - type: doi
-    value: "10.5281/zenodo.23374047"
+    value: "10.5281/zenodo.23374647"
     description: "Zenodo archive of this software"
 date-released: 2026-10-15
 license: MIT
