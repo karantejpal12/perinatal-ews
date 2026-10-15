@@ -2,6 +2,17 @@
 
 All notable changes to perinatal-ews. Each release is archived on Zenodo (concept DOI [10.5281/zenodo.23374046](https://doi.org/10.5281/zenodo.23374046)). Feedback from users and reviewers is tracked as [GitHub issues](https://github.com/karantejpal12/perinatal-ews/issues) and linked here.
 
+## 0.7.0 – 2026-10-15
+
+Monthly updates from CDC provisional data:
+
+- `perinatal_ews.latest`: "this year so far" detection for every state, comparing January to the latest complete month with the same months of earlier years; full-year scoring of the latest provisional year (2025); comparison by mother's race with the same months of the three previous years.
+- Completeness check: the latest month is used only if its births are at least 97% of what earlier months suggest.
+- The explorer and home page show how current the data are (state results through August 2026, retrieved 14 October 2026; county results 2016–2024 final). The state view has a "so far" section, and the map can colour states by their status this year.
+- Monthly routine: `scripts/fetch_wonder_latest.js`, `scripts/update_latest.py` and `docs/UPDATING.md`; each update is kept in `results/history/<YYYY-MM>/`.
+- Final state baseline for January-to-month windows, 2016–2022 (`data/baseline/`), checked against counts requested directly for each window.
+- Fetch scripts pause between queries, because CDC WONDER temporarily blocks addresses that send too many requests.
+
 ## 0.6.0 – 2026-10-14 · [10.5281/zenodo.23381196](https://doi.org/10.5281/zenodo.23381196)
 
 Changes in response to feedback from a state maternal and child health epidemiologist ([#1](https://github.com/karantejpal12/perinatal-ews/issues/1)):

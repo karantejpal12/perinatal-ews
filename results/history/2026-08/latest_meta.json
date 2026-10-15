@@ -1,0 +1,25 @@
+{
+  "updated": "2026-10-14",
+  "latest_month_available": "2026-08",
+  "latest_month_completeness": 0.9805,
+  "excluded_latest_month": false,
+  "ytd_year": 2026,
+  "ytd_through_month": 8,
+  "ytd_label": "January\u2013August 2026",
+  "final_years": "2016\u20132024",
+  "provisional_years": [
+    2025,
+    2026
+  ],
+  "full_year_provisional": 2025,
+  "geography": "state",
+  "states": 51,
+  "counts": {
+    "alerts": 6,
+    "watch": 5
+  },
+  "sources": {
+    "provisional": "CDC WONDER, Natality 2023 through last month (provisional), database D192",
+    "final": "CDC WONDER, Natality 2016-2024 expanded (final), database D149"
+  }
+}

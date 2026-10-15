@@ -578,8 +578,7 @@ footer { max-width: 1120px; margin: 0 auto; padding: 16px max(16px, env(safe-are
     MAP.paths.style('display', stateMode ? 'none' : null);
     MAP.states.classed('on', !!stateMode).each(function (f) {
       const ab = STATE_FIPS_ABBR[f.id]; const e = stateMode && ab && LATEST.states_data[ab] && LATEST.states_data[ab].ind[ind];
-      this.setAttribute('fill', stateMode ? (e ? PAL[e.level] || 'var(--surface-2)' : 'var(--surface-2)') : '');
-      if (!stateMode) this.removeAttribute('fill');
+      this.style.fill = stateMode ? (e ? PAL[e.level] || 'var(--surface-2)' : 'var(--surface-2)') : '';
       this.__tip = e ? `${window.EWS.STATE_NAMES[ab] || ab} · ${LATEST.ytd_label}: ${pct(e.rate)} vs ${pct(e.expected)} expected (${LABEL[e.level] || e.level})` : (ab ? (window.EWS.STATE_NAMES[ab] || ab) : '');
     });
     if (stateMode) { legend('status'); $('#map-note').textContent = `State results use CDC provisional data, ${LATEST.ytd_label}. Select a state to open the state view.`; return; }
@@ -826,7 +825,7 @@ footer { max-width: 1120px; margin: 0 auto; padding: 16px max(16px, env(safe-are
     status('Loading scientific libraries…');
     await py.loadPackage(['numpy', 'pandas', 'scipy', 'scikit-learn', 'pyyaml', 'micropip']);
     status('Installing perinatal-ews…');
-    const wheel = new URL('dist/perinatal_ews-0.6.0-py3-none-any.whl', location.href).href;
+    const wheel = new URL('dist/perinatal_ews-0.7.0-py3-none-any.whl', location.href).href;
     await py.runPythonAsync(`import micropip\nawait micropip.install("${wheel}", deps=False)`);
     return py;
   }

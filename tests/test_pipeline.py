@@ -392,7 +392,7 @@ def test_monthly_update_flags_year_to_date_change_and_records_dates(cfg, tmp_pat
     others = res["ytd"][(res["ytd"].geo_id != "GA")]
     assert (others["level"] == "alert").mean() < 0.05
     assert res["meta"]["ytd_label"] == "January–August 2026"
-    assert res["meta"]["baseline_final_years"] == "2016–2022" and res["full_year"] == 2025
+    assert res["meta"]["final_years"] == "2016–2024" and res["full_year"] == 2025
     assert (tmp_path / "latest_meta.json").exists()
     race = res["race"].set_index(["geo_id", "indicator", "subgroup"])
     assert race.loc[("GA", "preterm_birth", "Hawaiian"), "report_as"] != "Hawaiian"   # too small alone

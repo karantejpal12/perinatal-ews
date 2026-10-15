@@ -139,11 +139,11 @@ def run_latest(provisional: pd.DataFrame, baseline: pd.DataFrame, meta: dict, co
     m, year = int(meta["ytd_through_month"]), int(meta["ytd_year"])
 
     ytd, final_years = build_tidy(provisional, baseline, m, "ytd")
+    prov_years = [int(y) for y in meta.get("provisional_years", [])]
     det_ytd = detect(ytd, config, target_year=year)
     det_ytd.to_csv(out / "state_detections_ytd.csv", index=False)
     result = {"ytd": det_ytd, "ytd_tidy": ytd}
 
-    prov_years = [int(y) for y in meta.get("provisional_years", [])]
     full_years = [y for y in prov_years if y < year]
     if full_years:
         fy = max(full_years)
@@ -166,7 +166,8 @@ def run_latest(provisional: pd.DataFrame, baseline: pd.DataFrame, meta: dict, co
         "excluded_latest_month": bool(meta.get("excluded_latest_month", False)),
         "ytd_year": year, "ytd_through_month": m,
         "ytd_label": f"January–{month_name(m)} {year}" if m > 1 else f"January {year}",
-        "baseline_final_years": f"{min(final_years)}–{max(final_years)}" if final_years else "",
+        "final_years": (lambda ys: f"{min(ys)}–{max(ys)}" if ys else "")(
+            sorted(int(y) for y in ytd["year"].unique() if int(y) not in set(prov_years))),
         "provisional_years": prov_years,
         "full_year_provisional": result.get("full_year"),
         "geography": "state",

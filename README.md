@@ -20,6 +20,7 @@ It produces:
 - an **AI assistant** (v0.4) that answers questions about the results in plain language by calling the tool's own data functions, shows each lookup, and checks every figure in its answer against the data (see [AI assistant](docs/ai_assistant.md)); plus plain-language county and state summaries that need no AI model
 - an **interactive county map** (v0.5) of 2024 status, forecast risk, similar-county comparison, county type, overdose deaths, need and access, and unusual data
 - **more machine learning** (v0.5): county types from unsupervised clustering, an Isolation Forest data-quality check, and 90% conformal prediction ranges for the similar-county comparison; every learned component and its validation is listed in [ML and AI methods](docs/ml_methods.md)
+- **monthly "this year so far" results for every state** (v0.7) from CDC provisional data, with the data date shown on the site
 - **small-numbers analysis** (v0.6): state-level mode, multi-year pooling that skips and reports unavailable years, and combining of small racial and ethnic groups, labelled as combined; state results by mother's race for every state (see [small numbers](docs/small_numbers.md))
 - a **state view** with every scored county side by side, state-wide patterns and the need-and-access list
 - a **system health** check on every run: data completeness, distribution shift, a backtest of alert rates, and (on synthetic data) detection sensitivity by county size
@@ -135,6 +136,12 @@ Sources: CDC PLACES (BRFSS 2023) and ACS 2017–2021 measures, CDC VSRR provisio
 
 Details: [docs/ml_methods.md](docs/ml_methods.md).
 
+## Monthly updates: this year so far (v0.7)
+
+County results use CDC's final data, which arrive about nine months after a year ends. To give earlier warning, perinatal-ews also uses CDC's provisional birth data, updated monthly with births through the previous month. Provisional data are available by state, so every month the tool compares each state's births from January to the latest complete month with the same months of earlier years, overall and by mother's race. The site shows exactly how current the data are; the first update covers **January–August 2026**.
+
+How to run the monthly update: [docs/UPDATING.md](docs/UPDATING.md). Each month's results are kept in `results/history/`.
+
 ## Small numbers: state level, pooled years and combined groups (v0.6)
 
 Built in response to feedback from a state maternal and child health epidemiologist ([#1](https://github.com/karantejpal12/perinatal-ews/issues/1)).
@@ -190,6 +197,7 @@ src/perinatal_ews/
   typology.py      county types (clustering)
   anomaly.py       machine-learning data-quality check (Isolation Forest)
   pooling.py       state level, pooled years, combined groups (small numbers)
+  latest.py        monthly state updates from CDC provisional data
   synthetic.py     fictional data with known injected changes
   report.py        HTML bulletin
   cli.py           command line
