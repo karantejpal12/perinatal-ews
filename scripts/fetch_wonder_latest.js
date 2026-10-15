@@ -4,7 +4,7 @@
 // 1. Open https://wonder.cdc.gov/natality-expanded-provisional.html, read the data use restrictions and
 //    click "I Agree" (never publish counts of 9 or fewer).
 // 2. On the request form, paste this file into the browser console. It runs about 35 queries
-//    (2-3 minutes) and downloads two files:
+//    (about 3 minutes, with pauses so CDC WONDER does not block the address) and downloads two files:
 //      wonder_provisional_state_<YYYY-MM>.csv   counts by state, year, indicator and mother's race
 //      wonder_provisional_months_<YYYY-MM>.json monthly national births (used to check completeness)
 // 3. Put them in data/latest/ and run:
@@ -24,7 +24,9 @@
     for (const [k, vals] of Object.entries(filters || {})) { fd.delete(k); for (const v of vals) fd.append(k, v); }
     fd.set('O_change_action-Send-Export Results', 'Export Results'); fd.set('O_export-format', 'tsv');
     fd.delete('O_show_totals'); fd.set('O_show_suppressed', 'true'); fd.set('O_show_zeros', 'true'); fd.set('action-Send', 'Send');
+    await new Promise(r => setTimeout(r, 2500));  // CDC WONDER blocks addresses that send requests too quickly
     const t = await (await fetch(f.action, { method: 'POST', body: new URLSearchParams(fd), credentials: 'include' })).text();
+    if (/Too many requests/i.test(t)) throw new Error('CDC WONDER has temporarily blocked requests from this address (too many requests). Wait 30 minutes and run the script again.');
     if (!t.startsWith('"Notes"')) throw new Error('Unexpected response from WONDER: ' + t.slice(0, 200));
     return t.split('\n').filter(l => l.startsWith('\t')).map(l => l.split('\t').map(s => s.replace(/^"|"$/g, '')));
   }

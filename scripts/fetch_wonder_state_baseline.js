@@ -5,8 +5,12 @@
 // come from this file. Final data do not change, so this only needs to be run once.
 //
 // 1. Open https://wonder.cdc.gov/natality-expanded-current.html and click "I Agree".
-// 2. Paste this file into the browser console on the request form. It runs 96 queries (5-10 minutes)
-//    and downloads final_state_ytd_2016_2022.csv. Save it to data/baseline/.
+// 2. Paste this file into the browser console on the request form. It runs 8 queries (about a minute),
+//    grouped by state, year and month, and downloads final_state_months_2016_2022.csv. Save it to
+//    data/baseline/ and run: python scripts/build_state_baseline.py
+//    (which adds up January-to-month windows; a window is left missing if any of its months is suppressed).
+//
+// CDC WONDER temporarily blocks addresses that send too many requests, so the script pauses between queries.
 (async function () {
   const f = [...document.forms].find(x => x.elements['B_1'] && /D149/.test(x.action));
   if (!f) throw new Error('Open the CDC WONDER natality 2016-2024 expanded request form (D149) first.');
@@ -31,20 +35,19 @@
   };
   const years = ['2016', '2017', '2018', '2019', '2020', '2021', '2022'];
   const num = s => (/^\d+$/.test(s || '') ? s : '');
-  const out = ['state_fips,geo_name,year,indicator,subgroup,through_month,numerator,denominator'];
-  for (let m = 1; m <= 12; m++) {
-    const months = Array.from({ length: m }, (_, i) => String(i + 1));
-    for (const [ind, s] of Object.entries(IND)) {
-      console.log('perinatal-ews: January-' + m, ind);
-      const filt = { ['V_' + P + '.V20']: years, ['V_' + P + '.V25']: months };
-      const N = await q([P + '.V21-level1', P + '.V20'], { ...filt, [s.v]: s.num }, s.radio);
-      const D = await q([P + '.V21-level1', P + '.V20'], { ...filt, [s.v]: s.den }, s.radio);
-      const nm = new Map(N.map(r => [r[2] + '|' + r[4], r[5]]));
-      for (const r of D) out.push([r[2], '"' + r[1] + '"', r[4], ind, 'All', m, num(nm.get(r[2] + '|' + r[4])), num(r[5])].join(','));
-    }
+  const pause = ms => new Promise(r => setTimeout(r, ms));
+  const out = ['state_fips,geo_name,year,month,indicator,numerator,denominator'];
+  for (const [ind, s] of Object.entries(IND)) {
+    console.log('perinatal-ews: monthly final counts,', ind);
+    const groups = [P + '.V21-level1', P + '.V20', P + '.V25'];
+    const filt = { ['V_' + P + '.V20']: years, ['V_' + P + '.V25']: ['*All*'] };
+    const N = await q(groups, { ...filt, [s.v]: s.num }, s.radio); await pause(3000);
+    const D = await q(groups, { ...filt, [s.v]: s.den }, s.radio); await pause(3000);
+    const nm = new Map(N.map(r => [r[2] + '|' + r[4] + '|' + r[6], r[7]]));
+    for (const r of D) out.push([r[2], '"' + r[1] + '"', r[4], r[6], ind, num(nm.get(r[2] + '|' + r[4] + '|' + r[6])), num(r[7])].join(','));
   }
   const a = document.createElement('a');
   a.href = URL.createObjectURL(new Blob([out.join('\n')], { type: 'text/csv' }));
-  a.download = 'final_state_ytd_2016_2022.csv'; document.body.appendChild(a); a.click();
+  a.download = 'final_state_months_2016_2022.csv'; document.body.appendChild(a); a.click();
   console.log('perinatal-ews: done,', out.length - 1, 'rows');
 })();
