@@ -1,0 +1,32 @@
+{
+  "years": [
+    2021,
+    2022,
+    2023,
+    2024,
+    2025
+  ],
+  "state_indicators": 1020,
+  "full_year_flags": 73,
+  "interval80_coverage": 0.845,
+  "outlook": {
+    "n": 1020,
+    "positives": 73,
+    "prevalence": 0.0716,
+    "auroc": 0.9713,
+    "auprc": 0.8209,
+    "brier": 0.0286,
+    "precision_top10pct": 0.5882,
+    "recall_top10pct": 0.8219
+  },
+  "outlook_at_50pct": {
+    "sensitivity": 0.753,
+    "precision": 0.696
+  },
+  "year_so_far_flag": {
+    "sensitivity": 0.685,
+    "precision": 0.735
+  },
+  "brier_year_so_far_flag": 0.0402,
+  "months_known": 8
+}

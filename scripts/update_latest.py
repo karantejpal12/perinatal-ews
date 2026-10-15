@@ -21,7 +21,8 @@ from pathlib import Path
 import pandas as pd
 
 from perinatal_ews.config import load_config
-from perinatal_ews.latest import choose_months, explorer_payload, run_latest
+from perinatal_ews.latest import build_tidy, choose_months, explorer_payload, run_latest
+from perinatal_ews.outlook import backtest, outlook, score_archived
 
 
 def main() -> None:
@@ -31,6 +32,8 @@ def main() -> None:
     ap.add_argument("--baseline", default="data/baseline/final_state_ytd_2016_2022.csv")
     ap.add_argument("--out", default="results/latest")
     ap.add_argument("--history", default="results/history")
+    ap.add_argument("--draws", type=int, default=300, help="simulations for the full-year outlook")
+    ap.add_argument("--backtest-draws", type=int, default=150)
     a = ap.parse_args()
 
     info = json.loads(Path(a.months).read_text())
@@ -44,17 +47,51 @@ def main() -> None:
     prov = pd.read_csv(a.provisional, dtype={"state_fips": str})
     base = pd.read_csv(a.baseline, dtype={"state_fips": str})
     res = run_latest(prov, base, meta, load_config(), a.out)
+    cfg = load_config()
     payload = explorer_payload(res)
+
+    # Full-year outlook for the current year, validated on the five most recent complete years.
+    year, m_ = res["meta"]["ytd_year"], res["meta"]["ytd_through_month"]
+    ytd = res["ytd_tidy"]
+    full, _ = build_tidy(prov, base, m_, "full")
+    full = full[full["year"] < year]
+    bt_years = sorted(int(y) for y in full["year"].unique())[-5:]
+    ol = outlook(ytd, full, cfg, year, bt_years, n_draws=a.draws)
+    ol.to_csv(Path(a.out, "outlook.csv"), index=False)
+    _, bt = backtest(ytd, full, cfg, bt_years, n_draws=a.backtest_draws)
+    bt["months_known"] = m_
+    Path(a.out, "outlook_backtest.json").write_text(json.dumps(bt, indent=2))
+    for r in ol.itertuples():
+        e = payload["states_data"].setdefault(r.geo_id, {"ind": {}, "race": {}})["ind"].setdefault(r.indicator, {})
+        e["outlook"] = {"proj": round(r.projected_rate, 4), "lo": round(r.projected_low80, 4),
+                        "hi": round(r.projected_high80, 4), "p_flag": round(r.p_flag, 3), "p_alert": round(r.p_alert, 3)}
+    payload["outlook_backtest"] = bt
+
+    # Score outlooks saved in earlier months once their year is complete.
+    scores = []
+    fy = res["meta"].get("full_year_provisional")
+    if fy and "full" in res:
+        for f in sorted(Path(a.history).glob("*/outlook.csv")):
+            arch = pd.read_csv(f)
+            if len(arch) and int(arch["year"].iloc[0]) == int(fy):
+                scores.append({"made_with_data_through": f.parent.name, "year": int(fy),
+                               **score_archived(arch, res["full"])})
+    if scores:
+        Path(a.out, "outlook_track_record.json").write_text(json.dumps(scores, indent=2))
+        payload["outlook_track_record"] = scores
+
     Path(a.out, "latest.json").write_text(json.dumps(payload, separators=(",", ":"), default=str))
     snap = Path(a.history, meta["latest_month_available"])
     snap.mkdir(parents=True, exist_ok=True)
-    for f in ("latest_meta.json", "state_detections_ytd.csv", "state_race_ytd.csv"):
+    for f in ("latest_meta.json", "state_detections_ytd.csv", "state_race_ytd.csv", "outlook.csv",
+              "outlook_backtest.json"):
         shutil.copy(Path(a.out, f), snap / f)
     m = res["meta"]
     print(f"Latest data: {m['ytd_label']} (provisional; latest month available {m['latest_month_available']}, "
           f"{'left out as incomplete' if m['excluded_latest_month'] else 'included'}). "
           f"{m['states']} states: {m['counts']['alerts']} alerts, {m['counts']['watch']} watch. "
-          f"Full-year provisional: {m['full_year_provisional']}. Outputs in {a.out}/ and {snap}/")
+          f"Full-year provisional: {m['full_year_provisional']}. Outlook: backtest AUROC "
+          f"{bt['outlook'].get('auroc')}, 80% interval coverage {bt['interval80_coverage']}. Outputs in {a.out}/ and {snap}/")
 
 
 if __name__ == "__main__":

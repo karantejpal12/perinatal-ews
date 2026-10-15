@@ -140,6 +140,8 @@ Details: [docs/ml_methods.md](docs/ml_methods.md).
 
 County results use CDC's final data, which arrive about nine months after a year ends. To give earlier warning, perinatal-ews also uses CDC's provisional birth data, updated monthly with births through the previous month. Provisional data are available by state, so every month the tool compares each state's births from January to the latest complete month with the same months of earlier years, overall and by mother's race. The site shows exactly how current the data are; the first update covers **January–August 2026**.
 
+Each update also gives a **full-year outlook** for every state: the projected rate for the whole year and the chance the full year will be flagged. Tested on 2021–2025 using only January–August of each year, it ranked the states whose full year was flagged with an AUROC of 0.97, and its 80% ranges contained the actual rate 85% of the time. Every month's outlook is saved and scored once the year is complete, so its track record is public.
+
 How to run the monthly update: [docs/UPDATING.md](docs/UPDATING.md). Each month's results are kept in `results/history/`.
 
 ## Small numbers: state level, pooled years and combined groups (v0.6)
@@ -198,6 +200,7 @@ src/perinatal_ews/
   anomaly.py       machine-learning data-quality check (Isolation Forest)
   pooling.py       state level, pooled years, combined groups (small numbers)
   latest.py        monthly state updates from CDC provisional data
+  outlook.py       full-year outlook, backtest and scoring of saved outlooks
   synthetic.py     fictional data with known injected changes
   report.py        HTML bulletin
   cli.py           command line

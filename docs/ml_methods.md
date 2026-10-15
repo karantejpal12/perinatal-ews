@@ -10,6 +10,7 @@ A summary of every learned or AI component, what it is for, how it was validated
 | Prediction ranges | Cross-conformal prediction, normalised residuals | 90% range for "counties like this one"; outside = higher or lower than similar | Empirical coverage on held-out folds | 90.1–90.5% (target 90%) |
 | County types | k-means clustering (unsupervised) | Peer groups of counties | Silhouette for k = 4–8; 50 bootstrap resamples, adjusted Rand index | 4 types; ARI 0.78; silhouette 0.15 |
 | Data-quality check | Isolation Forest (unsupervised anomaly detection) | Unusual county-year records that may be data errors | Injected errors in synthetic data, against the births-change rule | Found 65–67% of single-indicator errors the rule misses; 0.5% false flags |
+| Full-year outlook (states) | Empirical-Bayes seasonal model, simulation through detection | Chance the current year will be flagged, and projected full-year rate | Backtest 2021–2025 with only January–August known; each monthly outlook saved and scored when the year ends | AUROC 0.97, Brier 0.029 (0.040 for "flagged so far"); 80% ranges covered 85% |
 | AI assistant | Large language model agent with tool use | Plain-language answers to questions about the results | Grounding in tool results; automatic figure check; JavaScript tests | See [ai_assistant.md](ai_assistant.md) |
 
 ## County types (clustering)

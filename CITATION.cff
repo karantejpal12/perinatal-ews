@@ -6,7 +6,7 @@ authors:
   - family-names: Tejpal
     given-names: Karan
     orcid: "https://orcid.org/0009-0004-8609-2854"
-version: 0.7.0
+version: 0.8.0
 doi: "10.5281/zenodo.23381196"
 identifiers:
   - type: doi
@@ -37,7 +37,9 @@ abstract: >-
   similar-county comparison, and an interactive county map. Version 0.6 adds
   small-numbers analysis: state level, multi-year pooling that reports
   unavailable years, and combining of small racial and ethnic groups. Version
-  0.7 adds monthly state-level updates from CDC provisional natality data.
+  0.7 adds monthly state-level updates from CDC provisional natality data;
+  0.8 adds a backtested full-year outlook whose monthly forecasts are saved
+  and scored once each year is complete.
 keywords:
   - public health surveillance
   - maternal health

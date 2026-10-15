@@ -146,6 +146,19 @@ footer { max-width: 1120px; margin: 0 auto; padding: 16px max(16px, env(safe-are
 .fresh-in { max-width: 1120px; margin: 0 auto; padding: 8px max(16px, env(safe-area-inset-right, 0px)) 8px max(16px, env(safe-area-inset-left, 0px)); display: flex; flex-wrap: wrap; gap: 4px 16px; }
 .fresh b { color: var(--ink); font-weight: 600; }
 .map-wrap .st.on { cursor: pointer; }
+.period { display: inline-flex; align-items: center; gap: 6px; font-size: 12px; font-weight: 600; letter-spacing: .02em; padding: 3px 9px; border-radius: 999px; background: var(--surface-2); color: var(--ink-2); vertical-align: middle; }
+.period.now { background: var(--accent); color: #fff; }
+.howto { display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 10px; }
+.howto div { background: var(--surface); border: 1px solid var(--rule); border-radius: 10px; padding: 12px 14px; font-size: 14px; color: var(--ink-2); }
+.howto b { display: block; color: var(--ink); margin-bottom: 2px; }
+.map-head { display: flex; flex-wrap: wrap; align-items: baseline; gap: 8px 12px; }
+.map-head h2 { margin: 0; font-size: 18px; }
+.block { background: var(--surface); border: 1px solid var(--rule); border-radius: 12px; padding: 18px; display: flex; flex-direction: column; gap: 12px; }
+.block > h2 { margin: 0; display: flex; flex-wrap: wrap; gap: 8px 12px; align-items: center; }
+details.more { border-top: 1px solid var(--rule); padding-top: 10px; }
+details.more summary { cursor: pointer; font-weight: 600; color: var(--accent); }
+details.more[open] summary { margin-bottom: 10px; }
+.empty { padding: 14px; font-size: 14px; color: var(--ink-2); }
 [hidden] { display: none !important; }
 @media (prefers-reduced-motion: reduce) { * { transition: none !important; } }
 </style>
@@ -154,7 +167,7 @@ footer { max-width: 1120px; margin: 0 auto; padding: 16px max(16px, env(safe-are
 <div class="bar"><div class="bar-in">
   <a class="brand" href="./">perinatal-ews<span>Explorer</span></a>
   <div class="tabs" role="tablist">
-    <button class="tab" role="tab" id="tab-explore" aria-selected="true" aria-controls="view-explore">Explore counties</button>
+    <button class="tab" role="tab" id="tab-explore" aria-selected="true" aria-controls="view-explore">Map &amp; counties</button>
     <button class="tab" role="tab" id="tab-states" aria-selected="false" aria-controls="view-states">States</button>
     <button class="tab" role="tab" id="tab-ask" aria-selected="false" aria-controls="view-ask">Ask AI</button>
     <button class="tab" role="tab" id="tab-run" aria-selected="false" aria-controls="view-run">Run on your data</button>
@@ -167,23 +180,36 @@ footer { max-width: 1120px; margin: 0 auto; padding: 16px max(16px, env(safe-are
   <!-- EXPLORE -->
   <section id="view-explore" class="stack" role="tabpanel" aria-labelledby="tab-explore">
     <div>
-      <h1>Maternal and newborn health, county by county</h1>
-      <p>Use the map or search any of 578 US counties with 100,000 or more residents to see 2016–2024 trends, whether 2024 was worse than expected, the forecast risk for 2025, and county context such as overdose deaths and access to opioid treatment and delivery care.</p>
+      <h1>Where are maternal and newborn health outcomes getting worse?</h1>
+      <p>perinatal-ews flags states and counties where preterm birth, low birth weight, late prenatal care or gestational hypertension are worse than their own recent history predicts.</p>
+    </div>
+    <div class="howto">
+      <div><b>1. Choose what the map shows</b>Each option says which year it covers: this year by state (updated monthly), or 2024 in detail by county.</div>
+      <div><b>2. Select a state or county</b>Click it on the map, search for a county below, or open the States tab.</div>
+      <div><b>3. Read flags as leads</b>Alert and watch are statistical signals for local follow-up, not confirmed problems.</div>
     </div>
     <div class="stack" style="gap:10px">
       <div class="filters">
         <label for="m-metric">Map shows<select id="m-metric">
-          <option value="status">2024 status</option>
-          <option value="risk">2025 risk of being flagged (forecast)</option>
-          <option value="similar">Compared with similar counties</option>
-          <option value="type">County type (clustering)</option>
-          <option value="overdose">Drug overdose death rate</option>
-          <option value="need">Need and access</option>
-          <option value="unusual">Unusual data (ML data check)</option>
-          <option value="state_ytd" id="m-opt-ytd" hidden>States: this year so far (provisional)</option>
+          <optgroup label="This year, by state (updated monthly)" id="m-grp-now" hidden>
+            <option value="state_ytd" id="m-opt-ytd">Status so far this year</option>
+            <option value="state_outlook" id="m-opt-outlook">Chance the full year is flagged (outlook)</option>
+          </optgroup>
+          <optgroup label="2024 in detail, by county (final data)">
+            <option value="status">Status in 2024</option>
+            <option value="similar">Compared with similar counties</option>
+            <option value="type">County type</option>
+            <option value="overdose">Drug overdose deaths</option>
+            <option value="need">Need and access</option>
+            <option value="unusual">Unusual data check</option>
+          </optgroup>
+          <optgroup label="2025 forecast, by county">
+            <option value="risk">Chance of a 2025 flag</option>
+          </optgroup>
         </select></label>
         <label for="m-ind" id="m-ind-wrap">Indicator<select id="m-ind"></select></label>
       </div>
+      <div class="map-head"><h2 id="map-title">Map</h2><span class="period" id="map-period"></span></div>
       <div class="map-wrap" id="map"><p class="status" id="map-status">Loading map…</p></div>
       <div class="map-legend" id="map-legend"></div>
       <p class="note" id="map-note" style="margin:0">Only the 578 counties with 100,000+ residents are scored; other areas are shown in grey. Select a county to open it.</p>
@@ -199,16 +225,17 @@ footer { max-width: 1120px; margin: 0 auto; padding: 16px max(16px, env(safe-are
 
     <div class="stack">
       <div>
-        <h2>All flagged counties, <span class="yr">2024</span></h2>
-        <p>Filter the list, then select a row to open that county.</p>
+        <h2>County list <span class="period">2024 · final data</span></h2>
+        <p>Counties flagged in 2024. Narrow the list with the filters, then select a row to open the county.</p>
       </div>
       <div class="filters">
         <label for="f-ind">Indicator<select id="f-ind"><option value="">All indicators</option></select></label>
         <label for="f-state">State<select id="f-state"><option value="">All states</option></select></label>
         <label for="f-level">Status<select id="f-level">
-          <option value="flag">Alert or watch</option><option value="alert">Alert only</option>
-          <option value="risk">Stable now, high 2025 risk</option>
-          <option value="need">Need and access review list</option></select></label>
+          <option value="flag">Alert or watch in 2024</option><option value="alert">Alert only in 2024</option>
+          <option value="risk">Stable in 2024, high 2025 risk</option>
+          <option value="need">On the need-and-access list</option></select></label>
+        <button class="btn" id="f-reset" type="button">Reset filters</button>
       </div>
       <div class="table-wrap"><table>
         <thead><tr><th>Status</th><th>County</th><th>Indicator</th><th class="num">Rate</th><th class="num">Expected</th><th class="num">Ratio</th><th class="num">2025 risk</th></tr></thead>
@@ -222,15 +249,17 @@ footer { max-width: 1120px; margin: 0 auto; padding: 16px max(16px, env(safe-are
   <section id="view-states" class="stack" role="tabpanel" aria-labelledby="tab-states" hidden>
     <div>
       <h1>State view</h1>
-      <p>Choose a state to see every scored county side by side, state-wide patterns and the need-and-access review list.</p>
+      <p>Choose a state. The top section shows this year so far (updated monthly); below it are the detailed 2024 county results.</p>
     </div>
     <div class="filters">
       <label for="st-pick">State<select id="st-pick"></select></label>
+    </div>
+    <div hidden><div class="filters" id="st-county-controls">
       <label for="st-sort">Sort counties by<select id="st-sort">
-        <option value="flags">Most flags first</option><option value="risk">Highest next-year risk</option>
+        <option value="flags">Most flags first</option><option value="risk">Highest 2025 risk</option>
         <option value="need">Need and access first</option><option value="name">Name</option></select></label>
       <label for="st-only">Show<select id="st-only"><option value="">All counties</option><option value="flag">Only flagged counties</option></select></label>
-    </div>
+    </div></div>
     <div id="state-body" class="stack"></div>
   </section>
 
@@ -530,7 +559,7 @@ footer { max-width: 1120px; margin: 0 auto; padding: 16px max(16px, env(safe-are
         el('td', { class: 'num', text: r.e.rr == null ? '–' : r.e.rr.toFixed(2) }), el('td', { class: 'num', text: r.e.risk == null ? '–' : pct(r.e.risk, 0) }));
       body.append(tr);
     }
-    $('#list-note').textContent = rows.length ? `${rows.length} result${rows.length > 1 ? 's' : ''}${rows.length > 200 ? ', showing the first 200' : ''}.` : 'No counties match these filters.';
+    $('#list-note').textContent = rows.length ? `${rows.length} result${rows.length > 1 ? 's' : ''}${rows.length > 200 ? ', showing the first 200' : ''}.` : 'No counties match all of these filters together. Try "All states" or "All indicators", or select Reset filters.';
   }
 
   /* ---------- map ---------- */
@@ -573,15 +602,37 @@ footer { max-width: 1120px; margin: 0 auto; padding: 16px max(16px, env(safe-are
   function drawMap() {
     if (!MAP || !window.d3) return;
     const metric = $('#m-metric').value, ind = $('#m-ind').value;
-    $('#m-ind-wrap').hidden = !['status', 'risk', 'similar', 'state_ytd'].includes(metric);
-    const stateMode = metric === 'state_ytd' && LATEST;
+    const withInd = ['status', 'risk', 'similar', 'state_ytd', 'state_outlook'].includes(metric);
+    $('#m-ind-wrap').hidden = !withInd;
+    const y = LATEST ? LATEST.ytd_year : null;
+    const PERIOD = { state_ytd: LATEST && `${LATEST.ytd_label} · by state · provisional`, state_outlook: LATEST && `Full year ${y} · by state · outlook`,
+      status: `${D.year} · by county · final data`, similar: '2022–2024 · by county', type: 'by county', overdose: '2024 · by county',
+      need: `${D.year} · by county`, unusual: `${D.year} · by county`, risk: `${D.forecast_year} · by county · forecast` };
+    const TITLE = { state_ytd: 'Status so far this year', state_outlook: `Chance the full year ${y} is flagged`, status: `Status in ${D.year}`,
+      similar: 'Compared with similar counties', type: 'County types', overdose: 'Drug overdose death rate', need: 'Need and access',
+      unusual: 'Unusual data check', risk: `Chance of a ${D.forecast_year} flag` };
+    $('#map-title').textContent = TITLE[metric] + (withInd ? ': ' + D.indicators[ind] : '');
+    $('#map-period').textContent = PERIOD[metric] || '';
+    $('#map-period').classList.toggle('now', metric.startsWith('state_'));
+    const stateMode = metric.startsWith('state_') && LATEST;
     MAP.paths.style('display', stateMode ? 'none' : null);
     MAP.states.classed('on', !!stateMode).each(function (f) {
       const ab = STATE_FIPS_ABBR[f.id]; const e = stateMode && ab && LATEST.states_data[ab] && LATEST.states_data[ab].ind[ind];
-      this.style.fill = stateMode ? (e ? PAL[e.level] || 'var(--surface-2)' : 'var(--surface-2)') : '';
-      this.__tip = e ? `${window.EWS.STATE_NAMES[ab] || ab} · ${LATEST.ytd_label}: ${pct(e.rate)} vs ${pct(e.expected)} expected (${LABEL[e.level] || e.level})` : (ab ? (window.EWS.STATE_NAMES[ab] || ab) : '');
+      const outlookMode = metric === 'state_outlook';
+      const color = !e ? 'var(--surface-2)' : outlookMode ? (e.outlook ? seq(e.outlook.p_flag) : 'var(--surface-2)') : (PAL[e.level] || 'var(--surface-2)');
+      this.style.fill = stateMode ? color : '';
+      const nm = ab ? (window.EWS.STATE_NAMES[ab] || ab) : '';
+      this.__tip = !e ? nm : outlookMode ? (e.outlook ? `${nm} · full ${y} projected ${pct(e.outlook.proj)} (80% range ${pct(e.outlook.lo)}–${pct(e.outlook.hi)}); chance of a flag ${pct(e.outlook.p_flag, 0)}` : nm)
+        : `${nm} · ${LATEST.ytd_label}: ${pct(e.rate)} vs ${pct(e.expected)} expected (${LABEL[e.level] || e.level})`;
     });
-    if (stateMode) { legend('status'); $('#map-note').textContent = `State results use CDC provisional data, ${LATEST.ytd_label}. Select a state to open the state view.`; return; }
+    if (stateMode) {
+      if (metric === 'state_outlook') { const box = $('#map-legend'); box.textContent = ''; [0, 0.25, 0.5, 0.75, 1].forEach(v => { const i = el('i'); i.style.background = seq(v); box.append(el('span', {}, i, pct(v, 0))); }); }
+      else legend('status');
+      $('#map-note').textContent = metric === 'state_outlook'
+        ? `Chance that the whole of ${y} will be flagged, projected from ${LATEST.ytd_label} and how each state's year usually ends. Select a state to open it.`
+        : `Each state's births from ${LATEST.ytd_label} compared with the same months of earlier years (CDC provisional data). Select a state to open it.`;
+      return;
+    }
     $('#map-note').textContent = 'Only the 578 counties with 100,000+ residents are scored; other areas are shown in grey. Select a county to open it.';
     MAP.paths.each(function (f) {
       const c = byId.get(f.id); const v = c && mapValue(c, metric, ind);
@@ -603,12 +654,12 @@ footer { max-width: 1120px; margin: 0 auto; padding: 16px max(16px, env(safe-are
       const tip = el('div', { class: 'map-tip', hidden: '' });
       const states = svg.append('g').selectAll('path').data(st.features).join('path').attr('class', 'st').attr('d', path)
         .on('mousemove', function (ev) {
-          if (!this.__tip || $('#m-metric').value !== 'state_ytd') return;
+          if (!this.__tip || !$('#m-metric').value.startsWith('state_')) return;
           const r = wrap.getBoundingClientRect(); tip.textContent = this.__tip; tip.hidden = false;
           const x = Math.min(ev.clientX - r.left + 12, r.width - 270); tip.style.left = Math.max(4, x) + 'px'; tip.style.top = (ev.clientY - r.top + 12) + 'px';
         })
         .on('mouseleave', () => { tip.hidden = true; })
-        .on('click', (ev, f) => { const ab = STATE_FIPS_ABBR[f.id]; if ($('#m-metric').value === 'state_ytd' && ab) location.hash = '#state-' + ab; });
+        .on('click', (ev, f) => { const ab = STATE_FIPS_ABBR[f.id]; if ($('#m-metric').value.startsWith('state_') && ab) location.hash = '#state-' + ab; });
       wrap.append(tip);
       const paths = svg.append('g').selectAll('path').data(co.features).join('path').attr('class', 'co').attr('d', path)
         .attr('tabindex', 0)
@@ -662,84 +713,91 @@ footer { max-width: 1120px; margin: 0 auto; padding: 16px max(16px, env(safe-are
         el('th', { text: 'Estimate' }), el('th', { text: `vs ${SR.previous_window}` }))), tb)));
     };
     sel.addEventListener('change', draw);
-    box.append(el('h2', { text: `By mother's race, ${SR.window} (state level, pooled)` }),
-      el('p', { text: 'Following how state teams work: results are at state level, three years are pooled, and a group with too few events is reported through a combined group (labelled) or shown as insufficient data, never as an unreliable rate. Years with suppressed counts are skipped and listed.' }),
+    box.append(el('p', { text: 'Following how state teams work: results are at state level, three years are pooled, and a group with too few events is reported through a combined group (labelled) or shown as insufficient data, never as an unreliable rate. Years with suppressed counts are skipped and listed.' }),
       el('div', { class: 'filters' }, el('label', { for: 'sr-ind' }, 'Indicator', sel)), tableBox,
       el('p', { class: 'note', text: SR.source + ' Mothers who report more than one race are counted in "More than one race", not in each group, which matters especially for Native Hawaiian mothers. Changes between periods are not adjusted for national trends (for example, gestational hypertension rose nationally).' }));
     draw();
   }
+  function raceTableNow(races) {
+    const sel = el('select', { id: 'ly-ind' });
+    for (const [k, v] of Object.entries(D.indicators)) sel.append(el('option', { value: k, text: v }));
+    sel.value = 'preterm_birth';
+    const tbox = el('div');
+    const draw = () => {
+      tbox.textContent = '';
+      const rows = (races[sel.value] || []).slice().sort((a, b) => RACE_ORDER.indexOf(a.g) - RACE_ORDER.indexOf(b.g));
+      const rb = el('tbody');
+      for (const r of rows) {
+        const ok = r.status === 'reliable';
+        const name = el('td', { text: r.g }); if (MEMBER.has(r.g)) name.style.paddingLeft = '26px'; if (/combined/.test(r.g)) name.style.fontWeight = '600';
+        const ch = !ok ? (r.report === 'insufficient data' ? 'Insufficient data' : `Too few births; see ${r.report}`)
+          : r.change === 'higher' ? `Higher (×${r.rr.toFixed(2)})` : r.change === 'lower' ? `Lower (×${r.rr.toFixed(2)})` : r.change === 'no clear change' ? 'No clear change' : 'Not compared';
+        rb.append(el('tr', {}, name, el('td', { class: 'num', text: ok ? `${pct(r.rate)} (${pct(r.lo)}–${pct(r.hi)})` : '–' }),
+          el('td', { class: 'num', text: ok && r.ref != null ? pct(r.ref) : '–' }), el('td', { text: ch })));
+      }
+      const y = LATEST.ytd_year;
+      tbox.append(el('div', { class: 'table-wrap' }, el('table', {}, el('thead', {}, el('tr', {}, el('th', { text: "Mother's race" }),
+        el('th', { class: 'num', text: `${y} so far (95% CI)` }), el('th', { class: 'num', text: `Same months, ${y - 3}–${y - 1}` }), el('th', { text: 'Change' }))), rb)));
+    };
+    sel.addEventListener('change', draw); draw();
+    return [el('div', { class: 'filters' }, el('label', { for: 'ly-ind' }, 'Indicator', sel)), tbox];
+  }
   function drawLatest(st, box) {
-    box.textContent = '';
     const L = LATEST && LATEST.states_data[st]; if (!L) return;
+    const y = LATEST.ytd_year, fy = LATEST.full_year_provisional;
     const tb = el('tbody');
     for (const [k, label] of Object.entries(D.indicators)) {
       const e = L.ind[k]; if (!e) continue;
+      const o = e.outlook;
       tb.append(el('tr', {}, el('td', { text: label }), el('td', {}, pill(e.level)),
         el('td', { class: 'num', text: pct(e.rate) }), el('td', { class: 'num', text: pct(e.expected) }),
-        el('td', { class: 'num', text: e.rr == null ? '–' : e.rr.toFixed(2) + '×' }),
-        el('td', {}, e.full_year_level ? pill(e.full_year_level) : '–'), el('td', { class: 'num', text: pct(e.full_year_rate) })));
+        el('td', { class: 'num', text: o ? `${pct(o.proj)} (${pct(o.lo)}–${pct(o.hi)})` : '–' }),
+        el('td', { class: 'num', text: o ? pct(o.p_flag, 0) : '–' }),
+        el('td', {}, e.full_year_level ? pill(e.full_year_level) : '–')));
     }
-    const fy = LATEST.full_year_provisional;
-    box.append(el('h2', { text: `${LATEST.ytd_label} so far (provisional)` }),
-      el('p', { text: `Births from ${LATEST.ytd_label} compared with the same months of earlier years, using CDC provisional data (updated monthly). The ${fy} column is the whole of ${fy}, also provisional.` }),
+    const bt = LATEST.outlook_backtest;
+    const block = el('div', { class: 'block' },
+      el('h2', {}, `Now: ${y} so far`, el('span', { class: 'period now', text: `${LATEST.ytd_label} · provisional · updated monthly` })),
+      el('p', { style: 'margin:0', text: `How ${window.EWS.STATE_NAMES[st] || st} is doing this year, compared with the same months of earlier years, and where the full year of ${y} is likely to end up.` }),
       el('div', { class: 'table-wrap' }, el('table', {}, el('thead', {}, el('tr', {}, el('th', { text: 'Indicator' }), el('th', { text: 'Status so far' }),
-        el('th', { class: 'num', text: 'Rate so far' }), el('th', { class: 'num', text: 'Expected' }), el('th', { class: 'num', text: 'Ratio' }),
-        el('th', { text: `${fy} (full year)` }), el('th', { class: 'num', text: `${fy} rate` }))), tb)));
+        el('th', { class: 'num', text: 'Rate so far' }), el('th', { class: 'num', text: 'Expected' }),
+        el('th', { class: 'num', text: `Full ${y}, projected (80% range)` }), el('th', { class: 'num', text: `Chance full ${y} is flagged` }),
+        el('th', { text: `${fy} (whole year)` }))), tb)),
+      el('p', { class: 'note', style: 'margin:0', text: bt ? `How reliable the outlook is: tested on ${bt.years[0]}–${bt.years[bt.years.length - 1]} using only January–${LATEST.ytd_label.split('–')[1] ? LATEST.ytd_label.split('–')[1].split(' ')[0] : ''} of each year, it ranked the states whose full year was later flagged well (AUROC ${bt.outlook.auroc.toFixed(2)}), and the 80% ranges contained the actual full-year rate ${Math.round(100 * bt.interval80_coverage)}% of the time. Each month's outlook is saved and will be scored when the year is complete. The outlook can differ from the status so far: with more months of births, a difference of the same size becomes statistically clearer, and the rest of the year does not always follow the first months.` : '' }));
     const races = L.race || {};
     if (Object.keys(races).length) {
-      const sel = el('select', { id: 'ly-ind' });
-      for (const [k, v] of Object.entries(D.indicators)) sel.append(el('option', { value: k, text: v }));
-      sel.value = box.dataset.ind || 'preterm_birth';
-      const tbox = el('div');
-      const draw = () => {
-        box.dataset.ind = sel.value; tbox.textContent = '';
-        const rows = (races[sel.value] || []).slice().sort((a, b) => RACE_ORDER.indexOf(a.g) - RACE_ORDER.indexOf(b.g));
-        const rb = el('tbody');
-        for (const r of rows) {
-          const ok = r.status === 'reliable';
-          const name = el('td', { text: r.g }); if (MEMBER.has(r.g)) name.style.paddingLeft = '26px'; if (/combined/.test(r.g)) name.style.fontWeight = '600';
-          const ch = !ok ? (r.report === 'insufficient data' ? 'Insufficient data' : `Too few events; see ${r.report}`)
-            : r.change === 'higher' ? `Higher (×${r.rr.toFixed(2)})` : r.change === 'lower' ? `Lower (×${r.rr.toFixed(2)})` : r.change === 'no clear change' ? 'No clear change' : 'Not compared';
-          rb.append(el('tr', {}, name, el('td', { class: 'num', text: ok ? `${pct(r.rate)} (${pct(r.lo)}–${pct(r.hi)})` : '–' }),
-            el('td', { class: 'num', text: ok && r.ref != null ? pct(r.ref) : '–' }), el('td', { text: ch })));
-        }
-        const y = LATEST.ytd_year;
-        tbox.append(el('div', { class: 'table-wrap' }, el('table', {}, el('thead', {}, el('tr', {}, el('th', { text: "Mother's race" }),
-          el('th', { class: 'num', text: `${y} so far (95% CI)` }), el('th', { class: 'num', text: `Same months ${y - 3}–${y - 1}` }), el('th', { text: 'Change' }))), rb)));
-      };
-      sel.addEventListener('change', draw);
-      box.append(el('h3', { text: `By mother's race, ${LATEST.ytd_label} vs the same months of ${LATEST.ytd_year - 3}–${LATEST.ytd_year - 1}` }),
-        el('div', { class: 'filters' }, el('label', { for: 'ly-ind' }, 'Indicator', sel)), tbox);
-      draw();
+      const det = el('details', { class: 'more' }, el('summary', { text: `By mother's race (${y} so far vs the same months of ${y - 3}–${y - 1})` }), ...raceTableNow(races));
+      block.append(det);
     }
-    box.append(el('p', { class: 'note', text: `Provisional data are incomplete for the most recent months and can be revised. Latest month available: ${LATEST.latest_month_available}${LATEST.excluded_latest_month ? ' (left out as incomplete)' : ''}; retrieved ${LATEST.updated}. Earlier years: final CDC data.` }));
+    block.append(el('p', { class: 'note', style: 'margin:0', text: `Provisional data: the most recent months can be incomplete and are revised. Latest month available ${LATEST.latest_month_available}${LATEST.excluded_latest_month ? ' (left out as incomplete)' : ''}; retrieved ${LATEST.updated}.` }));
+    box.append(block);
   }
+  const ST_CTRL = document.getElementById('st-county-controls');
   function drawState(st) {
     const body = $('#state-body'); body.textContent = '';
     const S = window.EWS.stateSummary(D, st); if (!S) return;
-    const latestBox = el('div', { class: 'stack' });
-    if (LATEST) { body.append(latestBox); drawLatest(st, latestBox); }
-    body.append(el('h2', { text: `${D.year} county results (final data)` }));
-    body.append(el('div', { class: 'summary' }, window.EWS.stateBrief(D, st)));
-    const raceBox = el('div', { class: 'stack' });
+    if (LATEST) drawLatest(st, body);
+    const block = el('div', { class: 'block' },
+      el('h2', {}, `${D.year} in detail, by county`, el('span', { class: 'period', text: `${D.year} · final data` })),
+      el('div', { class: 'summary' }, window.EWS.stateBrief(D, st)));
     const stats = el('div', { class: 'st-stats' });
     stats.append(el('div', {}, el('b', { text: S.counties }), el('span', { text: 'Counties scored (100,000+ residents)' })));
     for (const [k, v] of Object.entries(S.by_indicator))
       stats.append(el('div', {}, el('b', { text: `${v.alerts} / ${v.watch}` }), el('span', { text: `${k}: alerts / watch` })));
     stats.append(el('div', {}, el('b', { text: S.need_and_access.length }), el('span', { text: 'On the need-and-access list' })));
-    body.append(stats);
+    block.append(stats);
     for (const p of S.statewide_patterns)
-      body.append(el('div', { class: 'flag-note', text: `State-wide pattern: ${p.indicator}, ${p.counties_flagged} of ${p.counties} counties flagged; state rate ${pct(p.state_rate_baseline)} at baseline, ${pct(p.state_rate_now)} in ${D.year}. Check with the state vital records office whether recording changed before reading this as local.` }));
+      block.append(el('div', { class: 'flag-note', text: `State-wide pattern: ${p.indicator}, ${p.counties_flagged} of ${p.counties} counties flagged; state rate ${pct(p.state_rate_baseline)} at baseline, ${pct(p.state_rate_now)} in ${D.year}. Check with the state vital records office whether recording changed before reading this as local.` }));
     let cs = D.counties.filter(c => c.state === st);
     const nflags = c => Object.values(c.ind).filter(e => e.level === 'alert' || e.level === 'watch').length * 10 + Object.values(c.ind).filter(e => e.level === 'alert').length;
     const maxRisk = c => Math.max(0, ...Object.values(c.ind).map(e => e.risk || 0));
-    if ($('#st-only').value === 'flag') cs = cs.filter(c => nflags(c) > 0);
-    const sort = $('#st-sort').value;
+    if (ST_CTRL.querySelector('#st-only').value === 'flag') cs = cs.filter(c => nflags(c) > 0);
+    const sort = ST_CTRL.querySelector('#st-sort').value;
     cs.sort((a, b) => sort === 'name' ? a.name.localeCompare(b.name) : sort === 'risk' ? maxRisk(b) - maxRisk(a)
       : sort === 'need' ? ((b.need ? (b.need.priority === 'high' ? 2 : 1) : 0) - (a.need ? (a.need.priority === 'high' ? 2 : 1) : 0)) || nflags(b) - nflags(a)
       : nflags(b) - nflags(a) || maxRisk(b) - maxRisk(a));
     const keys = Object.keys(D.indicators);
-    const head = el('tr', {}, el('th', { text: 'County' }), ...keys.map(k => el('th', { text: D.indicators[k] })), el('th', { class: 'num', text: `Top ${D.forecast_year} risk` }), el('th', { text: 'Need and access' }));
+    const head = el('tr', {}, el('th', { text: 'County' }), ...keys.map(k => el('th', { text: `${D.indicators[k]} (${D.year})` })), el('th', { class: 'num', text: `Highest ${D.forecast_year} risk` }), el('th', { text: 'Need and access' }));
     const tb = el('tbody');
     for (const c of cs) {
       tb.append(el('tr', { class: 'row', tabindex: '0', onclick: () => { showTab('explore'); openCounty(c.id); window.scrollTo({ top: 0 }); },
@@ -748,9 +806,13 @@ footer { max-width: 1120px; margin: 0 auto; padding: 16px max(16px, env(safe-are
         el('td', { class: 'num', text: pct(maxRisk(c), 0) }),
         el('td', { text: c.need ? (c.need.priority === 'high' ? 'High' : 'Review') : '' })));
     }
-    body.append(el('h2', { text: 'Counties' }), el('div', { class: 'table-wrap' }, el('table', {}, el('thead', {}, head), tb)),
-      el('p', { class: 'note', text: `${cs.length} counties. Select a row to open the county. Counties under 100,000 residents are not reported separately by CDC WONDER.` }),
-      raceBox);
+    block.append(el('h3', { style: 'margin:4px 0 0', text: 'Counties' }), ST_CTRL,
+      cs.length ? el('div', { class: 'table-wrap' }, el('table', {}, el('thead', {}, head), tb))
+        : el('div', { class: 'table-wrap empty', text: 'No flagged counties in this state. Choose "All counties" to see every county.' }),
+      el('p', { class: 'note', style: 'margin:0', text: `${cs.length} ${cs.length === 1 ? 'county' : 'counties'}. Select a row to open the county. Counties under 100,000 residents are not reported separately by CDC WONDER.` }));
+    const raceBox = el('div', { class: 'stack' });
+    block.append(el('details', { class: 'more' }, el('summary', { text: `By mother's race, earlier years (2022–2024 combined, final data)` }), raceBox));
+    body.append(block);
     drawRace(st, raceBox);
   }
 
@@ -760,10 +822,10 @@ footer { max-width: 1120px; margin: 0 auto; padding: 16px max(16px, env(safe-are
     const mname = m => new Date(2000, m - 1, 1).toLocaleString('en-US', { month: 'long' });
     const [ly, lm] = L.latest_month_available.split('-').map(Number);
     $('#fresh-in').append(
-      el('span', {}, el('b', { text: 'Latest data: ' }), `state results through ${mname(L.ytd_through_month)} ${L.ytd_year} (CDC provisional, retrieved ${new Date(L.updated + 'T12:00:00').toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })})`),
-      el('span', { text: `County results: ${D ? D.years[0] + '–' + D.year : '2016–2024'} (CDC final)` }),
-      el('span', { text: 'Updated monthly after CDC\'s end-of-month release' }));
-    $('#fresh').hidden = false; $('#m-opt-ytd').hidden = false;
+      el('span', {}, el('b', { text: 'Newest data: ' }), `births through ${mname(L.ytd_through_month)} ${L.ytd_year}, by state (CDC provisional, retrieved ${new Date(L.updated + 'T12:00:00').toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}; updated monthly)`),
+      el('span', {}, el('b', { text: 'County detail: ' }), `${D ? D.year : 2024} (CDC final data)`));
+    $('#fresh').hidden = false; $('#m-grp-now').hidden = false;
+    $('#m-metric').value = 'state_ytd';
     if (D) D.latest = L;
   });
 
@@ -775,11 +837,12 @@ footer { max-width: 1120px; margin: 0 auto; padding: 16px max(16px, env(safe-are
     for (const [k, v] of Object.entries(D.indicators)) $('#f-ind').append(el('option', { value: k, text: v }));
     for (const s of [...new Set(D.counties.map(c => c.state))].sort()) $('#f-state').append(el('option', { value: s, text: (window.EWS.STATE_NAMES[s] || s) }));
     ['#f-ind', '#f-state', '#f-level'].forEach(s => $(s).addEventListener('change', drawList));
+    $('#f-reset').addEventListener('click', () => { $('#f-ind').value = ''; $('#f-state').value = ''; $('#f-level').value = 'flag'; drawList(); });
     drawList();
     const states = [...new Set(D.counties.map(c => c.state))].sort();
     for (const s of states) $('#st-pick').append(el('option', { value: s, text: (window.EWS.STATE_NAMES[s] || s) }));
     $('#st-pick').value = 'GA';
-    ['#st-pick', '#st-sort', '#st-only'].forEach(s => $(s).addEventListener('change', () => { drawState($('#st-pick').value); history.replaceState(null, '', '#state-' + $('#st-pick').value); }));
+    ['#st-pick', '#st-sort', '#st-only'].forEach(s => (document.querySelector(s)).addEventListener('change', () => { drawState($('#st-pick').value); history.replaceState(null, '', '#state-' + $('#st-pick').value); }));
     window.initAssistant(D);
     latestReady.then(() => { if (LATEST) { D.latest = LATEST; const st = location.hash.match(/^#state-([A-Z]{2})$/); if (st) drawState(st[1]); else if (!$('#view-states').hidden) drawState($('#st-pick').value); drawMap(); } });
     for (const [k, v] of Object.entries(D.indicators)) $('#m-ind').append(el('option', { value: k, text: v }));
@@ -825,7 +888,7 @@ footer { max-width: 1120px; margin: 0 auto; padding: 16px max(16px, env(safe-are
     status('Loading scientific libraries…');
     await py.loadPackage(['numpy', 'pandas', 'scipy', 'scikit-learn', 'pyyaml', 'micropip']);
     status('Installing perinatal-ews…');
-    const wheel = new URL('dist/perinatal_ews-0.7.0-py3-none-any.whl', location.href).href;
+    const wheel = new URL('dist/perinatal_ews-0.8.0-py3-none-any.whl', location.href).href;
     await py.runPythonAsync(`import micropip\nawait micropip.install("${wheel}", deps=False)`);
     return py;
   }

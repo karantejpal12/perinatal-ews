@@ -399,3 +399,24 @@ def test_monthly_update_flags_year_to_date_change_and_records_dates(cfg, tmp_pat
     p = explorer_payload(res)
     assert p["states_data"]["GA"]["ind"]["late_no_prenatal_care"]["level"] == "alert"
     assert all(e["rate"] is None or e["rate"] >= 0 for s in p["states_data"].values() for e in s["ind"].values())
+
+
+def test_full_year_outlook_and_backtest(cfg):
+    from perinatal_ews.latest import build_tidy
+    from perinatal_ews.outlook import backtest, outlook, score_archived
+
+    prov, base = _synthetic_state_feed(bump=1.35)
+    ytd, _ = build_tidy(prov, base, 8, "ytd")
+    full, _ = build_tidy(prov, base, 8, "full")
+    full = full[full["year"] < 2026]
+    ol = outlook(ytd, full, cfg, 2026, [2023, 2024, 2025], n_draws=40)
+    assert ol["p_flag"].between(0, 1).all() and (ol["p_alert"] <= ol["p_flag"] + 1e-9).all()
+    assert (ol["projected_low80"] <= ol["projected_rate"]).all() and (ol["projected_rate"] <= ol["projected_high80"]).all()
+    ga = ol.set_index(["geo_id", "indicator"]).loc[("GA", "late_no_prenatal_care")]
+    assert ga["p_flag"] > 0.9                                    # the injected rise carries into the full year
+    assert ol[ol["geo_id"] != "GA"]["p_flag"].mean() < 0.1
+    bt, summary = backtest(ytd, full, cfg, [2024, 2025], n_draws=30)
+    assert 0.5 <= summary["interval80_coverage"] <= 1.0 and summary["state_indicators"] == len(bt)
+    from perinatal_ews.detect import detect
+    s = score_archived(ol.assign(year=2025), detect(full, cfg, target_year=2025))
+    assert s["state_indicators"] > 0
