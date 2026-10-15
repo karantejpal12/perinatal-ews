@@ -95,6 +95,8 @@
       statewide_patterns: (D.state_patterns || []).filter(p => p.state === st).map(p => ({ indicator: indLabel(D, p.indicator),
         counties_flagged: p.flagged, counties: p.counties, state_rate_baseline: p.rate_before, state_rate_now: p.rate_now })),
       need_and_access: cs.filter(c => c.need).map(c => ({ county: c.name, fips: c.id, priority: c.need.priority, reasons: c.need.reasons })),
+      year_to_date_provisional: D.latest && D.latest.states_data[st] ? { period: D.latest.ytd_label, latest_month_available: D.latest.latest_month_available,
+        retrieved: D.latest.updated, indicators: Object.fromEntries(Object.entries(D.latest.states_data[st].ind).map(([k, e]) => [indLabel(D, k), e])) } : null,
       flagged_counties: cs.filter(c => Object.values(c.ind).some(flagged)).map(c => ({ county: c.name, fips: c.id,
         flags: Object.entries(c.ind).filter(([, e]) => flagged(e)).map(([k, e]) => `${indLabel(D, k)} (${e.level})`) })),
     };
@@ -108,6 +110,11 @@
     const top = Object.entries(s.by_indicator).filter(([, v]) => v.alerts + v.watch > 0).sort((a, b) => (b[1].alerts + b[1].watch) - (a[1].alerts + a[1].watch));
     if (top.length) parts.push('Most flags: ' + top.map(([k, v]) => `${k.toLowerCase()} (${plural(v.alerts, 'alert', 'alerts')}, ${v.watch} watch)`).join('; ') + '.');
     for (const p of s.statewide_patterns) parts.push(`State-wide pattern in ${p.indicator.toLowerCase()}: ${p.counties_flagged} of ${p.counties} counties flagged; state rate ${pct(p.state_rate_baseline)} at baseline, ${pct(p.state_rate_now)} now. Check with the state vital records office whether recording changed.`);
+    if (s.year_to_date_provisional) {
+      const y = s.year_to_date_provisional, fl = Object.entries(y.indicators).filter(([, e]) => e.level === 'alert' || e.level === 'watch');
+      parts.push(fl.length ? `Provisional data for ${y.period}: ${fl.map(([k, e]) => `${k.toLowerCase()} ${e.level} (${pct(e.rate)} vs ${pct(e.expected)} expected)`).join('; ')}.`
+        : `Provisional data for ${y.period} show no state-wide flags.`);
+    }
     if (s.need_and_access.length) parts.push(`${s.need_and_access.length} ${s.need_and_access.length === 1 ? 'county is' : 'counties are'} on the need-and-access review list${s.need_and_access.some(n => n.priority === 'high') ? ', including high-priority ' + s.need_and_access.filter(n => n.priority === 'high').map(n => n.county).join(', ') : ''}.`);
     return parts.join(' ');
   }

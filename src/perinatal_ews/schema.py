@@ -32,7 +32,9 @@ def validate(df: pd.DataFrame) -> pd.DataFrame:
         raise SchemaError(f"missing required columns: {missing}")
 
     out = df[REQUIRED_COLUMNS + [c for c in df.columns if c not in REQUIRED_COLUMNS]].copy()
-    out["geo_id"] = out["geo_id"].astype(str).str.strip().str.zfill(5)
+    gid = out["geo_id"].astype(str).str.strip()
+    # Pad numeric county FIPS codes to 5 digits; leave other identifiers (e.g. state "HI") as they are.
+    out["geo_id"] = gid.where(~gid.str.fullmatch(r"\d{1,5}"), gid.str.zfill(5))
     out["year"] = pd.to_numeric(out["year"], errors="raise").astype(int)
     for col in ("numerator", "denominator"):
         out[col] = pd.to_numeric(out[col], errors="coerce")

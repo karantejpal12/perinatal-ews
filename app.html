@@ -142,6 +142,10 @@ footer { max-width: 1120px; margin: 0 auto; padding: 16px max(16px, env(safe-are
 .map-tip { position: absolute; pointer-events: none; background: var(--ink); color: var(--bg); font-size: 12.5px; padding: 6px 9px; border-radius: 6px; max-width: 260px; line-height: 1.35; }
 .map-legend { display: flex; flex-wrap: wrap; gap: 6px 14px; font-size: 12.5px; color: var(--ink-2); align-items: center; }
 .map-legend i { display: inline-block; width: 12px; height: 12px; border-radius: 3px; vertical-align: -2px; margin-right: 5px; }
+.fresh { background: var(--accent-soft); border-bottom: 1px solid var(--rule); font-size: 13.5px; color: var(--ink-2); }
+.fresh-in { max-width: 1120px; margin: 0 auto; padding: 8px max(16px, env(safe-area-inset-right, 0px)) 8px max(16px, env(safe-area-inset-left, 0px)); display: flex; flex-wrap: wrap; gap: 4px 16px; }
+.fresh b { color: var(--ink); font-weight: 600; }
+.map-wrap .st.on { cursor: pointer; }
 [hidden] { display: none !important; }
 @media (prefers-reduced-motion: reduce) { * { transition: none !important; } }
 </style>
@@ -158,6 +162,7 @@ footer { max-width: 1120px; margin: 0 auto; padding: 16px max(16px, env(safe-are
   <nav class="links"><a href="./">About</a><a href="results/2024/report.html">Full bulletin</a><a href="https://github.com/karantejpal12/perinatal-ews">GitHub</a></nav>
 </div></div>
 
+<div class="fresh" id="fresh" hidden><div class="fresh-in" id="fresh-in"></div></div>
 <main>
   <!-- EXPLORE -->
   <section id="view-explore" class="stack" role="tabpanel" aria-labelledby="tab-explore">
@@ -175,6 +180,7 @@ footer { max-width: 1120px; margin: 0 auto; padding: 16px max(16px, env(safe-are
           <option value="overdose">Drug overdose death rate</option>
           <option value="need">Need and access</option>
           <option value="unusual">Unusual data (ML data check)</option>
+          <option value="state_ytd" id="m-opt-ytd" hidden>States: this year so far (provisional)</option>
         </select></label>
         <label for="m-ind" id="m-ind-wrap">Indicator<select id="m-ind"></select></label>
       </div>
@@ -563,10 +569,21 @@ footer { max-width: 1120px; margin: 0 auto; padding: 16px max(16px, env(safe-are
     else if (metric === 'unusual') { item(PAL.review, `Unusual ${D.year} record`); item(PAL.inline, 'Nothing unusual'); }
     item('var(--surface-2)', 'Not scored');
   }
+  const STATE_FIPS_ABBR = { '01': 'AL', '02': 'AK', '04': 'AZ', '05': 'AR', '06': 'CA', '08': 'CO', '09': 'CT', '10': 'DE', '11': 'DC', '12': 'FL', '13': 'GA', '15': 'HI', '16': 'ID', '17': 'IL', '18': 'IN', '19': 'IA', '20': 'KS', '21': 'KY', '22': 'LA', '23': 'ME', '24': 'MD', '25': 'MA', '26': 'MI', '27': 'MN', '28': 'MS', '29': 'MO', '30': 'MT', '31': 'NE', '32': 'NV', '33': 'NH', '34': 'NJ', '35': 'NM', '36': 'NY', '37': 'NC', '38': 'ND', '39': 'OH', '40': 'OK', '41': 'OR', '42': 'PA', '44': 'RI', '45': 'SC', '46': 'SD', '47': 'TN', '48': 'TX', '49': 'UT', '50': 'VT', '51': 'VA', '53': 'WA', '54': 'WV', '55': 'WI', '56': 'WY' };
   function drawMap() {
     if (!MAP || !window.d3) return;
     const metric = $('#m-metric').value, ind = $('#m-ind').value;
-    $('#m-ind-wrap').hidden = !['status', 'risk', 'similar'].includes(metric);
+    $('#m-ind-wrap').hidden = !['status', 'risk', 'similar', 'state_ytd'].includes(metric);
+    const stateMode = metric === 'state_ytd' && LATEST;
+    MAP.paths.style('display', stateMode ? 'none' : null);
+    MAP.states.classed('on', !!stateMode).each(function (f) {
+      const ab = STATE_FIPS_ABBR[f.id]; const e = stateMode && ab && LATEST.states_data[ab] && LATEST.states_data[ab].ind[ind];
+      this.setAttribute('fill', stateMode ? (e ? PAL[e.level] || 'var(--surface-2)' : 'var(--surface-2)') : '');
+      if (!stateMode) this.removeAttribute('fill');
+      this.__tip = e ? `${window.EWS.STATE_NAMES[ab] || ab} · ${LATEST.ytd_label}: ${pct(e.rate)} vs ${pct(e.expected)} expected (${LABEL[e.level] || e.level})` : (ab ? (window.EWS.STATE_NAMES[ab] || ab) : '');
+    });
+    if (stateMode) { legend('status'); $('#map-note').textContent = `State results use CDC provisional data, ${LATEST.ytd_label}. Select a state to open the state view.`; return; }
+    $('#map-note').textContent = 'Only the 578 counties with 100,000+ residents are scored; other areas are shown in grey. Select a county to open it.';
     MAP.paths.each(function (f) {
       const c = byId.get(f.id); const v = c && mapValue(c, metric, ind);
       this.setAttribute('fill', v ? v.color : 'var(--surface-2)');
@@ -584,8 +601,16 @@ footer { max-width: 1120px; margin: 0 auto; padding: 16px max(16px, env(safe-are
       const wrap = $('#map'); wrap.textContent = '';
       const svg = d3.select(wrap).append('svg').attr('viewBox', `0 0 ${W} ${H}`).attr('role', 'img')
         .attr('aria-label', 'Map of US counties with 100,000+ residents, coloured by the selected measure');
-      svg.append('g').selectAll('path').data(st.features).join('path').attr('class', 'st').attr('d', path);
-      const tip = el('div', { class: 'map-tip', hidden: '' }); wrap.append(tip);
+      const tip = el('div', { class: 'map-tip', hidden: '' });
+      const states = svg.append('g').selectAll('path').data(st.features).join('path').attr('class', 'st').attr('d', path)
+        .on('mousemove', function (ev) {
+          if (!this.__tip || $('#m-metric').value !== 'state_ytd') return;
+          const r = wrap.getBoundingClientRect(); tip.textContent = this.__tip; tip.hidden = false;
+          const x = Math.min(ev.clientX - r.left + 12, r.width - 270); tip.style.left = Math.max(4, x) + 'px'; tip.style.top = (ev.clientY - r.top + 12) + 'px';
+        })
+        .on('mouseleave', () => { tip.hidden = true; })
+        .on('click', (ev, f) => { const ab = STATE_FIPS_ABBR[f.id]; if ($('#m-metric').value === 'state_ytd' && ab) location.hash = '#state-' + ab; });
+      wrap.append(tip);
       const paths = svg.append('g').selectAll('path').data(co.features).join('path').attr('class', 'co').attr('d', path)
         .attr('tabindex', 0)
         .on('mousemove', function (ev) {
@@ -596,7 +621,7 @@ footer { max-width: 1120px; margin: 0 auto; padding: 16px max(16px, env(safe-are
         .on('click', (ev, f) => { openCounty(f.id); $('#county').scrollIntoView({ behavior: 'smooth' }); })
         .on('keydown', (ev, f) => { if (ev.key === 'Enter') { openCounty(f.id); $('#county').scrollIntoView(); } });
       svg.append('g').selectAll('path').data(st.features).join('path').attr('class', 'stl').attr('d', path);
-      MAP = { paths };
+      MAP = { paths, states };
       drawMap();
     } catch (e) { $('#map').textContent = 'The map could not be loaded. The county search and lists below still work.'; }
   }
@@ -644,9 +669,58 @@ footer { max-width: 1120px; margin: 0 auto; padding: 16px max(16px, env(safe-are
       el('p', { class: 'note', text: SR.source + ' Mothers who report more than one race are counted in "More than one race", not in each group, which matters especially for Native Hawaiian mothers. Changes between periods are not adjusted for national trends (for example, gestational hypertension rose nationally).' }));
     draw();
   }
+  function drawLatest(st, box) {
+    box.textContent = '';
+    const L = LATEST && LATEST.states_data[st]; if (!L) return;
+    const tb = el('tbody');
+    for (const [k, label] of Object.entries(D.indicators)) {
+      const e = L.ind[k]; if (!e) continue;
+      tb.append(el('tr', {}, el('td', { text: label }), el('td', {}, pill(e.level)),
+        el('td', { class: 'num', text: pct(e.rate) }), el('td', { class: 'num', text: pct(e.expected) }),
+        el('td', { class: 'num', text: e.rr == null ? '–' : e.rr.toFixed(2) + '×' }),
+        el('td', {}, e.full_year_level ? pill(e.full_year_level) : '–'), el('td', { class: 'num', text: pct(e.full_year_rate) })));
+    }
+    const fy = LATEST.full_year_provisional;
+    box.append(el('h2', { text: `${LATEST.ytd_label} so far (provisional)` }),
+      el('p', { text: `Births from ${LATEST.ytd_label} compared with the same months of earlier years, using CDC provisional data (updated monthly). The ${fy} column is the whole of ${fy}, also provisional.` }),
+      el('div', { class: 'table-wrap' }, el('table', {}, el('thead', {}, el('tr', {}, el('th', { text: 'Indicator' }), el('th', { text: 'Status so far' }),
+        el('th', { class: 'num', text: 'Rate so far' }), el('th', { class: 'num', text: 'Expected' }), el('th', { class: 'num', text: 'Ratio' }),
+        el('th', { text: `${fy} (full year)` }), el('th', { class: 'num', text: `${fy} rate` }))), tb)));
+    const races = L.race || {};
+    if (Object.keys(races).length) {
+      const sel = el('select', { id: 'ly-ind' });
+      for (const [k, v] of Object.entries(D.indicators)) sel.append(el('option', { value: k, text: v }));
+      sel.value = box.dataset.ind || 'preterm_birth';
+      const tbox = el('div');
+      const draw = () => {
+        box.dataset.ind = sel.value; tbox.textContent = '';
+        const rows = (races[sel.value] || []).slice().sort((a, b) => RACE_ORDER.indexOf(a.g) - RACE_ORDER.indexOf(b.g));
+        const rb = el('tbody');
+        for (const r of rows) {
+          const ok = r.status === 'reliable';
+          const name = el('td', { text: r.g }); if (MEMBER.has(r.g)) name.style.paddingLeft = '26px'; if (/combined/.test(r.g)) name.style.fontWeight = '600';
+          const ch = !ok ? (r.report === 'insufficient data' ? 'Insufficient data' : `Too few events; see ${r.report}`)
+            : r.change === 'higher' ? `Higher (×${r.rr.toFixed(2)})` : r.change === 'lower' ? `Lower (×${r.rr.toFixed(2)})` : r.change === 'no clear change' ? 'No clear change' : 'Not compared';
+          rb.append(el('tr', {}, name, el('td', { class: 'num', text: ok ? `${pct(r.rate)} (${pct(r.lo)}–${pct(r.hi)})` : '–' }),
+            el('td', { class: 'num', text: ok && r.ref != null ? pct(r.ref) : '–' }), el('td', { text: ch })));
+        }
+        const y = LATEST.ytd_year;
+        tbox.append(el('div', { class: 'table-wrap' }, el('table', {}, el('thead', {}, el('tr', {}, el('th', { text: "Mother's race" }),
+          el('th', { class: 'num', text: `${y} so far (95% CI)` }), el('th', { class: 'num', text: `Same months ${y - 3}–${y - 1}` }), el('th', { text: 'Change' }))), rb)));
+      };
+      sel.addEventListener('change', draw);
+      box.append(el('h3', { text: `By mother's race, ${LATEST.ytd_label} vs the same months of ${LATEST.ytd_year - 3}–${LATEST.ytd_year - 1}` }),
+        el('div', { class: 'filters' }, el('label', { for: 'ly-ind' }, 'Indicator', sel)), tbox);
+      draw();
+    }
+    box.append(el('p', { class: 'note', text: `Provisional data are incomplete for the most recent months and can be revised. Latest month available: ${LATEST.latest_month_available}${LATEST.excluded_latest_month ? ' (left out as incomplete)' : ''}; retrieved ${LATEST.updated}. Earlier years: final CDC data.` }));
+  }
   function drawState(st) {
     const body = $('#state-body'); body.textContent = '';
     const S = window.EWS.stateSummary(D, st); if (!S) return;
+    const latestBox = el('div', { class: 'stack' });
+    if (LATEST) { body.append(latestBox); drawLatest(st, latestBox); }
+    body.append(el('h2', { text: `${D.year} county results (final data)` }));
     body.append(el('div', { class: 'summary' }, window.EWS.stateBrief(D, st)));
     const raceBox = el('div', { class: 'stack' });
     const stats = el('div', { class: 'st-stats' });
@@ -681,6 +755,19 @@ footer { max-width: 1120px; margin: 0 auto; padding: 16px max(16px, env(safe-are
     drawRace(st, raceBox);
   }
 
+  let LATEST = null;
+  const latestReady = fetch('results/latest/latest.json').then(r => r.ok ? r.json() : null).catch(() => null).then(L => {
+    LATEST = L; if (!L) return;
+    const mname = m => new Date(2000, m - 1, 1).toLocaleString('en-US', { month: 'long' });
+    const [ly, lm] = L.latest_month_available.split('-').map(Number);
+    $('#fresh-in').append(
+      el('span', {}, el('b', { text: 'Latest data: ' }), `state results through ${mname(L.ytd_through_month)} ${L.ytd_year} (CDC provisional, retrieved ${new Date(L.updated + 'T12:00:00').toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })})`),
+      el('span', { text: `County results: ${D ? D.years[0] + '–' + D.year : '2016–2024'} (CDC final)` }),
+      el('span', { text: 'Updated monthly after CDC\'s end-of-month release' }));
+    $('#fresh').hidden = false; $('#m-opt-ytd').hidden = false;
+    if (D) D.latest = L;
+  });
+
   fetch('results/2024/explorer.json').then(r => { if (!r.ok) throw new Error(r.status); return r.json(); }).then(data => {
     D = data;
     byId = new Map(D.counties.map(c => [c.id, c]));
@@ -695,6 +782,7 @@ footer { max-width: 1120px; margin: 0 auto; padding: 16px max(16px, env(safe-are
     $('#st-pick').value = 'GA';
     ['#st-pick', '#st-sort', '#st-only'].forEach(s => $(s).addEventListener('change', () => { drawState($('#st-pick').value); history.replaceState(null, '', '#state-' + $('#st-pick').value); }));
     window.initAssistant(D);
+    latestReady.then(() => { if (LATEST) { D.latest = LATEST; const st = location.hash.match(/^#state-([A-Z]{2})$/); if (st) drawState(st[1]); else if (!$('#view-states').hidden) drawState($('#st-pick').value); drawMap(); } });
     for (const [k, v] of Object.entries(D.indicators)) $('#m-ind').append(el('option', { value: k, text: v }));
     $('#m-ind').value = 'gestational_hypertension';
     ['#m-metric', '#m-ind'].forEach(s => $(s).addEventListener('change', drawMap));

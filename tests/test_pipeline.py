@@ -330,3 +330,72 @@ def test_published_state_race_results_never_show_small_counts():
     assert shown and all(r["n"] >= 20 and r["status"] == "reliable" for r in shown)
     hidden = [r for st in d["states"].values() for rows in st.values() for r in rows if r["rate"] is None]
     assert all(r["n"] is None for r in hidden)
+
+
+def _synthetic_state_feed(seed=0, bump_state="13", bump=1.35):
+    """Fictional monthly state counts shaped like the CDC final (baseline) and provisional files."""
+    from perinatal_ews.latest import FIPS_TO_ABBR
+
+    rng = np.random.default_rng(seed)
+    fips = list(FIPS_TO_ABBR)[:30]
+    inds = {"preterm_birth": 0.10, "low_birth_weight": 0.08, "late_no_prenatal_care": 0.07,
+            "gestational_hypertension": 0.08}
+    base, prov = [], []
+    for f in fips:
+        births_m = rng.integers(1500, 9000)
+        for y in range(2016, 2027):
+            for ind, p0 in inds.items():
+                p = p0 * (bump if (f == bump_state and y == 2026 and ind == "late_no_prenatal_care") else 1.0)
+                monthly = [(births_m, rng.binomial(births_m, p)) for _ in range(12)]
+                for m in range(1, 13):
+                    den = sum(b for b, _ in monthly[:m]); num = sum(k for _, k in monthly[:m])
+                    if y <= 2022:
+                        base.append(dict(state_fips=f, geo_name="x", year=y, indicator=ind, subgroup="All",
+                                         through_month=m, numerator=num, denominator=den))
+                if y >= 2023:
+                    m_ytd = 8
+                    den = sum(b for b, _ in monthly[:m_ytd]); num = sum(k for _, k in monthly[:m_ytd])
+                    prov.append(dict(series="prov_ytd", state_fips=f, geo_name="x", year=y, indicator=ind,
+                                     subgroup="All", numerator=num, denominator=den))
+                    for g, share in (("White", 0.6), ("Filipino", 0.004), ("Hawaiian", 0.003)):
+                        prov.append(dict(series="prov_ytd", state_fips=f, geo_name="x", year=y, indicator=ind,
+                                         subgroup=g, numerator=round(num * share), denominator=round(den * share)))
+                    full_m = 8 if y == 2026 else 12
+                    prov.append(dict(series="prov_full", state_fips=f, geo_name="x", year=y, indicator=ind,
+                                     subgroup="All", numerator=sum(k for _, k in monthly[:full_m]),
+                                     denominator=sum(b for b, _ in monthly[:full_m])))
+    return pd.DataFrame(prov), pd.DataFrame(base)
+
+
+def test_choose_months_drops_an_incomplete_latest_month():
+    from perinatal_ews.latest import choose_months
+
+    rows = [dict(year=2025, month=m, births=300000) for m in range(1, 13)]
+    rows += [dict(year=2026, month=m, births=294000) for m in range(1, 8)] + [dict(year=2026, month=8, births=240000)]
+    rows += [dict(year=2026, month=m, births=0) for m in range(9, 13)]
+    c = choose_months(pd.DataFrame(rows))
+    assert c["latest_month_available"] == "2026-08" and c["excluded_latest_month"] and c["ytd_through_month"] == 7
+    rows[-5] = dict(year=2026, month=8, births=292000)
+    c2 = choose_months(pd.DataFrame(rows))
+    assert not c2["excluded_latest_month"] and c2["ytd_through_month"] == 8
+
+
+def test_monthly_update_flags_year_to_date_change_and_records_dates(cfg, tmp_path):
+    from perinatal_ews.latest import explorer_payload, run_latest
+
+    prov, base = _synthetic_state_feed()
+    meta = {"ytd_year": 2026, "ytd_through_month": 8, "latest_month_available": "2026-08",
+            "provisional_years": [2025, 2026], "fetched_at": "2026-10-14"}
+    res = run_latest(prov, base, meta, cfg, tmp_path)
+    d = res["ytd"].set_index(["geo_id", "indicator"])
+    assert d.loc[("GA", "late_no_prenatal_care"), "level"] == "alert"          # the injected 35% rise
+    others = res["ytd"][(res["ytd"].geo_id != "GA")]
+    assert (others["level"] == "alert").mean() < 0.05
+    assert res["meta"]["ytd_label"] == "January–August 2026"
+    assert res["meta"]["baseline_final_years"] == "2016–2022" and res["full_year"] == 2025
+    assert (tmp_path / "latest_meta.json").exists()
+    race = res["race"].set_index(["geo_id", "indicator", "subgroup"])
+    assert race.loc[("GA", "preterm_birth", "Hawaiian"), "report_as"] != "Hawaiian"   # too small alone
+    p = explorer_payload(res)
+    assert p["states_data"]["GA"]["ind"]["late_no_prenatal_care"]["level"] == "alert"
+    assert all(e["rate"] is None or e["rate"] >= 0 for s in p["states_data"].values() for e in s["ind"].values())
