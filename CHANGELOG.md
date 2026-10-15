@@ -9,7 +9,7 @@ All notable changes to perinatal-ews. Each release is archived on Zenodo (concep
 - Each monthly update saves its outlook in `results/history/<YYYY-MM>/outlook.csv`; outlooks are scored automatically once their year is complete.
 - Clearer explorer: every map option and section states the period and geography it covers (this year by state, 2024 by county, 2025 county forecast); map title and period label; "how to use" steps; filter reset; state view in two blocks ("Now" and "2024 in detail") with the race tables folded away.
 
-## 0.7.0 – 2026-10-15
+## 0.7.0 – 2026-10-15 · [10.5281/zenodo.23383246](https://doi.org/10.5281/zenodo.23383246)
 
 Monthly updates from CDC provisional data:
 
