@@ -2,7 +2,7 @@
 
 All notable changes to perinatal-ews. Each release is archived on Zenodo (concept DOI [10.5281/zenodo.23374046](https://doi.org/10.5281/zenodo.23374046)). Feedback from users and reviewers is tracked as [GitHub issues](https://github.com/karantejpal12/perinatal-ews/issues) and linked here.
 
-## 0.8.0 – 2026-10-15
+## 0.8.0 – 2026-10-15 · [10.5281/zenodo.23383550](https://doi.org/10.5281/zenodo.23383550)
 
 - Full-year outlook (`perinatal_ews.outlook`): for every state and indicator, a projected full-year rate with an 80% range and the chance that the whole year will be flagged, from the months known so far and how each state's year usually ends (empirical-Bayes seasonal step, simulated remaining months, standard detection on each simulation).
 - Backtested on 2021–2025 using only January–August of each year: AUROC 0.97, Brier score 0.029 (0.040 for "flagged so far"), 80% ranges contained the actual full-year rate 85% of the time.
