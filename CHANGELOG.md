@@ -2,6 +2,11 @@
 
 All notable changes to perinatal-ews. Each release is archived on Zenodo (concept DOI [10.5281/zenodo.23374046](https://doi.org/10.5281/zenodo.23374046)). Feedback from users and reviewers is tracked as [GitHub issues](https://github.com/karantejpal12/perinatal-ews/issues) and linked here.
 
+## Unreleased
+
+- Tests run automatically on every change (GitHub Actions, Python 3.10 and 3.12, and the JavaScript tests); status badge in the README.
+- Public roadmap ([docs/ROADMAP.md](docs/ROADMAP.md)).
+
 ## 0.8.0 – 2026-10-15 · [10.5281/zenodo.23383550](https://doi.org/10.5281/zenodo.23383550)
 
 - Full-year outlook (`perinatal_ews.outlook`): for every state and indicator, a projected full-year rate with an 80% range and the chance that the whole year will be flagged, from the months known so far and how each state's year usually ends (empirical-Bayes seasonal step, simulated remaining months, standard detection on each simulation).

@@ -1,6 +1,7 @@
 # perinatal-ews
 
 [![DOI](https://zenodo.org/badge/DOI/10.5281/zenodo.23383550.svg)](https://doi.org/10.5281/zenodo.23383550)
+[![tests](https://github.com/karantejpal12/perinatal-ews/actions/workflows/tests.yml/badge.svg)](https://github.com/karantejpal12/perinatal-ews/actions/workflows/tests.yml)
 [![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
 [![Open In Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/github/karantejpal12/perinatal-ews/blob/main/notebooks/perinatal_ews_colab.ipynb)
 
@@ -220,6 +221,8 @@ pip install -e ".[dev]"
 pytest
 node --test tests/js/ews-tools.test.js
 ```
+
+Both test suites run automatically on every change ([GitHub Actions](https://github.com/karantejpal12/perinatal-ews/actions/workflows/tests.yml)). Planned work is listed in the [roadmap](docs/ROADMAP.md).
 
 ## Licence
 
