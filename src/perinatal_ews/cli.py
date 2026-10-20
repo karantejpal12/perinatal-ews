@@ -6,6 +6,7 @@
                       [--forecast] [--context data/context/county_context.csv] [--level state]
     perinatal-ews pooled --input data/tidy.csv --out out/ [--level state] [--window 3]
                          [--unavailable-years 2017,2018] [--fill-window] [--combine groups.yaml]
+    perinatal-ews mcp [--results path-or-url]
 """
 from __future__ import annotations
 
@@ -127,6 +128,10 @@ def main(argv: list[str] | None = None) -> None:
     pl.add_argument("--combine", default=None,
                     help="YAML file mapping combined-group labels to lists of subgroups (default: federal-style combinations)")
 
+    mc = sub.add_parser("mcp", help="serve the published results to AI assistants over MCP (read-only)")
+    mc.add_argument("--results", default=None,
+                    help="latest.json path or URL (default: this repository's copy, else the published file)")
+
     args = p.parse_args(argv)
     if args.cmd == "demo":
         cfg = load_config()
@@ -145,6 +150,9 @@ def main(argv: list[str] | None = None) -> None:
         print(f"Wrote {len(tidy)} rows to {args.out}. Categories counted as non-cases: {others}")
     elif args.cmd == "pooled":
         _pooled(args)
+    elif args.cmd == "mcp":
+        from .mcp_server import main as mcp_main
+        mcp_main(args.results)
     elif args.cmd == "run":
         cfg = load_config(args.config)
         tidy = pd.concat([load_tidy_csv(f) for f in args.input], ignore_index=True)

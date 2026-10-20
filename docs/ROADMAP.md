@@ -36,6 +36,17 @@ Planned improvements to perinatal-ews, in rough order. Items are small enough to
 - [ ] Print-friendly state summary.
 - [ ] Show how the outlook performed in its backtest next to each outlook value.
 
+## AI assistant for health departments
+
+Goal: let health department staff go from a flag to a documented follow-up plan in minutes, using the assistant they already have, with every figure traceable to the published results.
+
+- [x] MCP server (`perinatal-ews mcp`): read-only tools over this year's state results and the full-year outlook, for Claude Desktop, Claude Code and other MCP clients. (2026-10-20)
+- [ ] MCP tools for the 2024 county results (the same six tools as the explorer's Ask AI tab), so one server covers states and counties.
+- [ ] Figure check for MCP answers: a tool that checks every figure in a draft answer against the results looked up, as the explorer does.
+- [ ] Flag investigation memo: for one flagged state and indicator, run the follow-up checks (neighbouring states, last full year, groups by mother's race, data-quality signals, outlook) and write a one-page memo with what the flag means, what it does not mean and suggested next steps.
+- [ ] Monthly state briefing: after each update, a plain-language one-page summary per state, written by fixed rules from the data, for programme staff and leadership.
+- [ ] Short guide and demo questions for health department epidemiologists trying the assistant, with a feedback issue template.
+
 ## Package and command line
 
 - [ ] `perinatal-ews --version`.

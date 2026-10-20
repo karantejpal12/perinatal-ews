@@ -163,6 +163,8 @@ The explorer's **Ask AI** tab is an AI agent built on Anthropic Claude with tool
 
 Design, guardrails and tests: [docs/ai_assistant.md](docs/ai_assistant.md). `node --test tests/js/ews-tools.test.js` runs the tool and figure-check tests.
 
+**In your own AI assistant.** `perinatal-ews mcp` serves this year's state results and the full-year outlook to Claude Desktop, Claude Code or any other MCP client, read-only and on your own computer: ask "Which states are flagged for late prenatal care, and what should we check first?". Setup and guardrails: [docs/mcp_server.md](docs/mcp_server.md).
+
 ## How detection works
 
 See [docs/methodology.md](docs/methodology.md) for the full method. In short:
