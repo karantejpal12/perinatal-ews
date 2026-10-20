@@ -161,9 +161,38 @@ def simulate(ytd_now: pd.DataFrame, full_past: pd.DataFrame, step: pd.DataFrame,
     return p[cols]
 
 
+def _year_is_complete(ytd: pd.DataFrame, full: pd.DataFrame) -> bool:
+    """True when the January-to-m window is the whole year (m = December): past years' counts equal their full years."""
+    a = ytd[ytd["subgroup"] == TOTAL_SUBGROUP][KEY + ["denominator"]]
+    b = full[full["subgroup"] == TOTAL_SUBGROUP][KEY + ["denominator"]]
+    t = a.merge(b, on=KEY, suffixes=("_ytd", "_full")).dropna()
+    return len(t) > 0 and bool((t["denominator_full"] == t["denominator_ytd"]).all())
+
+
+def _complete_year(ytd: pd.DataFrame, full_past: pd.DataFrame, config: dict, year: int) -> pd.DataFrame:
+    """Outlook for a year whose months are all known: the actual rate and detection result, with no range."""
+    cur = ytd[(ytd["year"] == year) & (ytd["subgroup"] == TOTAL_SUBGROUP)].dropna(subset=["numerator", "denominator"])
+    past = full_past[(full_past["year"] < year) & (full_past["subgroup"] == TOTAL_SUBGROUP)]
+    d = detect(pd.concat([past, cur], ignore_index=True), config, target_year=year)
+    lv = d[d["subgroup"] == TOTAL_SUBGROUP].set_index(["geo_id", "indicator"])["level"]
+    levels = np.array([lv.get(k, "insufficient data") for k in zip(cur["geo_id"], cur["indicator"])])
+    p = cur[["geo_id", "geo_name", "state", "indicator", "year"]].reset_index(drop=True)
+    rate = (cur["numerator"] / cur["denominator"]).to_numpy()
+    p["rate_ytd"] = p["projected_rate"] = p["projected_low80"] = p["projected_high80"] = rate
+    p["p_flag"] = np.isin(levels, ["alert", "watch"]).astype(float)
+    p["p_alert"] = (levels == "alert").astype(float)
+    return p
+
+
 def outlook(ytd: pd.DataFrame, full: pd.DataFrame, config: dict, year: int, backtest_years: list[int],
             history: int = 5, n_draws: int = 300, seed: int = 0) -> pd.DataFrame:
-    """Full-year outlook for `year`, with error variances learned from `backtest_years`."""
+    """Full-year outlook for `year`, with error variances learned from `backtest_years`.
+
+    If January to m already covers the whole year, nothing is simulated: the outlook is the actual year
+    (projected rate and range equal to the observed rate, flag probability 0 or 1).
+    """
+    if _year_is_complete(ytd, full):
+        return _complete_year(ytd, full, config, year)
     rem = remaining_table(ytd, full)
     variances = variance_from_errors(error_components(rem, backtest_years, history))
     step = seasonal_step(rem, year, history)

@@ -332,7 +332,7 @@ def test_published_state_race_results_never_show_small_counts():
     assert all(r["n"] is None for r in hidden)
 
 
-def _synthetic_state_feed(seed=0, bump_state="13", bump=1.35):
+def _synthetic_state_feed(seed=0, bump_state="13", bump=1.35, m_ytd=8):
     """Fictional monthly state counts shaped like the CDC final (baseline) and provisional files."""
     from perinatal_ews.latest import FIPS_TO_ABBR
 
@@ -353,14 +353,13 @@ def _synthetic_state_feed(seed=0, bump_state="13", bump=1.35):
                         base.append(dict(state_fips=f, geo_name="x", year=y, indicator=ind, subgroup="All",
                                          through_month=m, numerator=num, denominator=den))
                 if y >= 2023:
-                    m_ytd = 8
                     den = sum(b for b, _ in monthly[:m_ytd]); num = sum(k for _, k in monthly[:m_ytd])
                     prov.append(dict(series="prov_ytd", state_fips=f, geo_name="x", year=y, indicator=ind,
                                      subgroup="All", numerator=num, denominator=den))
                     for g, share in (("White", 0.6), ("Filipino", 0.004), ("Hawaiian", 0.003)):
                         prov.append(dict(series="prov_ytd", state_fips=f, geo_name="x", year=y, indicator=ind,
                                          subgroup=g, numerator=round(num * share), denominator=round(den * share)))
-                    full_m = 8 if y == 2026 else 12
+                    full_m = m_ytd if y == 2026 else 12
                     prov.append(dict(series="prov_full", state_fips=f, geo_name="x", year=y, indicator=ind,
                                      subgroup="All", numerator=sum(k for _, k in monthly[:full_m]),
                                      denominator=sum(b for b, _ in monthly[:full_m])))
@@ -420,3 +419,35 @@ def test_full_year_outlook_and_backtest(cfg):
     from perinatal_ews.detect import detect
     s = score_archived(ol.assign(year=2025), detect(full, cfg, target_year=2025))
     assert s["state_indicators"] > 0
+
+
+def _outlook_at_month(cfg, m):
+    from perinatal_ews.latest import build_tidy
+    from perinatal_ews.outlook import outlook
+
+    prov, base = _synthetic_state_feed(bump=1.35, m_ytd=m)
+    ytd, _ = build_tidy(prov, base, m, "ytd")
+    full, _ = build_tidy(prov, base, m, "full")
+    return outlook(ytd, full[full["year"] < 2026], cfg, 2026, [2023, 2024, 2025], n_draws=40), ytd
+
+
+def test_outlook_with_one_month_remaining_is_tight_around_year_so_far(cfg):
+    ol, _ = _outlook_at_month(cfg, 11)
+    assert len(ol) == 30 * 4 and ol["p_flag"].between(0, 1).all()
+    assert (ol["projected_low80"] <= ol["projected_rate"]).all() and (ol["projected_rate"] <= ol["projected_high80"]).all()
+    assert ((ol["projected_rate"] - ol["rate_ytd"]).abs() < 0.01).all()     # one month moves the year little
+    ga = ol.set_index(["geo_id", "indicator"]).loc[("GA", "late_no_prenatal_care")]
+    assert ga["p_flag"] > 0.95
+
+
+def test_outlook_when_the_year_is_complete_is_the_actual_year(cfg):
+    from perinatal_ews.detect import detect
+
+    ol, ytd = _outlook_at_month(cfg, 12)
+    assert len(ol) == 30 * 4
+    assert (ol["projected_rate"] == ol["rate_ytd"]).all()
+    assert (ol["projected_low80"] == ol["rate_ytd"]).all() and (ol["projected_high80"] == ol["rate_ytd"]).all()
+    actual = detect(ytd, cfg, target_year=2026)
+    actual = actual[actual["subgroup"] == "All"].set_index(["geo_id", "indicator"])["level"]
+    flagged = [actual.get(k) in ("alert", "watch") for k in zip(ol["geo_id"], ol["indicator"])]
+    assert (ol["p_flag"] == np.array(flagged, float)).all()

@@ -4,6 +4,7 @@ All notable changes to perinatal-ews. Each release is archived on Zenodo (concep
 
 ## Unreleased
 
+- Full-year outlook no longer fails once December is known: it reports the actual year (no range, flag probability 0 or 1); new tests for one month remaining and a complete year.
 - Tests run automatically on every change (GitHub Actions, Python 3.10 and 3.12, and the JavaScript tests); status badge in the README.
 - Public roadmap ([docs/ROADMAP.md](docs/ROADMAP.md)).
 
