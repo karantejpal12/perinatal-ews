@@ -176,6 +176,6 @@ def outlook_track_record(results: dict) -> dict:
         return {"summary": None}
     o = b.get("outlook", {})
     summary = (f"Tested on {b['years'][0]}-{b['years'][-1]} using only the months known at this point of each year: "
-               f"AUROC {o.get('auroc')}, Brier score {o.get('brier')}; 80% ranges contained the actual full-year rate "
-               f"{round(100 * b['interval80_coverage'])}% of the time.")
+               f"AUROC {o.get('auroc'):.2f}, Brier score {o.get('brier'):.3f}; 80% ranges contained the actual full-year "
+               f"rate {int(100 * b['interval80_coverage'] + 0.5)}% of the time.")       # half up, as in the explorer
     return {"summary": summary, "details": b}

@@ -44,6 +44,8 @@ def test_explanation_only_uses_reliable_race_results_and_adds_follow_up(res):
     assert {r["group"] for r in ex["by_mothers_race"]} == reliable
     assert len(ex["suggested_follow_up"]) >= 4 and ex["does_not_mean"]
     assert "AUROC" in ex["outlook_full_year"]["track_record"]
+    cov = res["outlook_backtest"]["interval80_coverage"]
+    assert f"{int(100 * cov + 0.5)}% of the time" in ex["outlook_full_year"]["track_record"]   # same as the explorer
 
 
 def test_unknown_state_or_indicator_is_an_error_not_a_guess(res):
