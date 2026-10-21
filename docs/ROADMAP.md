@@ -16,11 +16,22 @@ Planned improvements to perinatal-ews, in rough order. Items are small enough to
 - [ ] Check that every relative link in the README and `docs/` points to a file that exists.
 - [ ] JSON Schema for `results/latest/latest.json`, with a test that the published file matches it.
 
+## Uncertainty, validation and interpretation
+
+- [ ] County view: show a 95% confidence interval with every rate, and mark rates based on 10–19 events as unstable (NCHS: fewer than 20 events).
+- [ ] "How this was calculated" panel beside each county and state result: how the expected rate is set, the alert and watch thresholds, and what the forecast probability means and how well calibrated it was in testing.
+- [ ] Reporting-completeness signal: the share of births with each item unknown or not stated, by area and year, shown beside every flag, with a note when completeness changed.
+- [ ] Label every explorer table and chart as final or provisional data, with the data year and retrieval date.
+- [ ] Validation page (`docs/validation.md`) bringing together every evaluation: alert rates on historical data, sensitivity and false-alert rate on synthetic data, forward-in-time forecast accuracy and calibration, and the outlook backtest.
+- [ ] Compare county and state estimates with published state vital-records reports for a sample of states, and document any differences.
+- [ ] Forecast and alert performance by county size and by county characteristics (rurality, births by payer, race and ethnicity mix), in the model card.
+- [ ] Test how changes in item completeness affect alerts, using synthetic data with injected drops in completeness.
+
 ## Documentation
 
 - [ ] Data dictionary for every published results file: columns, units and meaning.
-- [ ] Indicator definitions: the birth-certificate items and NCHS definitions behind each of the four indicators, and known comparability issues.
-- [ ] "Interpreting a flag" guide for health department staff: what an alert does and does not mean, and suggested follow-up checks.
+- [ ] Indicator definitions: the birth-certificate items and NCHS definitions behind each of the four indicators, how missing values are handled (for example, how the month prenatal care began is set when dates are missing), and known comparability issues across states and years.
+- [ ] "Interpreting a flag" guide for health department staff: what an alert does and does not mean, and suggested follow-up checks (local data quality, several years of trend, access to care and social factors).
 - [ ] Full references in the methodology (empirical Bayes, false discovery rate, conformal prediction, Isolation Forest, k-means).
 - [ ] Frequently asked questions.
 - [ ] Docstrings for every public function, one module at a time (`detect`, `pooling`, `latest`, `outlook`, `context`).
