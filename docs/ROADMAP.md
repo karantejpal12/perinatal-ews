@@ -2,6 +2,18 @@
 
 Planned improvements to perinatal-ews, in rough order. Items are small enough to finish, test and document one at a time. Each finished item is ticked with its date and noted in the [changelog](../CHANGELOG.md) under "Unreleased"; the data updates themselves follow [UPDATING.md](UPDATING.md). Suggestions are welcome as [GitHub issues](https://github.com/karantejpal12/perinatal-ews/issues).
 
+## Methods priorities
+
+Work first on these. Items marked "needs data" require a fresh CDC WONDER download, which needs a person to accept CDC's data use terms; build and test the code on synthetic data first.
+
+- [ ] Persistent-burden flag (code): for each county and indicator, count the years among the last five in which the county's rate was in the worst national quintile; flag three or more as "persistent", reported separately from change alerts. Tests on synthetic data; methods note citing Brown CC et al., "Geographic Hotspots for Low Birthweight: An Analysis of Counties With Persistently High Rates", *Inquiry* 2020;57 (the neighbouring-county condition is dropped because only large counties are identifiable).
+- [ ] Persistent-burden flag (needs data): run on 2016–2024 county data and show it in the explorer beside change alerts.
+- [ ] Missing-data sensitivity (code): an option to count births with the item "Unknown or Not Stated" in the denominator, and a report of alerts that change between the two choices. For gestational hypertension, a variant that counts an unknown gestational item as yes when eclampsia is checked; chronic hypertension stays a separate composite, since it is not gestational by definition.
+- [ ] Missing-data sensitivity (needs data): download unknown counts by county and year for each indicator, report the unknown share, and run the sensitivity analysis.
+- [ ] Held-out validation of detection: leave out each county-year (recent years first), predict it from the rest, and report interval coverage against the predictive distribution of held-out counts (so binomial noise is included) and prediction error.
+- [ ] Space-time comparison: fit a space-time smoothing model (R package SUMMER) on the same held-out county-years and compare coverage and error with the current pooled empirical-Bayes approach; write up in the validation page.
+- [ ] Internal reference group (code): compare each county with a reference group defined by Perinatal Periods of Risk criteria (non-Hispanic White mothers, aged 20 or older, with at least some college; Gilbert CS, Xaverius PK, Tibbits MK et al., *Matern Child Health J* 2022;26:2396–2406), querying CDC WONDER with filters and pooling years where counts are small. Open question: within-county reference rates or the national 2014–2016 rates.
+
 ## Reliability and testing
 
 - [x] Run the Python and JavaScript tests automatically on every change (GitHub Actions) and show the status in the README. (2026-10-19)

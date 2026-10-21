@@ -71,6 +71,9 @@ Version 0.3 adds county context (substance use, maternity care access, adult hea
 - CDC WONDER hides counties under 100,000 residents, which excludes most rural counties from county-level analysis. State vital records offices hold complete data and are the natural partners for deployment.
 - Birth certificate items vary in completeness and coding quality between states and over time.
 - Flags identify where to look, not why. Interpreting them needs local knowledge (a hospital closure, a reporting change, a real clinical shift).
+- Effects confined to small rural counties cannot be detected. For example, the fall in adequate prenatal care after rural labor and delivery units close (Radke et al., 2023) affects few births: it is lost within state totals, and the public data have no measure of obstetric services in the mother's county of residence.
+- Detection measures change against each county's own history, so a county whose rates are persistently high but stable is not flagged. A separate persistent-burden flag is planned (see the [roadmap](ROADMAP.md)).
+- Births with an item unknown or not stated are left out of that indicator's denominator. How much this matters has not yet been measured; a sensitivity analysis is planned.
 
 ## References
 
@@ -78,3 +81,4 @@ Version 0.3 adds county context (substance use, maternity care access, adult hea
 - Spiegelhalter DJ. Funnel plots for comparing institutional performance. *Stat Med*. 2005.
 - Farrington CP et al. A statistical algorithm for the early detection of outbreaks of infectious disease. *J R Stat Soc A*. 1996.
 - National Center for Health Statistics. Data presentation standards for proportions (reliability of rates based on fewer than 20 events).
+- Radke SM, Smiens L, Ryckman KK, Gruca TS. Closure of labor and delivery units in rural counties is associated with reduced adequacy of prenatal care. *J Rural Health*. 2023;39(4):746–755.
