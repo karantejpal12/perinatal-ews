@@ -6,7 +6,7 @@ Planned improvements to perinatal-ews, in rough order. Items are small enough to
 
 - [x] Run the Python and JavaScript tests automatically on every change (GitHub Actions) and show the status in the README. (2026-10-19)
 - [x] Test the full-year outlook when only one month remains and when the year is already complete. (2026-10-20)
-- [ ] Monthly update script: when the data reach December, skip the outlook backtest (nothing remains to project) instead of failing.
+- [x] Monthly update script: when the data reach December, skip the outlook backtest (nothing remains to project) instead of failing. (2026-10-21)
 - [ ] Test the completeness check (`choose_months`) when the latest month is far below normal and when a month is missing.
 - [ ] Test pooled estimates when every year in the window is suppressed or unavailable.
 - [ ] Test that input validation keeps two-letter state codes and pads numeric county codes.

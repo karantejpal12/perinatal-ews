@@ -243,6 +243,22 @@ def backtest(ytd: pd.DataFrame, full: pd.DataFrame, config: dict, years: list[in
     return bt, summary
 
 
+def outlook_with_backtest(ytd: pd.DataFrame, full: pd.DataFrame, config: dict, year: int,
+                          backtest_years: list[int], months_known: int, n_draws: int = 300,
+                          backtest_draws: int = 150) -> tuple[pd.DataFrame, dict | None]:
+    """The monthly update's outlook step: the outlook for `year` and its backtest summary.
+
+    When January to m already covers the whole year (data through December), nothing remains to project,
+    so the backtest is skipped and the summary is None.
+    """
+    ol = outlook(ytd, full, config, year, backtest_years, n_draws=n_draws)
+    if _year_is_complete(ytd, full):
+        return ol, None
+    _, bt = backtest(ytd, full, config, backtest_years, n_draws=backtest_draws)
+    bt["months_known"] = months_known
+    return ol, bt
+
+
 def score_archived(archived: pd.DataFrame, actual: pd.DataFrame) -> dict:
     """Score an outlook saved earlier against the completed year's detection results."""
     a = actual[actual["subgroup"] == TOTAL_SUBGROUP].set_index(["geo_id", "indicator"])

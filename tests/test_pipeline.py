@@ -1,3 +1,5 @@
+from pathlib import Path
+
 import numpy as np
 import pandas as pd
 import pytest
@@ -451,3 +453,46 @@ def test_outlook_when_the_year_is_complete_is_the_actual_year(cfg):
     actual = actual[actual["subgroup"] == "All"].set_index(["geo_id", "indicator"])["level"]
     flagged = [actual.get(k) in ("alert", "watch") for k in zip(ol["geo_id"], ol["indicator"])]
     assert (ol["p_flag"] == np.array(flagged, float)).all()
+
+
+def _run_monthly_update(tmp_path, m):
+    """Run scripts/update_latest.py end to end on fictional data through month m of 2026."""
+    import json
+    import runpy
+    import sys
+
+    prov, base = _synthetic_state_feed(m_ytd=m)
+    prov.to_csv(tmp_path / "prov.csv", index=False)
+    base.to_csv(tmp_path / "base.csv", index=False)
+    months = [dict(year=2025, month=k, births=300000) for k in range(1, 13)]
+    months += [dict(year=2026, month=k, births=294000 if k <= m else 0) for k in range(1, 13)]
+    (tmp_path / "months.json").write_text(json.dumps({"monthly_births": months, "fetched_at": "2027-02-01",
+                                                      "provisional_years": [2025, 2026],
+                                                      "ytd_through_month_fetched": m}))
+    out, hist = tmp_path / "latest", tmp_path / "history"
+    script = Path(__file__).resolve().parents[1] / "scripts" / "update_latest.py"
+    argv = sys.argv
+    sys.argv = [str(script), "--provisional", str(tmp_path / "prov.csv"), "--months", str(tmp_path / "months.json"),
+                "--baseline", str(tmp_path / "base.csv"), "--out", str(out), "--history", str(hist),
+                "--draws", "20", "--backtest-draws", "10"]
+    try:
+        runpy.run_path(str(script), run_name="__main__")
+    finally:
+        sys.argv = argv
+    return out, hist / f"2026-{m:02d}"
+
+
+def test_monthly_update_with_data_through_december_skips_the_backtest(tmp_path):
+    import json
+
+    out, snap = _run_monthly_update(tmp_path, 8)                 # an ordinary month: backtest written
+    assert (out / "outlook_backtest.json").exists() and (snap / "outlook_backtest.json").exists()
+    assert json.loads((out / "latest.json").read_text())["outlook_backtest"]["months_known"] == 8
+    out, snap = _run_monthly_update(tmp_path, 12)                # December: nothing left to project
+    payload = json.loads((out / "latest.json").read_text())
+    assert "outlook_backtest" not in payload
+    assert not (out / "outlook_backtest.json").exists()          # August's backtest is not left behind
+    assert not (snap / "outlook_backtest.json").exists() and (snap / "outlook.csv").exists()
+    ol = pd.read_csv(out / "outlook.csv")
+    assert len(ol) == 30 * 4 and (ol["projected_low80"] == ol["projected_high80"]).all()
+    assert payload["states_data"]["GA"]["ind"]["late_no_prenatal_care"]["outlook"]["p_flag"] in (0, 1)

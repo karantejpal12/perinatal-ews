@@ -22,7 +22,7 @@ import pandas as pd
 
 from perinatal_ews.config import load_config
 from perinatal_ews.latest import build_tidy, choose_months, explorer_payload, run_latest
-from perinatal_ews.outlook import backtest, outlook, score_archived
+from perinatal_ews.outlook import outlook_with_backtest, score_archived
 
 
 def main() -> None:
@@ -56,16 +56,20 @@ def main() -> None:
     full, _ = build_tidy(prov, base, m_, "full")
     full = full[full["year"] < year]
     bt_years = sorted(int(y) for y in full["year"].unique())[-5:]
-    ol = outlook(ytd, full, cfg, year, bt_years, n_draws=a.draws)
+    # With data through December nothing remains to project, so there is no backtest to run or show.
+    ol, bt = outlook_with_backtest(ytd, full, cfg, year, bt_years, m_, n_draws=a.draws,
+                                   backtest_draws=a.backtest_draws)
     ol.to_csv(Path(a.out, "outlook.csv"), index=False)
-    _, bt = backtest(ytd, full, cfg, bt_years, n_draws=a.backtest_draws)
-    bt["months_known"] = m_
-    Path(a.out, "outlook_backtest.json").write_text(json.dumps(bt, indent=2))
+    bt_path = Path(a.out, "outlook_backtest.json")
+    if bt is None:
+        bt_path.unlink(missing_ok=True)          # never leave an earlier month's backtest beside this outlook
+    else:
+        bt_path.write_text(json.dumps(bt, indent=2))
+        payload["outlook_backtest"] = bt
     for r in ol.itertuples():
         e = payload["states_data"].setdefault(r.geo_id, {"ind": {}, "race": {}})["ind"].setdefault(r.indicator, {})
         e["outlook"] = {"proj": round(r.projected_rate, 4), "lo": round(r.projected_low80, 4),
                         "hi": round(r.projected_high80, 4), "p_flag": round(r.p_flag, 3), "p_alert": round(r.p_alert, 3)}
-    payload["outlook_backtest"] = bt
 
     # Score outlooks saved in earlier months once their year is complete.
     scores = []
@@ -85,13 +89,15 @@ def main() -> None:
     snap.mkdir(parents=True, exist_ok=True)
     for f in ("latest_meta.json", "state_detections_ytd.csv", "state_race_ytd.csv", "outlook.csv",
               "outlook_backtest.json"):
-        shutil.copy(Path(a.out, f), snap / f)
+        if Path(a.out, f).exists():
+            shutil.copy(Path(a.out, f), snap / f)
     m = res["meta"]
+    ol_note = ("year complete, outlook is the actual year (no backtest)" if bt is None else
+               f"backtest AUROC {bt['outlook'].get('auroc')}, 80% interval coverage {bt['interval80_coverage']}")
     print(f"Latest data: {m['ytd_label']} (provisional; latest month available {m['latest_month_available']}, "
           f"{'left out as incomplete' if m['excluded_latest_month'] else 'included'}). "
           f"{m['states']} states: {m['counts']['alerts']} alerts, {m['counts']['watch']} watch. "
-          f"Full-year provisional: {m['full_year_provisional']}. Outlook: backtest AUROC "
-          f"{bt['outlook'].get('auroc')}, 80% interval coverage {bt['interval80_coverage']}. Outputs in {a.out}/ and {snap}/")
+          f"Full-year provisional: {m['full_year_provisional']}. Outlook: {ol_note}. Outputs in {a.out}/ and {snap}/")
 
 
 if __name__ == "__main__":

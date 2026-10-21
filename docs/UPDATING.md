@@ -29,7 +29,7 @@ The site always shows how current the data are: the banner at the top of the exp
    git push
    ```
 
-Each update also saves a dated copy in `results/history/<YYYY-MM>/`, so every monthly result stays on record. That copy includes the full-year outlook (`outlook.csv`) and its backtest (`outlook_backtest.json`). Once a year is complete in the provisional data, the update scores every outlook saved for that year and publishes the results (`results/latest/outlook_track_record.json`). The update takes about eight minutes, mostly for the outlook simulations.
+Each update also saves a dated copy in `results/history/<YYYY-MM>/`, so every monthly result stays on record. That copy includes the full-year outlook (`outlook.csv`) and its backtest (`outlook_backtest.json`); with data through December the outlook is the actual year, so there is no backtest and that file is not written. Once a year is complete in the provisional data, the update scores every outlook saved for that year and publishes the results (`results/latest/outlook_track_record.json`). The update takes about eight minutes, mostly for the outlook simulations.
 
 ### How the months are chosen
 
