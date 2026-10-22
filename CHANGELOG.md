@@ -4,6 +4,7 @@ All notable changes to perinatal-ews. Each release is archived on Zenodo (concep
 
 ## Unreleased
 
+- Roadmap: the internal reference-group comparison will use each county's own Perinatal Periods of Risk reference group, only where every cell has at least 60; methodology cites evidence on excluding records with missing items (Ahrens et al., 2021).
 - Persistent-burden flag (`perinatal_ews.persistent`): counts the years among the last five in which each county was in the worst national quintile and marks three or more as persistent, reported separately from change alerts in `persistent_burden.csv`; tested on synthetic data, not yet run on the published county data.
 - Methodology limitations now state that effects confined to small rural counties cannot be detected, that persistently high but stable rates are not flagged, and that items with unknown values are left out of denominators; roadmap gains a methods-priorities section (persistent-burden flag, missing-data sensitivity, held-out validation, space-time comparison, internal reference group).
 - MCP server (`perinatal-ews mcp`, optional `[agent]` install): AI assistants such as Claude Desktop can answer questions from this year's state results and the full-year outlook, read-only, with sources, reliable-only results by race and suggested follow-up checks ([docs/mcp_server.md](docs/mcp_server.md)).

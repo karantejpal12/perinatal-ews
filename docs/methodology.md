@@ -83,11 +83,12 @@ Version 0.3 adds county context (substance use, maternity care access, adult hea
 - Flags identify where to look, not why. Interpreting them needs local knowledge (a hospital closure, a reporting change, a real clinical shift).
 - Effects confined to small rural counties cannot be detected. For example, the fall in adequate prenatal care after rural labor and delivery units close (Radke et al., 2023) affects few births: it is lost within state totals, and the public data have no measure of obstetric services in the mother's county of residence.
 - Detection measures change against each county's own history, so a county whose rates are persistently high but stable is not flagged as a change. The separate [persistent-burden flag](#persistent-burden) covers that case; it has not yet been run on the published county data (see the [roadmap](ROADMAP.md)).
-- Births with an item unknown or not stated are left out of that indicator's denominator. How much this matters has not yet been measured; a sensitivity analysis is planned.
+- Births with an item unknown or not stated are left out of that indicator's denominator. How much this matters here has not yet been measured; a sensitivity analysis is planned. In a national birth-certificate study of maternal hepatitis C, excluding records with the item missing did not change rural-urban differences compared with multiple imputation (Ahrens et al., 2021), but completeness differs by item, state and year, so this cannot be assumed for the indicators used here.
 
 ## References
 
 - Brown CC et al. Geographic hotspots for low birthweight: an analysis of counties with persistently high rates. *Inquiry*. 2020;57.
+- Ahrens KA et al. Rural-urban residence and maternal hepatitis C infection, U.S.: 2010–2018. *Am J Prev Med*. 2021.
 - Benjamini Y, Hochberg Y. Controlling the false discovery rate. *J R Stat Soc B*. 1995.
 - Spiegelhalter DJ. Funnel plots for comparing institutional performance. *Stat Med*. 2005.
 - Farrington CP et al. A statistical algorithm for the early detection of outbreaks of infectious disease. *J R Stat Soc A*. 1996.
