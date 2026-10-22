@@ -4,6 +4,7 @@ All notable changes to perinatal-ews. Each release is archived on Zenodo (concep
 
 ## Unreleased
 
+- Persistent-burden flag (`perinatal_ews.persistent`): counts the years among the last five in which each county was in the worst national quintile and marks three or more as persistent, reported separately from change alerts in `persistent_burden.csv`; tested on synthetic data, not yet run on the published county data.
 - Methodology limitations now state that effects confined to small rural counties cannot be detected, that persistently high but stable rates are not flagged, and that items with unknown values are left out of denominators; roadmap gains a methods-priorities section (persistent-burden flag, missing-data sensitivity, held-out validation, space-time comparison, internal reference group).
 - MCP server (`perinatal-ews mcp`, optional `[agent]` install): AI assistants such as Claude Desktop can answer questions from this year's state results and the full-year outlook, read-only, with sources, reliable-only results by race and suggested follow-up checks ([docs/mcp_server.md](docs/mcp_server.md)).
 - Monthly update no longer fails when the data reach December: it skips the outlook backtest (nothing remains to project), removes the previous month's `outlook_backtest.json` and leaves it out of `latest.json`; end-to-end test of the update script for August and December.

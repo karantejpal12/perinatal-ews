@@ -47,6 +47,16 @@ The relative-risk floors stop very large counties from alerting on changes that 
 
 **Trend.** Annual percent change in odds from a weighted least-squares fit of logit(rate) on year, reported for context.
 
+## Persistent burden
+
+Change alerts never flag a county whose rate is high but stable. A separate persistent-burden flag (`perinatal_ews.persistent`, written to `persistent_burden.csv` by `perinatal-ews run`) covers that case, following the persistence criterion of Brown et al. (2020):
+
+- Each year, counties with a known rate are ranked (one county, one rank); the worst quintile is the fifth with the highest rates (lowest for `lower_is_worse` indicators), with ties at the boundary included. Years with fewer than five ranked counties are skipped.
+- For each county and indicator, the years among the last five in which the county was in the worst quintile are counted. Three or more makes the county **persistent**; fewer than three ranked years is **insufficient data**. Missing or suppressed years are skipped, never counted as "not worst".
+- A persistent county is marked not `reliable` when any of its worst-quintile years rests on fewer than 20 events.
+
+The flag is reported beside change alerts, not merged into them: a county can be persistent and stable, newly alerting without being persistent, or both. Brown et al. also required neighbouring counties to be high; that condition is dropped because public county data identify only counties of 100,000 residents or more.
+
 ## Subgroups and equity
 
 Detection is repeated within each subgroup present in the data. Separately, for each county and indicator, the highest and lowest reliable subgroup rates are compared (ratio and difference) and shown beside the same gap for all counties combined.
@@ -72,11 +82,12 @@ Version 0.3 adds county context (substance use, maternity care access, adult hea
 - Birth certificate items vary in completeness and coding quality between states and over time.
 - Flags identify where to look, not why. Interpreting them needs local knowledge (a hospital closure, a reporting change, a real clinical shift).
 - Effects confined to small rural counties cannot be detected. For example, the fall in adequate prenatal care after rural labor and delivery units close (Radke et al., 2023) affects few births: it is lost within state totals, and the public data have no measure of obstetric services in the mother's county of residence.
-- Detection measures change against each county's own history, so a county whose rates are persistently high but stable is not flagged. A separate persistent-burden flag is planned (see the [roadmap](ROADMAP.md)).
+- Detection measures change against each county's own history, so a county whose rates are persistently high but stable is not flagged as a change. The separate [persistent-burden flag](#persistent-burden) covers that case; it has not yet been run on the published county data (see the [roadmap](ROADMAP.md)).
 - Births with an item unknown or not stated are left out of that indicator's denominator. How much this matters has not yet been measured; a sensitivity analysis is planned.
 
 ## References
 
+- Brown CC et al. Geographic hotspots for low birthweight: an analysis of counties with persistently high rates. *Inquiry*. 2020;57.
 - Benjamini Y, Hochberg Y. Controlling the false discovery rate. *J R Stat Soc B*. 1995.
 - Spiegelhalter DJ. Funnel plots for comparing institutional performance. *Stat Med*. 2005.
 - Farrington CP et al. A statistical algorithm for the early detection of outbreaks of infectious disease. *J R Stat Soc A*. 1996.
