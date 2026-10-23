@@ -101,6 +101,9 @@ def main(argv: list[str] | None = None) -> None:
     w.add_argument("--subgroup-column", default=None)
     w.add_argument("--config", default=None)
     w.add_argument("--out", required=True)
+    w.add_argument("--unknown-in-denominator", action="store_true",
+                   help="count births with the item unknown or not stated as births without the outcome "
+                        "(default: leave them out of the denominator; their count is kept in the 'unknown' column)")
 
     r = sub.add_parser("run", help="run detection on a tidy CSV")
     r.add_argument("--input", required=True, nargs="+", help="one or more tidy CSV files")
@@ -145,7 +148,8 @@ def main(argv: list[str] | None = None) -> None:
         _run(tidy, cfg, out, None, truth, with_forecast=True)
     elif args.cmd == "ingest-wonder":
         cfg = load_config(args.config)
-        tidy = wonder_to_tidy(args.file, args.indicator, cfg, subgroup_column=args.subgroup_column)
+        tidy = wonder_to_tidy(args.file, args.indicator, cfg, subgroup_column=args.subgroup_column,
+                             unknown_in_denominator=args.unknown_in_denominator)
         Path(args.out).parent.mkdir(parents=True, exist_ok=True)
         tidy.to_csv(args.out, index=False)
         others = tidy.attrs.get("non_case_categories", [])

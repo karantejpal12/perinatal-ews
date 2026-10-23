@@ -10,6 +10,9 @@ One row = one indicator, for one geography, one year and one subgroup.
     subgroup     "All" for the total population, otherwise a subgroup label
     numerator    births with the outcome
     denominator  births with a known value for the outcome
+
+Optional: `unknown`, births with the item unknown or not stated (written by
+`ingest.wonder_to_tidy`; not part of the denominator unless asked).
 """
 from __future__ import annotations
 

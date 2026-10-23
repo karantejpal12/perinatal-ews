@@ -120,6 +120,49 @@ def test_wonder_parser(tmp_path, cfg):
     assert mid["state"] == "MA" and mid["geo_name"] == "Middlesex County"
     tiny = tidy[tidy["geo_id"] == "25999"].iloc[0]
     assert np.isnan(tiny["numerator"])  # suppressed cell invalidates the county-year
+    assert mid["unknown"] == 12 and tiny["unknown"] == 0  # no unknown row means none unknown
+
+
+WONDER_UNKNOWN = '''"Notes"\t"County"\t"County Code"\t"Year"\t"Year Code"\t"Gestational Hypertension"\t"Gestational Hypertension Code"\t"Births"
+\t"A County, MA"\t"25001"\t"2023"\t"2023"\t"Yes"\t"Y"\t"100"
+\t"A County, MA"\t"25001"\t"2023"\t"2023"\t"No"\t"N"\t"850"
+\t"A County, MA"\t"25001"\t"2023"\t"2023"\t"Unknown or Not Stated"\t"U"\t"50"
+\t"A County, MA"\t"25001"\t"2023"\t"2023"\t"Not Reported"\t"X"\t"30"
+\t"B County, MA"\t"25003"\t"2023"\t"2023"\t"Yes"\t"Y"\t"40"
+\t"B County, MA"\t"25003"\t"2023"\t"2023"\t"No"\t"N"\t"600"
+\t"B County, MA"\t"25003"\t"2023"\t"2023"\t"Unknown or Not Stated"\t"U"\t"Suppressed"
+"---"
+'''
+
+
+def test_wonder_unknown_counts_and_denominator_option(tmp_path, cfg):
+    f = tmp_path / "gh.txt"
+    f.write_text(WONDER_UNKNOWN)
+    default = ingest.wonder_to_tidy(f, "gestational_hypertension", cfg).set_index("geo_id")
+    # Default: unknowns (and "Not Reported") left out of the denominator, unknowns counted separately.
+    assert default.at["25001", "numerator"] == 100 and default.at["25001", "denominator"] == 950
+    assert default.at["25001", "unknown"] == 50  # "Not Reported" is not an unknown item
+    assert default.at["25003", "denominator"] == 640 and np.isnan(default.at["25003", "unknown"])
+
+    alt = ingest.wonder_to_tidy(f, "gestational_hypertension", cfg,
+                                unknown_in_denominator=True).set_index("geo_id")
+    assert alt.at["25001", "numerator"] == 100 and alt.at["25001", "denominator"] == 1000
+    # A suppressed unknown count makes the county-year unusable under this option.
+    assert np.isnan(alt.at["25003", "numerator"]) and np.isnan(alt.at["25003", "denominator"])
+
+
+def test_wonder_unknown_with_subgroups(tmp_path, cfg):
+    rows = ['"Notes"\t"County"\t"County Code"\t"Year"\t"Mother\'s Race"\t"Gestational Hypertension"\t"Births"']
+    for race, yes, no, unk in [("White", 60, 500, 20), ("Black", 40, 300, 10)]:
+        for label, n in [("Yes", yes), ("No", no), ("Unknown or Not Stated", unk)]:
+            rows.append(f'\t"A County, MA"\t"25001"\t"2023"\t"{race}"\t"{label}"\t"{n}"')
+    f = tmp_path / "gh_race.txt"
+    f.write_text("\n".join(rows) + "\n")
+    tidy = ingest.wonder_to_tidy(f, "gestational_hypertension", cfg, subgroup_column="Mother\'s Race",
+                                 unknown_in_denominator=True).set_index("subgroup")
+    assert tidy.at["White", "denominator"] == 580 and tidy.at["White", "unknown"] == 20
+    assert tidy.at["All", "numerator"] == 100 and tidy.at["All", "denominator"] == 930
+    assert tidy.at["All", "unknown"] == 30
 
 
 def test_state_clusters_flags_statewide_shift(cfg):
