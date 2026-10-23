@@ -4,6 +4,7 @@ All notable changes to perinatal-ews. Each release is archived on Zenodo (concep
 
 ## Unreleased
 
+- Explorer: every county's gestational hypertension result now carries a reporting-quality caveat; gestational hypertension stays in the alerts, to be presented separately (roadmap).
 - Methodology: gestational hypertension alerts are flagged as reflecting reporting quality, citing NCHS validation studies (Martin et al., 2013; Gregory et al., 2019); roadmap adds a decision on how to show gestational hypertension, county coverage through the NCHS restricted-use natality file, the outcome-count meaning of the 60 minimum, and per-indicator display of the persistent-burden flag.
 - Roadmap: the internal reference-group comparison will use each county's own Perinatal Periods of Risk reference group, only where every cell has at least 60; methodology cites evidence on excluding records with missing items (Ahrens et al., 2021).
 - Persistent-burden flag (`perinatal_ews.persistent`): counts the years among the last five in which each county was in the worst national quintile and marks three or more as persistent, reported separately from change alerts in `persistent_burden.csv`; tested on synthetic data, not yet run on the published county data.

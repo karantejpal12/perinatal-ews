@@ -438,6 +438,11 @@ details.more[open] summary { margin-bottom: 10px; }
     return s;
   }
 
+  // Indicator-level reporting-quality caveats (see docs/methodology.md, Limitations).
+  const CAVEAT = {
+    gestational_hypertension: 'Reporting quality: in national validation studies the birth-certificate item caught only 20–50% of cases, and quality varies by hospital. Read this result as reflecting how hypertension is recorded at least as much as how common it is.',
+  };
+
   function renderCounty(c) {
     const box = $('#county'); box.textContent = '';
     const head = el('div', { class: 'county-head' },
@@ -468,6 +473,7 @@ details.more[open] summary { margin-bottom: 10px; }
         r.append(tr, el('b', { text: pct(e.risk, 0) })); card.append(r);
       }
       if (patterns.has(k + '|' + c.state)) card.append(el('div', { class: 'flag-note', text: `Many ${c.state} counties were flagged for this indicator in ${D.year}. The change may be state-wide (policy, coverage or how the state records it) rather than local.` }));
+      if (CAVEAT[k]) card.append(el('p', { class: 'flag-note caveat', text: CAVEAT[k] }));
       if (e.sustained) card.append(el('p', { class: 'note', text: 'Also elevated the year before.' }));
       if (e.factors) card.append(el('p', { class: 'why', text: `Main forecast factors (approximate): ${e.factors}` }));
       if (e.similar && e.similar.expected != null) card.append(el('p', { class: 'why', text:
