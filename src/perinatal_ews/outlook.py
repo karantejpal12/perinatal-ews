@@ -32,6 +32,8 @@ import numpy as np
 import pandas as pd
 
 from .detect import detect
+from sklearn.metrics import average_precision_score, roc_auc_score
+
 from .forecast import _metrics
 from .schema import TOTAL_SUBGROUP
 
@@ -200,17 +202,35 @@ def outlook(ytd: pd.DataFrame, full: pd.DataFrame, config: dict, year: int, back
 
 
 def backtest(ytd: pd.DataFrame, full: pd.DataFrame, config: dict, years: list[int], history: int = 5,
-             n_draws: int = 200, seed: int = 0) -> tuple[pd.DataFrame, dict]:
+             n_draws: int = 200, seed: int = 0, forward_only: bool = False) -> tuple[pd.DataFrame, dict]:
     """Outlook for each past year using only January to m, scored against the actual full year.
 
-    The error variances used for year t come from the other backtest years only.
-    Baseline comparison: "the full year will be flagged if the year so far is flagged".
+    The seasonal step for year t always comes from years before t. The error variances that set the
+    width of the simulated range come, by default, from the other backtest years (leave one year out),
+    which includes years after t: information that was not available at month m of year t. With
+    `forward_only=True` they come only from complete years before t (every year with at least two years
+    of history before it), so the backtest uses nothing from the future.
+
+    Baselines: "the full year will be flagged if the year so far is flagged" (a yes/no rule), and the
+    year-so-far detection z-score in the harmful direction used as a ranking score.
     """
     rem = remaining_table(ytd, full)
-    err = error_components(rem, years, history)
+    if forward_only:
+        first = int(rem["year"].min()) + 2
+        err_years = sorted(y for y in rem["year"].unique() if first <= y < max(years))
+        err = error_components(rem, err_years, history)
+    else:
+        err = error_components(rem, years, history)
     rows = []
     for t in years:
-        variances = variance_from_errors(err[err["year"] != t])
+        if forward_only:
+            prior = err[err["year"] < t]
+            if prior["year"].nunique() < 2:
+                raise ValueError(f"forward-only backtest: fewer than two complete years before {t} "
+                                 "to learn the error variances")
+            variances = variance_from_errors(prior)
+        else:
+            variances = variance_from_errors(err[err["year"] != t])
         step = seasonal_step(rem, t, history)
         sim = simulate(ytd, full, step, variances, config, t, n_draws, seed + t)
         actual = detect(full[full["year"] <= t], config, target_year=t)
@@ -221,6 +241,9 @@ def backtest(ytd: pd.DataFrame, full: pd.DataFrame, config: dict, years: list[in
         sim["actual_level"] = [actual["level"].get(x) for x in k]
         sim["actual_rate"] = [actual["rate"].get(x) for x in k]
         sim["ytd_level"] = [so_far["level"].get(x) for x in k]
+        sign = sim["indicator"].map(lambda i: -1.0 if config["indicators"].get(i, {}).get("direction")
+                                    == "lower_is_worse" else 1.0)
+        sim["ytd_z"] = [so_far["z"].get(x) for x in k] * sign
         rows.append(sim)
     bt = pd.concat(rows, ignore_index=True).dropna(subset=["actual_level"])
     y = bt["actual_level"].isin(["alert", "watch"]).astype(float)
@@ -239,7 +262,15 @@ def backtest(ytd: pd.DataFrame, full: pd.DataFrame, config: dict, years: list[in
         "outlook_at_50pct": {k: round(v, 3) for k, v in acc((bt["p_flag"] >= 0.5).astype(float)).items()},
         "year_so_far_flag": {k: round(v, 3) for k, v in acc(ytd_flag).items()},
         "brier_year_so_far_flag": round(float(((ytd_flag - y) ** 2).mean()), 4),
+        "variances": "earlier years only" if forward_only else "other backtest years (leave one year out)",
     }
+    z = bt["ytd_z"].to_numpy(dtype=float)
+    ok = np.isfinite(z)
+    if ok.any() and len(np.unique(y[ok])) == 2:
+        summary["year_so_far_z_score"] = {
+            "n": int(ok.sum()),
+            "auroc": round(float(roc_auc_score(y[ok], z[ok])), 4),
+            "auprc": round(float(average_precision_score(y[ok], z[ok])), 4)}
     return bt, summary
 
 

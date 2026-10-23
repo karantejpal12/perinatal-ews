@@ -4,6 +4,7 @@ All notable changes to perinatal-ews. Each release is archived on Zenodo (concep
 
 ## Unreleased
 
+- Outlook backtest: a `forward_only` option that learns the simulated range widths only from years before each backtest year (the published method also used later years), and a simple baseline (ranking states by the year-so-far z-score); `scripts/validate_outlook.py` reruns both methods from the repository's data with results by year, indicator and calibration bin. Published figures are unchanged.
 - `ingest-wonder` keeps the number of births with each item unknown or not stated in a new `unknown` column, and `--unknown-in-denominator` counts them as births without the outcome, the first step of the missing-data sensitivity analysis; default rates are unchanged.
 - Explorer: every county's gestational hypertension result now carries a reporting-quality caveat; gestational hypertension stays in the alerts, to be presented separately (roadmap).
 - Methodology: gestational hypertension alerts are flagged as reflecting reporting quality, citing NCHS validation studies (Martin et al., 2013; Gregory et al., 2019); roadmap adds a decision on how to show gestational hypertension, county coverage through the NCHS restricted-use natality file, the outcome-count meaning of the 60 minimum, and per-indicator display of the persistent-burden flag.

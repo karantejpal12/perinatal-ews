@@ -466,6 +466,32 @@ def test_full_year_outlook_and_backtest(cfg):
     assert s["state_indicators"] > 0
 
 
+def test_forward_only_backtest_ignores_later_years(cfg):
+    """With forward_only=True, the 2024 backtest must not change when 2025 is altered; the default does."""
+    from perinatal_ews.latest import build_tidy
+    from perinatal_ews.outlook import backtest
+
+    prov, base = _synthetic_state_feed()
+    ytd, _ = build_tidy(prov, base, 8, "ytd")
+    full, _ = build_tidy(prov, base, 8, "full")
+    full = full[full["year"] < 2026]
+    later = full.copy()
+    hit = later["year"] == 2025          # make the 2025 remaining months very different from its first 8
+    later.loc[hit, "numerator"] = (later.loc[hit, "numerator"] * 1.5).clip(upper=later.loc[hit, "denominator"]).round()
+
+    def year_2024(f, fwd):
+        bt, summary = backtest(ytd, f, cfg, [2024, 2025], n_draws=20, forward_only=fwd)
+        return bt[bt["year"] == 2024].set_index(["geo_id", "indicator"])[["projected_low80", "projected_high80", "p_flag"]], summary
+
+    fwd_a, s = year_2024(full, True)
+    fwd_b, _ = year_2024(later, True)
+    pd.testing.assert_frame_equal(fwd_a, fwd_b)
+    assert s["variances"] == "earlier years only" and "auroc" in s["year_so_far_z_score"]
+    loo_a, _ = year_2024(full, False)
+    loo_b, _ = year_2024(later, False)
+    assert not loo_a.equals(loo_b)       # leave-one-year-out borrows the 2025 errors
+
+
 def _outlook_at_month(cfg, m):
     from perinatal_ews.latest import build_tidy
     from perinatal_ews.outlook import outlook
