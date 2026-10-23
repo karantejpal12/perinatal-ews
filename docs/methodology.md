@@ -79,7 +79,7 @@ Version 0.3 adds county context (substance use, maternity care access, adult hea
 
 - Annual county data detect changes a year or more after they begin. Monthly or provisional data would shorten the lag.
 - CDC WONDER hides counties under 100,000 residents, which excludes most rural counties from county-level analysis. State vital records offices hold complete data and are the natural partners for deployment.
-- Birth certificate items vary in completeness and coding quality between states and over time.
+- Birth certificate items vary in completeness and coding quality between states and over time. Gestational hypertension is the least reliable of the four indicators: in NCHS validation studies against hospital records, the birth-certificate checkbox (which also covers preeclampsia and HELLP syndrome) identified 20–50% of cases in two states (Martin et al., 2013) and 23% in New York City, where 30% of recorded cases were not confirmed (Gregory et al., 2019), and quality varied by hospital. Read its alerts as reflecting reporting practice at least as much as disease; a change in documentation, such as a new electronic record system, can produce an alert. Birth weight and the obstetric estimate of gestational age agreed much better with hospital records, and prenatal care timing had substantial missing data.
 - Flags identify where to look, not why. Interpreting them needs local knowledge (a hospital closure, a reporting change, a real clinical shift).
 - Effects confined to small rural counties cannot be detected. For example, the fall in adequate prenatal care after rural labor and delivery units close (Radke et al., 2023) affects few births: it is lost within state totals, and the public data have no measure of obstetric services in the mother's county of residence.
 - Detection measures change against each county's own history, so a county whose rates are persistently high but stable is not flagged as a change. The separate [persistent-burden flag](#persistent-burden) covers that case; it has not yet been run on the published county data (see the [roadmap](ROADMAP.md)).
@@ -89,6 +89,8 @@ Version 0.3 adds county context (substance use, maternity care access, adult hea
 
 - Brown CC et al. Geographic hotspots for low birthweight: an analysis of counties with persistently high rates. *Inquiry*. 2020;57.
 - Ahrens KA et al. Rural-urban residence and maternal hepatitis C infection, U.S.: 2010–2018. *Am J Prev Med*. 2021.
+- Gregory ECW et al. Assessing the quality of medical and health data from the 2003 birth certificate revision: results from New York City. *National Vital Statistics Reports*. 2019.
+- Martin JA et al. Assessing the quality of medical and health data from the 2003 birth certificate revision: results from two states. *National Vital Statistics Reports*. 2013.
 - Benjamini Y, Hochberg Y. Controlling the false discovery rate. *J R Stat Soc B*. 1995.
 - Spiegelhalter DJ. Funnel plots for comparing institutional performance. *Stat Med*. 2005.
 - Farrington CP et al. A statistical algorithm for the early detection of outbreaks of infectious disease. *J R Stat Soc A*. 1996.
