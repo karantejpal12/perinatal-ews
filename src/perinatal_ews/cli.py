@@ -35,6 +35,12 @@ def _run(tidy: pd.DataFrame, cfg: dict, out: Path, year: int | None, truth: pd.D
     state_clusters(res, tidy, cfg).to_csv(out / "state_patterns.csv", index=False)
     from .persistent import persistent_burden
     persistent_burden(tidy, cfg, end_year=year).to_csv(out / "persistent_burden.csv", index=False)
+    if "unknown" in tidy.columns:
+        from .missing import unknown_sensitivity
+        sens = unknown_sensitivity(tidy, cfg, target_year=year, subgroups=[TOTAL_SUBGROUP] + subgroups)
+        sens.to_csv(out / "unknown_sensitivity.csv", index=False)
+        print(f"Missing-data sensitivity: {int(sens['changed'].sum())} flags change when births with the item "
+              f"unknown are counted in the denominator (unknown_sensitivity.csv).")
     if subgroups:
         subgroup_gaps(tidy, cfg, year).to_csv(out / "subgroup_gaps.csv", index=False)
     data_quality(tidy, year).to_csv(out / "data_quality.csv", index=False)
