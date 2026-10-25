@@ -71,7 +71,7 @@ perinatal-ews run --input data/*.csv --out out/ --forecast --context data/contex
 
 `ingest-wonder` prints the categories it counted as non-cases. **Check them**: WONDER category labels differ between databases and years. Edit the `wonder` block in a copy of `src/perinatal_ews/default_config.yaml` and pass it with `--config` if anything is misassigned.
 
-Births with the item "Unknown or Not Stated" are left out of the denominator, and their number is kept in an `unknown` column of the tidy file. To count them as births without the outcome instead, add `--unknown-in-denominator`. When the tidy file has the `unknown` column (default ingest), `perinatal-ews run` also writes `unknown_sensitivity.csv`, which runs detection both ways and lists every flag that changes between the two choices.
+Births with the item "Unknown or Not Stated" are left out of the denominator, and their number is kept in an `unknown` column of the tidy file. To count them as births without the outcome instead, add `--unknown-in-denominator`. When the tidy file has the `unknown` column (default ingest), `perinatal-ews run` also writes `unknown_sensitivity.csv`, which runs detection both ways and lists every flag that changes between the two choices. This works at state level too (`--level state`), where unknown counts are summed from the counties.
 
 Things to know about WONDER county data:
 

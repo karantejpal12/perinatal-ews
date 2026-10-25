@@ -52,14 +52,28 @@ DEFAULT_COMBINE = {
 
 
 def to_state(tidy: pd.DataFrame) -> pd.DataFrame:
-    """Sum county rows to states. A state-year is missing if any of its county rows is missing."""
+    """Sum county rows to states. A state-year is missing if any of its county rows is missing.
+
+    If the table has the `unknown` column (births with the item unknown or not
+    stated), it is summed too, and is missing for a state-year if any county's
+    unknown count is missing, so the missing-data sensitivity check also runs
+    at state level.
+    """
+    tidy = tidy.copy()
+    has_unknown = "unknown" in tidy.columns
+    if has_unknown:
+        tidy["unknown"] = pd.to_numeric(tidy["unknown"], errors="coerce")
+    sums = ["numerator", "denominator"] + (["unknown"] if has_unknown else [])
     g = tidy.groupby(["state", "year", "indicator", "subgroup"])
-    out = g[["numerator", "denominator"]].sum(min_count=1).reset_index()
+    out = g[sums].sum(min_count=1).reset_index()
     incomplete = g["numerator"].apply(lambda s: s.isna().any()).reset_index(drop=True)
     out.loc[incomplete.to_numpy(), "numerator"] = np.nan
+    if has_unknown:
+        unk_incomplete = g["unknown"].apply(lambda s: s.isna().any()).reset_index(drop=True)
+        out.loc[unk_incomplete.to_numpy(), "unknown"] = np.nan
     out["geo_id"] = out["state"]
     out["geo_name"] = out["state"].map(STATE_NAMES).fillna(out["state"])
-    return out[["geo_id", "geo_name", "state", "year", "indicator", "subgroup", "numerator", "denominator"]]
+    return out[["geo_id", "geo_name", "state", "year", "indicator", "subgroup"] + sums]
 
 
 def _windows(years: list[int], end_years: list[int], window: int, unavailable: set, fill_window: bool, max_span: int):

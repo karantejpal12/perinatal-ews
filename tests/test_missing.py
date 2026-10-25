@@ -82,3 +82,35 @@ def test_run_writes_sensitivity_file_only_with_unknown_column(tmp_path, tidy):
     tidy.drop(columns="unknown").to_csv(f, index=False)
     main(["run", "--input", str(f), "--out", str(tmp_path / "b")])
     assert not (tmp_path / "b" / "unknown_sensitivity.csv").exists()
+
+
+def test_to_state_sums_unknown_and_keeps_missing_missing(tidy):
+    from perinatal_ews.pooling import to_state
+    st = to_state(tidy)
+    assert "unknown" in st.columns
+    key = ["state", "year", "indicator", "subgroup"]
+    expect = tidy.groupby(key)["unknown"].sum().rename("expect").reset_index()
+    m = st.merge(expect, on=key)
+    assert (m["unknown"] == m["expect"]).all()
+    t2 = tidy.copy()
+    k = t2.index[0]
+    t2.loc[k, "unknown"] = np.nan
+    s2 = to_state(t2)
+    row = (s2.state == t2.at[k, "state"]) & (s2.year == t2.at[k, "year"]) & (s2.indicator == t2.at[k, "indicator"])
+    assert s2.loc[row, "unknown"].isna().all()
+    assert s2.loc[row, "numerator"].notna().all()       # numerator unaffected
+    assert s2.loc[~row, "unknown"].notna().all()
+    plain = to_state(tidy.drop(columns="unknown"))     # tables without the column are unchanged
+    assert "unknown" not in plain.columns
+    assert plain[["numerator", "denominator"]].equals(st[["numerator", "denominator"]])
+
+
+def test_state_level_run_writes_sensitivity_file(tmp_path, tidy):
+    from perinatal_ews.cli import main
+    f = tmp_path / "t.csv"
+    tidy.to_csv(f, index=False)
+    main(["run", "--input", str(f), "--out", str(tmp_path / "s"), "--level", "state"])
+    out = pd.read_csv(tmp_path / "s" / "unknown_sensitivity.csv", dtype={"geo_id": str, "state": str})
+    assert len(out) and (out["geo_id"] == out["state"]).all()       # one row per state, not per county
+    assert out["geo_id"].nunique() == tidy["state"].nunique()
+    assert out["unknown"].notna().all()

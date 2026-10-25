@@ -4,6 +4,7 @@ All notable changes to perinatal-ews. Each release is archived on Zenodo (concep
 
 ## Unreleased
 
+- `run --level state` now carries the `unknown` column through when summing counties to states (missing for a state-year if any county's is missing), so the missing-data sensitivity file is written for state-level runs too; published numbers are unchanged.
 - `perinatal-ews run` writes `unknown_sensitivity.csv` when the tidy data have an `unknown` column: detection is run with births of unknown status left out of and counted in the denominator, and every flag that changes is listed with the county's unknown share (`perinatal_ews.missing`).
 - Outlook backtest: a `forward_only` option that learns the simulated range widths only from years before each backtest year (the published method also used later years), and a simple baseline (ranking states by the year-so-far z-score); `scripts/validate_outlook.py` reruns both methods from the repository's data with results by year, indicator and calibration bin. Published figures are unchanged.
 - `ingest-wonder` keeps the number of births with each item unknown or not stated in a new `unknown` column, and `--unknown-in-denominator` counts them as births without the outcome, the first step of the missing-data sensitivity analysis; default rates are unchanged.
