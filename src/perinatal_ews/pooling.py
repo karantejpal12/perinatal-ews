@@ -57,20 +57,20 @@ def to_state(tidy: pd.DataFrame) -> pd.DataFrame:
     If the table has the `unknown` column (births with the item unknown or not
     stated), it is summed too, and is missing for a state-year if any county's
     unknown count is missing, so the missing-data sensitivity check also runs
-    at state level.
+    at state level. The same applies to `unknown_as_case`.
     """
     tidy = tidy.copy()
-    has_unknown = "unknown" in tidy.columns
-    if has_unknown:
-        tidy["unknown"] = pd.to_numeric(tidy["unknown"], errors="coerce")
-    sums = ["numerator", "denominator"] + (["unknown"] if has_unknown else [])
+    extra = [c for c in ("unknown", "unknown_as_case") if c in tidy.columns]
+    for c in extra:
+        tidy[c] = pd.to_numeric(tidy[c], errors="coerce")
+    sums = ["numerator", "denominator"] + extra
     g = tidy.groupby(["state", "year", "indicator", "subgroup"])
     out = g[sums].sum(min_count=1).reset_index()
     incomplete = g["numerator"].apply(lambda s: s.isna().any()).reset_index(drop=True)
     out.loc[incomplete.to_numpy(), "numerator"] = np.nan
-    if has_unknown:
-        unk_incomplete = g["unknown"].apply(lambda s: s.isna().any()).reset_index(drop=True)
-        out.loc[unk_incomplete.to_numpy(), "unknown"] = np.nan
+    for c in extra:
+        c_incomplete = g[c].apply(lambda s: s.isna().any()).reset_index(drop=True)
+        out.loc[c_incomplete.to_numpy(), c] = np.nan
     out["geo_id"] = out["state"]
     out["geo_name"] = out["state"].map(STATE_NAMES).fillna(out["state"])
     return out[["geo_id", "geo_name", "state", "year", "indicator", "subgroup"] + sums]

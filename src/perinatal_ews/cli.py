@@ -41,6 +41,9 @@ def _run(tidy: pd.DataFrame, cfg: dict, out: Path, year: int | None, truth: pd.D
         sens.to_csv(out / "unknown_sensitivity.csv", index=False)
         print(f"Missing-data sensitivity: {int(sens['changed'].sum())} flags change when births with the item "
               f"unknown are counted in the denominator (unknown_sensitivity.csv).")
+        if "changed_as_case" in sens.columns:
+            print(f"  {int(sens['changed_as_case'].sum())} flags change when births with the item unknown are "
+                  f"counted as cases under the indicator's unknown_as_case rule (e.g. eclampsia checked).")
     if subgroups:
         subgroup_gaps(tidy, cfg, year).to_csv(out / "subgroup_gaps.csv", index=False)
     data_quality(tidy, year).to_csv(out / "data_quality.csv", index=False)
@@ -110,6 +113,9 @@ def main(argv: list[str] | None = None) -> None:
     w.add_argument("--unknown-in-denominator", action="store_true",
                    help="count births with the item unknown or not stated as births without the outcome "
                         "(default: leave them out of the denominator; their count is kept in the 'unknown' column)")
+    w.add_argument("--unknown-as-case-file", default=None,
+                   help="a second export grouped also by the indicator's unknown_as_case column (gestational "
+                        "hypertension: Eclampsia); adds an 'unknown_as_case' column for the sensitivity check")
 
     r = sub.add_parser("run", help="run detection on a tidy CSV")
     r.add_argument("--input", required=True, nargs="+", help="one or more tidy CSV files")
@@ -156,6 +162,13 @@ def main(argv: list[str] | None = None) -> None:
         cfg = load_config(args.config)
         tidy = wonder_to_tidy(args.file, args.indicator, cfg, subgroup_column=args.subgroup_column,
                              unknown_in_denominator=args.unknown_in_denominator)
+        if args.unknown_as_case_file and args.unknown_in_denominator:
+            p.error("--unknown-as-case-file needs the default ingest (unknowns left out of the denominator)")
+        if args.unknown_as_case_file:
+            from .ingest import add_unknown_as_case, wonder_unknown_as_case
+            extra = wonder_unknown_as_case(args.unknown_as_case_file, args.indicator, cfg,
+                                           subgroup_column=args.subgroup_column)
+            tidy = add_unknown_as_case(tidy, extra)
         Path(args.out).parent.mkdir(parents=True, exist_ok=True)
         tidy.to_csv(args.out, index=False)
         others = tidy.attrs.get("non_case_categories", [])

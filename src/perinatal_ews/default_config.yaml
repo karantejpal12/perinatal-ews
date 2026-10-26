@@ -50,3 +50,8 @@ indicators:
       group_column: "Gestational Hypertension"
       numerator_values: ["Yes"]
       exclude_values: ["Unknown or Not Stated", "Not Reported"]
+      # Sensitivity variant only (missing.unknown_sensitivity): births with the item unknown
+      # are counted as cases when this other item is checked; default rates are unchanged.
+      unknown_as_case:
+        column: "Eclampsia"
+        values: ["Yes"]

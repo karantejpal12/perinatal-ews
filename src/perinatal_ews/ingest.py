@@ -140,5 +140,64 @@ def wonder_to_tidy(
     return out
 
 
+def wonder_unknown_as_case(
+    path: str | Path,
+    indicator: str,
+    config: dict,
+    subgroup_column: str | None = None,
+    count_column: str = "Births",
+) -> pd.DataFrame:
+    """Births with the item unknown that the indicator's `unknown_as_case` rule would count as cases.
+
+    For gestational hypertension the default rule is: the gestational
+    hypertension item is unknown and eclampsia is checked. The export must be
+    grouped like the one for `wonder_to_tidy` plus the rule's column (for
+    example "Eclampsia"). Only the cells with the item unknown and the rule's
+    value are used, so suppression elsewhere in this finer table does not
+    matter. Returns geo_id, year, subgroup and `unknown_as_case`: 0 when
+    the county-year has no such cell, NaN when any such cell is suppressed.
+    """
+    spec = config["indicators"][indicator]["wonder"]
+    rule = spec.get("unknown_as_case")
+    if not rule:
+        raise ValueError(f"indicator '{indicator}' has no unknown_as_case rule in the config")
+    raw = read_wonder_text(path)
+    group_col, rule_col = spec["group_column"], rule["column"]
+    for col in ("County Code", "Year", group_col, rule_col, count_column):
+        if col not in raw.columns:
+            raise ValueError(f"{path}: expected column '{col}', found {list(raw.columns)}")
+    if subgroup_column and subgroup_column not in raw.columns:
+        raise ValueError(f"{path}: subgroup column '{subgroup_column}' not found")
+    unknown_values = [v for v in spec.get("unknown_values", UNKNOWN_VALUES) if v in spec.get("exclude_values", [])]
+    raw["count"] = raw[count_column].map(_parse_count)
+    raw["subgroup"] = raw[subgroup_column] if subgroup_column else TOTAL_SUBGROUP
+    keys = ["County Code", "Year", "subgroup"]
+    hit = raw[group_col].isin(unknown_values) & raw[rule_col].isin(rule["values"])
+    cells = raw[keys].drop_duplicates()
+    found = raw[hit].groupby(keys, dropna=False)["count"].agg(lambda s: s.sum(skipna=False)).rename(
+        "unknown_as_case").reset_index()
+    out = cells.merge(found, on=keys, how="left", indicator="_m")
+    out.loc[out["_m"] == "left_only", "unknown_as_case"] = 0.0
+    out = out.drop(columns="_m").rename(columns={"County Code": "geo_id", "Year": "year"})
+    if subgroup_column:
+        tot = out.groupby(["geo_id", "year"], as_index=False)["unknown_as_case"].agg(lambda s: s.sum(skipna=False))
+        tot["subgroup"] = TOTAL_SUBGROUP
+        out = pd.concat([out, tot], ignore_index=True)
+    out["year"] = out["year"].astype(int)
+    gid = out["geo_id"].astype(str).str.strip()
+    out["geo_id"] = gid.where(~gid.str.fullmatch(r"\d{1,5}"), gid.str.zfill(5))
+    out["indicator"] = indicator
+    return out[["geo_id", "year", "indicator", "subgroup", "unknown_as_case"]]
+
+
+def add_unknown_as_case(tidy: pd.DataFrame, extra: pd.DataFrame) -> pd.DataFrame:
+    """Merge `wonder_unknown_as_case` output into a tidy table (NaN where the export has no row)."""
+    keys = ["geo_id", "year", "indicator", "subgroup"]
+    t = tidy.drop(columns="unknown_as_case", errors="ignore")
+    out = t.merge(extra[keys + ["unknown_as_case"]], on=keys, how="left")
+    out.attrs = tidy.attrs
+    return out
+
+
 def load_tidy_csv(path: str | Path) -> pd.DataFrame:
     return validate(pd.read_csv(path, dtype={"geo_id": str}))
