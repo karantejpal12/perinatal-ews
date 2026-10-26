@@ -83,6 +83,11 @@ p { margin: 0 0 10px; color: var(--ink-2); max-width: 72ch; }
 .risk .fill { height: 100%; background: var(--accent); border-radius: 4px; }
 .risk b { font-family: var(--font-data); font-weight: 500; min-width: 3.5em; text-align: right; }
 .why { font-size: 12.5px; color: var(--ink-3); }
+.nums .ci { font-size: 11.5px; font-family: var(--font-data); font-variant-numeric: tabular-nums; }
+.nums .unstable { color: var(--ink); background: var(--watch-bg); border-radius: 4px; padding: 1px 4px; align-self: flex-start; }
+details.calc { font-size: 12.5px; color: var(--ink-2); }
+details.calc summary { cursor: pointer; color: var(--accent); font-weight: 600; }
+details.calc p { margin: 6px 0 0; }
 .ctx { display: grid; grid-template-columns: repeat(auto-fill, minmax(210px, 1fr)); background: var(--surface); border: 1px solid var(--rule); border-radius: 10px; overflow: hidden; }
 .ctx div { box-shadow: 1px 1px 0 var(--rule); padding: 12px 14px; display: flex; flex-direction: column; gap: 2px; }
 .ctx b { font-family: var(--font-data); font-weight: 500; font-size: 18px; font-variant-numeric: tabular-nums; }
@@ -443,6 +448,37 @@ details.more[open] summary { margin-bottom: 10px; }
     gestational_hypertension: 'Reporting quality: in national validation studies the birth-certificate item caught only 20–50% of cases, and quality varies by hospital. Read this result as reflecting how hypertension is recorded at least as much as how common it is.',
   };
 
+  // Forecast calibration in forward-in-time testing (results/<year>/forecast_calibration.csv).
+  let CAL = null;
+  fetch('results/2024/forecast_calibration.csv').then(r => r.ok ? r.text() : null).then(t => {
+    if (!t) return;
+    const [hdr, ...lines] = t.trim().split(/\r?\n/); const h = hdr.split(',');
+    CAL = lines.map(l => Object.fromEntries(l.split(',').map((v, i) => [h[i], Number(v)])));
+  }).catch(() => {});
+
+  function howCalculated(e, ci) {
+    const y = D.year, n = D.counties.length;
+    const box = el('details', { class: 'calc' }, el('summary', { text: 'How this was calculated' }));
+    box.append(el('p', { text: `Expected rate (${pct(e.expected)}): this county's own rate in ${y - 4}–${y - 2}, pooled over three years (${y - 1} is skipped so that a change that began last year is not treated as normal), pulled toward the rate of all ${n} counties in proportion to how small the county is, then scaled by the change across all ${n} counties since then.` }));
+    box.append(el('p', { text: 'Status: an alert needs the gap between observed and expected to be larger than chance after allowing for testing every county (Benjamini–Hochberg q ≤ 0.05), a rate at least 1.10 times expected, and at least 20 events. A watch flag needs z ≥ 2, a rate at least 1.05 times expected and at least 10 events. Stable means no change from the county\'s own history was detected; it does not mean the rate is low, and a rate that has been high for years is stable. The trend chart and the comparison with similar counties show the level.' }));
+    if (ci) box.append(el('p', { text: `Uncertainty: the 95% confidence interval (Wilson) shows the range expected from chance alone with ${e.births.toLocaleString()} births. Rates on fewer than 20 events are marked unstable (NCHS standard), and rates on fewer than 10 events are not shown.` }));
+    if (e.risk != null) {
+      const m = (D.forecast_metrics || []).find(r => r.selected);
+      let t = `${D.forecast_year} risk (${pct(e.risk, 0)}): a gradient-boosted tree model's estimate of the chance that this result is flagged in ${D.forecast_year}, from recent rates, trends, detection scores, county size, payer mix and state-wide changes. It was trained only on earlier years`;
+      if (m) t += ` and tested on ${m.outcome_years} outcomes it had not seen, where it ranked counties with an AUROC of ${m.auroc.toFixed(2)} (0.5 is chance, 1 is perfect)`;
+      t += '.';
+      if (CAL && CAL.length) {
+        t += ` Calibration in that test, with county results split into ${CAL.length} equal groups by predicted risk (average predicted vs share actually flagged): ` +
+          CAL.map(b => `${pct(b.mean_predicted)} vs ${pct(b.observed_rate)}`).join('; ') + '.';
+        const top = CAL[CAL.length - 1];
+        if (e.risk > 2 * top.mean_predicted) t += ' The top group spans a wide range of predictions, so this test does not show how accurate a single high figure like this one is.';
+      }
+      box.append(el('p', { text: t }));
+    }
+    box.append(el('p', {}, 'Full details: ', el('a', { href: 'https://github.com/karantejpal12/perinatal-ews/blob/main/docs/methodology.md', target: '_blank', rel: 'noopener' }, 'methodology'), '.'));
+    return box;
+  }
+
   function renderCounty(c) {
     const box = $('#county'); box.textContent = '';
     const head = el('div', { class: 'county-head' },
@@ -459,8 +495,11 @@ details.more[open] summary { margin-bottom: 10px; }
       const e = c.ind[k]; if (!e) continue;
       const card = el('article', { class: 'card' });
       card.append(el('div', { class: 'card-top' }, el('h3', { text: label }), pill(e.level)));
-      card.append(el('div', { class: 'nums' },
-        el('div', {}, el('b', { text: pct(e.rate) }), el('span', { text: `${D.year} rate` })),
+      const ci = window.EWS.rateInterval(e.rate, e.births);
+      const rateBox = el('div', {}, el('b', { text: pct(e.rate) }), el('span', { text: `${D.year} rate` }));
+      if (ci) rateBox.append(el('span', { class: 'ci', text: `95% CI ${pct(ci.lo)}–${pct(ci.hi)}` }));
+      if (ci && ci.unstable) rateBox.append(el('span', { class: 'unstable', title: 'NCHS: rates based on fewer than 20 events are unstable', text: `Unstable: ${ci.events} events` }));
+      card.append(el('div', { class: 'nums' }, rateBox,
         el('div', {}, el('b', { text: pct(e.expected) }), el('span', { text: 'Expected' })),
         el('div', {}, el('b', { text: e.rr == null ? '–' : e.rr.toFixed(2) + '×' }), el('span', { text: 'Observed ÷ expected' }))));
       const ch = el('div', { class: 'chart' }); ch.append(trendChart(D.years, e.trend, e.expected, label)); card.append(ch);
@@ -476,6 +515,7 @@ details.more[open] summary { margin-bottom: 10px; }
       if (CAVEAT[k]) card.append(el('p', { class: 'flag-note caveat', text: CAVEAT[k] }));
       if (e.sustained) card.append(el('p', { class: 'note', text: 'Also elevated the year before.' }));
       if (e.factors) card.append(el('p', { class: 'why', text: `Main forecast factors (approximate): ${e.factors}` }));
+      card.append(howCalculated(e, ci));
       if (e.similar && e.similar.expected != null) card.append(el('p', { class: 'why', text:
         `Compared with counties with similar health, social and access conditions (${D.benchmark_years || 'recent years'}): ` +
         `${pct(e.similar.rate)} vs ${pct(e.similar.expected)}` + (e.similar.low != null ? ` (90% range ${pct(e.similar.low)}–${pct(e.similar.high)})` : '') + `, ${e.similar.verdict}.` }));
@@ -746,7 +786,8 @@ details.more[open] summary { margin-bottom: 10px; }
         el('th', { class: 'num', text: `${y} so far (95% CI)` }), el('th', { class: 'num', text: `Same months, ${y - 3}–${y - 1}` }), el('th', { text: 'Change' }))), rb)));
     };
     sel.addEventListener('change', draw); draw();
-    return [el('div', { class: 'filters' }, el('label', { for: 'ly-ind' }, 'Indicator', sel)), tbox];
+    return [el('div', { class: 'filters' }, el('label', { for: 'ly-ind' }, 'Indicator', sel)), tbox,
+      el('p', { class: 'note', text: `These rows use only the months of ${LATEST.ytd_year} so far (provisional data), not pooled years, so in smaller states most groups have fewer than 20 events or counts that CDC WONDER suppresses (under 10); a combined group is also missing when any of its member groups is suppressed. The table of earlier years below pools three years of final data and reports more groups.` })];
   }
   function drawLatest(st, box) {
     const L = LATEST && LATEST.states_data[st]; if (!L) return;

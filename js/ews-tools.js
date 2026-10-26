@@ -80,6 +80,22 @@
     return parts.join(' ');
   }
 
+  // Counties (and county equivalents) per state in the 2016-2024 natality data: Connecticut's eight
+  // historical counties, Alaska after the 2019 Chugach / Copper River split. CDC WONDER shows only
+  // counties with 100,000+ residents; the rest are combined per state as "Unidentified Counties".
+  const COUNTIES_IN_STATE = { AL: 67, AK: 30, AZ: 15, AR: 75, CA: 58, CO: 64, CT: 8, DE: 3, DC: 1, FL: 67, GA: 159, HI: 5, ID: 44, IL: 102, IN: 92, IA: 99, KS: 105, KY: 120, LA: 64, ME: 16, MD: 24, MA: 14, MI: 83, MN: 87, MS: 82, MO: 115, MT: 56, NE: 93, NV: 17, NH: 10, NJ: 21, NM: 33, NY: 62, NC: 100, ND: 53, OH: 88, OK: 77, OR: 36, PA: 67, RI: 5, SC: 46, SD: 66, TN: 95, TX: 254, UT: 29, VT: 14, VA: 133, WA: 39, WV: 55, WI: 72, WY: 23 };
+
+  /* 95% Wilson interval for a published rate and its births. Events are recovered from the rate
+     (published to 4 decimals), so they can be off by a fraction of an event in very large counties.
+     Rates on fewer than 20 events are marked unstable (NCHS standard). */
+  function rateInterval(rate, births, z = 1.959964) {
+    if (rate == null || !births) return null;
+    const n = births, k = Math.round(rate * n), p = k / n;
+    const den = 1 + z * z / n, centre = (p + z * z / (2 * n)) / den;
+    const half = z * Math.sqrt(p * (1 - p) / n + z * z / (4 * n * n)) / den;
+    return { events: k, lo: Math.max(0, centre - half), hi: Math.min(1, centre + half), unstable: k < 20 };
+  }
+
   function stateSummary(D, st) {
     const cs = D.counties.filter(c => c.state === st);
     if (!cs.length) return null;
@@ -91,7 +107,8 @@
         high_next_year_risk: es.filter(e => (e.risk || 0) >= 0.3).length };
     }
     return {
-      state: st, data_year: D.year, counties: cs.length, by_indicator: by,
+      state: st, data_year: D.year, counties: cs.length, counties_in_state: COUNTIES_IN_STATE[st] ?? null,
+      counties_not_scored: COUNTIES_IN_STATE[st] != null ? Math.max(0, COUNTIES_IN_STATE[st] - cs.length) : null, by_indicator: by,
       statewide_patterns: (D.state_patterns || []).filter(p => p.state === st).map(p => ({ indicator: indLabel(D, p.indicator),
         counties_flagged: p.flagged, counties: p.counties, state_rate_baseline: p.rate_before, state_rate_now: p.rate_now })),
       need_and_access: cs.filter(c => c.need).map(c => ({ county: c.name, fips: c.id, priority: c.need.priority, reasons: c.need.reasons })),
@@ -108,6 +125,8 @@
     const tw = Object.values(s.by_indicator).reduce((a, b) => a + b.watch, 0);
     const parts = [`${STATE_NAMES[st] || st}: ${plural(s.counties, 'county', 'counties')} with 100,000+ residents ${s.counties === 1 ? 'was' : 'were'} scored for ${D.year}, with ${plural(tot, 'alert', 'alerts')} and ${plural(tw, 'watch flag', 'watch flags')} across the four indicators.`];
     const top = Object.entries(s.by_indicator).filter(([, v]) => v.alerts + v.watch > 0).sort((a, b) => (b[1].alerts + b[1].watch) - (a[1].alerts + a[1].watch));
+    if (s.counties_not_scored) parts.push(`The other ${plural(s.counties_not_scored, 'county', 'counties')} of ${s.counties_in_state} ${s.counties_not_scored === 1 ? 'has' : 'have'} fewer than 100,000 residents and ${s.counties_not_scored === 1 ? 'is' : 'are'} not reported separately by CDC WONDER, so ${s.counties_not_scored === 1 ? 'it is' : 'they are'} not covered by the county results.`);
+    if (tot + tw === 0) parts.push('No flag means no change from each county\'s own recent history was detected; it does not mean there is no concern, and a rate can stay high without being flagged.');
     if (top.length) parts.push('Most flags: ' + top.map(([k, v]) => `${k.toLowerCase()} (${plural(v.alerts, 'alert', 'alerts')}, ${v.watch} watch)`).join('; ') + '.');
     for (const p of s.statewide_patterns) parts.push(`State-wide pattern in ${p.indicator.toLowerCase()}: ${p.counties_flagged} of ${p.counties} counties flagged; state rate ${pct(p.state_rate_baseline)} at baseline, ${pct(p.state_rate_now)} now. Check with the state vital records office whether recording changed.`);
     if (s.year_to_date_provisional) {
@@ -217,6 +236,6 @@
     return [...new Set(out)];
   }
 
-  const api = { STATE_NAMES, TOOLS, countyBrief, stateBrief, stateSummary, listCounties, nationalSummary, checkNumbers, findCounty, METHOD };
+  const api = { STATE_NAMES, COUNTIES_IN_STATE, rateInterval, TOOLS, countyBrief, stateBrief, stateSummary, listCounties, nationalSummary, checkNumbers, findCounty, METHOD };
   if (typeof module !== 'undefined' && module.exports) module.exports = api; else root.EWS = api;
 })(typeof window !== 'undefined' ? window : globalThis);

@@ -4,6 +4,7 @@ All notable changes to perinatal-ews. Each release is archived on Zenodo (concep
 
 ## Unreleased
 
+- Explorer: every county rate shows a 95% confidence interval (Wilson), rates on fewer than 20 events are marked unstable, and each result has a "How this was calculated" panel (expected rate, alert and watch rules, what stable means, and the forecast's forward-in-time AUROC and calibration); state summaries say how many of the state's counties are not covered and that no flag does not mean no concern; the year-so-far race table explains why most groups are insufficient data in smaller states. Published numbers are unchanged.
 - Missing-data sensitivity for gestational hypertension: `ingest-wonder --unknown-as-case-file` reads a second export grouped also by Eclampsia, and `unknown_sensitivity.csv` then shows each flag when births with the item unknown but eclampsia checked are counted as cases (`*_as_case` columns, also at state level); default rates and published numbers are unchanged.
 - `run --level state` now carries the `unknown` column through when summing counties to states (missing for a state-year if any county's is missing), so the missing-data sensitivity file is written for state-level runs too; published numbers are unchanged.
 - `perinatal-ews run` writes `unknown_sensitivity.csv` when the tidy data have an `unknown` column: detection is run with births of unknown status left out of and counted in the denominator, and every flag that changes is listed with the county's unknown share (`perinatal_ews.missing`).

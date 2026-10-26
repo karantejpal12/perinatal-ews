@@ -15,6 +15,8 @@ Work first on these. Items marked "needs data" require a fresh CDC WONDER downlo
 - [x] Gestational hypertension: decided to keep it but present it separately with a reporting-quality caveat (NCHS validation studies found the birth-certificate checkbox caught 20–50% of cases in two states and 23% in New York City, with quality varying by hospital); the caveat now appears on every county's gestational hypertension result in the explorer. (2026-10-23)
 - [ ] Gestational hypertension caveat in the state view, the map legend and the AI assistant's answers.
 - [ ] Report gestational hypertension separately from the other three indicators in headline alert counts (state summaries, bulletin); changes published counts, so review before release.
+- [ ] Balance of state (needs data): score each state's "Unidentified Counties" (counties under 100,000 residents, which CDC WONDER combines per state) as one area, so that states with mostly small counties are represented in the county results until the restricted-use file is available.
+- [ ] Year-so-far results by race (needs data): also query CDC WONDER's broader race groups for the provisional year, so a combined group (for example Asian) is not lost when one of its member groups is suppressed.
 - [ ] All counties (needs data access): apply for the NCHS restricted-use natality file, which identifies every county, and pool years in small counties to reach reporting minimums, so rural counties can be scored.
 - [ ] Missing-data sensitivity (needs data): download unknown counts by county and year for each indicator, report the unknown share, and run the sensitivity analysis (for gestational hypertension, also the export grouped by Eclampsia for the eclampsia variant).
 - [ ] Held-out validation of detection: leave out each county-year (recent years first), predict it from the rest, and report interval coverage against the predictive distribution of held-out counts (so binomial noise is included) and prediction error.
@@ -37,8 +39,9 @@ Work first on these. Items marked "needs data" require a fresh CDC WONDER downlo
 
 ## Uncertainty, validation and interpretation
 
-- [ ] County view: show a 95% confidence interval with every rate, and mark rates based on 10–19 events as unstable (NCHS: fewer than 20 events).
-- [ ] "How this was calculated" panel beside each county and state result: how the expected rate is set, the alert and watch thresholds, and what the forecast probability means and how well calibrated it was in testing.
+- [x] County view: show a 95% confidence interval with every rate, and mark rates based on 10–19 events as unstable (NCHS: fewer than 20 events). (2026-10-26)
+- [x] "How this was calculated" panel beside each county result: how the expected rate is set, the alert and watch thresholds, and what the forecast probability means and how well calibrated it was in testing. (2026-10-26)
+- [ ] "How this was calculated" panel for the state view (year-so-far comparison and full-year outlook).
 - [ ] Reporting-completeness signal: the share of births with each item unknown or not stated, by area and year, shown beside every flag, with a note when completeness changed.
 - [ ] Label every explorer table and chart as final or provisional data, with the data year and retrieval date.
 - [ ] Validation page (`docs/validation.md`) bringing together every evaluation: alert rates on historical data, sensitivity and false-alert rate on synthetic data, forward-in-time forecast accuracy and calibration, and the outlook backtest.
