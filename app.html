@@ -217,6 +217,7 @@ details.more[open] summary { margin-bottom: 10px; }
       <div class="map-head"><h2 id="map-title">Map</h2><span class="period" id="map-period"></span></div>
       <div class="map-wrap" id="map"><p class="status" id="map-status">Loading map…</p></div>
       <div class="map-legend" id="map-legend"></div>
+      <p class="flag-note caveat" id="map-caveat" style="margin:0" hidden></p>
       <p class="note" id="map-note" style="margin:0">Only the 578 counties with 100,000+ residents are scored; other areas are shown in grey. Select a county to open it.</p>
     </div>
     <div class="search">
@@ -443,10 +444,10 @@ details.more[open] summary { margin-bottom: 10px; }
     return s;
   }
 
-  // Indicator-level reporting-quality caveats (see docs/methodology.md, Limitations).
-  const CAVEAT = {
-    gestational_hypertension: 'Reporting quality: in national validation studies the birth-certificate item caught only 20–50% of cases, and quality varies by hospital. Read this result as reflecting how hypertension is recorded at least as much as how common it is.',
-  };
+  // Indicator-level reporting-quality caveats (js/ews-tools.js; see docs/methodology.md, Limitations).
+  const CAVEAT = window.EWS.CAVEATS;
+  // One note per indicator with a caveat, for views that show several indicators at once.
+  const caveatNotes = keys => keys.filter(k => CAVEAT[k]).map(k => el('p', { class: 'flag-note caveat', style: 'margin:0', text: `${D.indicators[k]}: ${CAVEAT[k]}` }));
 
   // Forecast calibration in forward-in-time testing (results/<year>/forecast_calibration.csv).
   let CAL = null;
@@ -660,6 +661,8 @@ details.more[open] summary { margin-bottom: 10px; }
     $('#map-title').textContent = TITLE[metric] + (withInd ? ': ' + D.indicators[ind] : '');
     $('#map-period').textContent = PERIOD[metric] || '';
     $('#map-period').classList.toggle('now', metric.startsWith('state_'));
+    const cav = withInd && CAVEAT[ind];
+    $('#map-caveat').hidden = !cav; $('#map-caveat').textContent = cav ? `${D.indicators[ind]}: ${cav}` : '';
     const stateMode = metric.startsWith('state_') && LATEST;
     MAP.paths.style('display', stateMode ? 'none' : null);
     MAP.states.classed('on', !!stateMode).each(function (f) {
@@ -810,6 +813,7 @@ details.more[open] summary { margin-bottom: 10px; }
         el('th', { class: 'num', text: 'Rate so far' }), el('th', { class: 'num', text: 'Expected' }),
         el('th', { class: 'num', text: `Full ${y}, projected (80% range)` }), el('th', { class: 'num', text: `Chance full ${y} is flagged` }),
         el('th', { text: `${fy} (whole year)` }))), tb)),
+      ...caveatNotes(Object.keys(L.ind)),
       el('p', { class: 'note', style: 'margin:0', text: bt ? `How reliable the outlook is: tested on ${bt.years[0]}–${bt.years[bt.years.length - 1]} using only January–${LATEST.ytd_label.split('–')[1] ? LATEST.ytd_label.split('–')[1].split(' ')[0] : ''} of each year, it ranked the states whose full year was later flagged well (AUROC ${bt.outlook.auroc.toFixed(2)}), and the 80% ranges contained the actual full-year rate ${Math.round(100 * bt.interval80_coverage)}% of the time. Each month's outlook is saved and will be scored when the year is complete. The outlook can differ from the status so far: with more months of births, a difference of the same size becomes statistically clearer, and the rest of the year does not always follow the first months.` : '' }));
     const races = L.race || {};
     if (Object.keys(races).length) {
@@ -832,7 +836,7 @@ details.more[open] summary { margin-bottom: 10px; }
     for (const [k, v] of Object.entries(S.by_indicator))
       stats.append(el('div', {}, el('b', { text: `${v.alerts} / ${v.watch}` }), el('span', { text: `${k}: alerts / watch` })));
     stats.append(el('div', {}, el('b', { text: S.need_and_access.length }), el('span', { text: 'On the need-and-access list' })));
-    block.append(stats);
+    block.append(stats, ...caveatNotes(Object.keys(D.indicators)));
     for (const p of S.statewide_patterns)
       block.append(el('div', { class: 'flag-note', text: `State-wide pattern: ${p.indicator}, ${p.counties_flagged} of ${p.counties} counties flagged; state rate ${pct(p.state_rate_baseline)} at baseline, ${pct(p.state_rate_now)} in ${D.year}. Check with the state vital records office whether recording changed before reading this as local.` }));
     let cs = D.counties.filter(c => c.state === st);

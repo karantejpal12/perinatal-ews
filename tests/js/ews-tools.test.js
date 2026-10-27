@@ -94,3 +94,21 @@ test('state summary reports counties not covered, and a state with no flags says
   }
   assert.equal(Object.values(EWS.COUNTIES_IN_STATE).reduce((a, b) => a + b, 0), 3143);
 });
+
+test('gestational hypertension results carry the reporting-quality caveat, other indicators do not', () => {
+  const gh = D.indicators.gestational_hypertension, cav = EWS.CAVEATS.gestational_hypertension;
+  assert.match(cav, /20–50%/);
+  const r = tool('get_county').run(D, { fips: '25013' });
+  assert.equal(r.indicators[gh].reporting_caveat, cav);
+  for (const [lab, e] of Object.entries(r.indicators)) if (lab !== gh) assert.equal(e.reporting_caveat, undefined, lab);
+  const s = tool('state_summary').run(D, { state: 'GA' });
+  assert.deepEqual(s.reporting_caveats, { [gh]: cav });
+  assert.deepEqual(tool('national_summary').run(D, {}).reporting_caveats, { [gh]: cav });
+  const withGh = tool('list_counties').run(D, { filter: 'flagged', indicator: 'gestational_hypertension', limit: 100 });
+  assert.ok(withGh.total_matching > 0);
+  assert.deepEqual(withGh.reporting_caveats, { [gh]: cav });
+  const noGh = tool('list_counties').run(D, { filter: 'flagged', indicator: 'preterm_birth', limit: 100 });
+  assert.equal(noGh.reporting_caveats, undefined);
+  // The caveat's figures are in the tool result, so quoting it is not reported as an unsupported number.
+  assert.deepEqual(EWS.checkNumbers(`Gestational hypertension: ${cav}`, [r]), []);
+});

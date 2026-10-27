@@ -44,6 +44,7 @@ By default the server reads the repository copy of `results/latest/latest.json` 
 - **Read-only and local.** The server runs on your computer, reads one published file and changes nothing. It sends nothing anywhere except the single download of the published file.
 - **Numbers come from the data.** Every rate, count, ratio and probability is copied from the published results; the server computes no new estimates. Each answer includes the period, retrieval date and source, and the server instructs the assistant to cite them and to say when the data do not have an answer.
 - **No small counts, nothing about individuals.** The published results suppress counts of 9 or fewer, and results by mother's race are returned only where they are based on at least 20 events.
+- **Reporting-quality caveat.** Gestational hypertension results carry a `reporting_caveat` (the birth-certificate item caught only 20–50% of cases in national validation studies), and the assistant is asked to state it with the result; see the [methodology](methodology.md), Limitations.
 - **Errors, not guesses.** An unknown state or indicator returns an error listing the valid choices.
 - **Framing.** Flags are described as statistical signals for follow-up that can reflect recording changes; the assistant is asked not to give clinical or individual advice.
 

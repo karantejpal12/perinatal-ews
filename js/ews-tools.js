@@ -19,6 +19,17 @@
 
   const plural = (n, one, many) => `${n} ${n === 1 ? one : many}`;
   const STATE_NAMES = { AL: 'Alabama', AK: 'Alaska', AZ: 'Arizona', AR: 'Arkansas', CA: 'California', CO: 'Colorado', CT: 'Connecticut', DE: 'Delaware', DC: 'District of Columbia', FL: 'Florida', GA: 'Georgia', HI: 'Hawaii', ID: 'Idaho', IL: 'Illinois', IN: 'Indiana', IA: 'Iowa', KS: 'Kansas', KY: 'Kentucky', LA: 'Louisiana', ME: 'Maine', MD: 'Maryland', MA: 'Massachusetts', MI: 'Michigan', MN: 'Minnesota', MS: 'Mississippi', MO: 'Missouri', MT: 'Montana', NE: 'Nebraska', NV: 'Nevada', NH: 'New Hampshire', NJ: 'New Jersey', NM: 'New Mexico', NY: 'New York', NC: 'North Carolina', ND: 'North Dakota', OH: 'Ohio', OK: 'Oklahoma', OR: 'Oregon', PA: 'Pennsylvania', RI: 'Rhode Island', SC: 'South Carolina', SD: 'South Dakota', TN: 'Tennessee', TX: 'Texas', UT: 'Utah', VT: 'Vermont', VA: 'Virginia', WA: 'Washington', WV: 'West Virginia', WI: 'Wisconsin', WY: 'Wyoming', PR: 'Puerto Rico' };
+  // Indicator-level reporting-quality caveats (see docs/methodology.md, Limitations). The same text is
+  // the `caveat` of the indicator in src/perinatal_ews/default_config.yaml, used by the MCP server.
+  const CAVEATS = {
+    gestational_hypertension: 'Reporting quality: in national validation studies the birth-certificate item caught only 20–50% of cases, and quality varies by hospital. Read this result as reflecting how hypertension is recorded at least as much as how common it is.',
+  };
+  // {label: caveat} for the given indicator keys that have one, or null if none do.
+  function caveatsFor(D, keys) {
+    const out = {};
+    for (const k of new Set(keys)) if (CAVEATS[k]) out[indLabel(D, k)] = CAVEATS[k];
+    return Object.keys(out).length ? out : null;
+  }
   function indLabel(D, k) { return (D.indicators && D.indicators[k]) || k; }
   function findCounty(D, q) {
     if (!q) return null;
@@ -47,6 +58,7 @@
         statewide_pattern: (D.state_patterns || []).some(p => p.state === c.state && p.indicator === k),
         rates_by_year: Object.fromEntries(D.years.map((y, i) => [y, e.trend[i]])),
       };
+      if (CAVEATS[k]) ind[indLabel(D, k)].reporting_caveat = CAVEATS[k];
     }
     return { fips: c.id, county: c.name, state: c.state, data_year: D.year, forecast_year: D.forecast_year,
       indicators: ind, county_context: c.ctx || null, context_median_of_scored_counties: D.context_median || null,
@@ -116,6 +128,7 @@
         retrieved: D.latest.updated, indicators: Object.fromEntries(Object.entries(D.latest.states_data[st].ind).map(([k, e]) => [indLabel(D, k), e])) } : null,
       flagged_counties: cs.filter(c => Object.values(c.ind).some(flagged)).map(c => ({ county: c.name, fips: c.id,
         flags: Object.entries(c.ind).filter(([, e]) => flagged(e)).map(([k, e]) => `${indLabel(D, k)} (${e.level})`) })),
+      reporting_caveats: caveatsFor(D, Object.keys(D.indicators)),
     };
   }
 
@@ -160,7 +173,11 @@
     const key = { alert: 0, watch: 1, stable: 2 };
     rows.sort((x, y) => (a.filter || '').includes('risk') ? (y.next_year_risk || 0) - (x.next_year_risk || 0)
       : (key[x.status] - key[y.status]) || ((y.observed_vs_expected || 0) - (x.observed_vs_expected || 0)));
-    return { total_matching: rows.length, showing: Math.min(lim, rows.length), rows: rows.slice(0, lim) };
+    const shown = rows.slice(0, lim);
+    const out = { total_matching: rows.length, showing: shown.length, rows: shown };
+    const cav = caveatsFor(D, Object.keys(D.indicators).filter(k => shown.some(r => r.indicator === indLabel(D, k))));
+    if (cav) out.reporting_caveats = cav;
+    return out;
   }
 
   function nationalSummary(D) {
@@ -175,6 +192,7 @@
       need_and_access_high_priority: D.counties.filter(c => c.need && c.need.priority === 'high').map(c => `${c.name}, ${c.state}`),
       forecast_validation: D.forecast_metrics || null, similar_county_model_fit: D.benchmark_quality || null,
       county_types: D.types || null, county_types_quality: D.types_quality || null,
+      reporting_caveats: caveatsFor(D, Object.keys(D.indicators)),
       sources: [D.source, D.context_source].filter(Boolean) };
   }
 
@@ -236,6 +254,6 @@
     return [...new Set(out)];
   }
 
-  const api = { STATE_NAMES, COUNTIES_IN_STATE, rateInterval, TOOLS, countyBrief, stateBrief, stateSummary, listCounties, nationalSummary, checkNumbers, findCounty, METHOD };
+  const api = { STATE_NAMES, COUNTIES_IN_STATE, CAVEATS, rateInterval, TOOLS, countyBrief, stateBrief, stateSummary, listCounties, nationalSummary, checkNumbers, findCounty, METHOD };
   if (typeof module !== 'undefined' && module.exports) module.exports = api; else root.EWS = api;
 })(typeof window !== 'undefined' ? window : globalThis);

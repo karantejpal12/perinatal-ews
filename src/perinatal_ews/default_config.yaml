@@ -45,6 +45,9 @@ indicators:
   gestational_hypertension:
     label: "Gestational hypertension"
     description: "Hypertension first diagnosed during pregnancy"
+    # Shown with every result for this indicator (explorer, AI assistant, MCP server); keep in step
+    # with CAVEATS in js/ews-tools.js. See docs/methodology.md, Limitations.
+    caveat: "Reporting quality: in national validation studies the birth-certificate item caught only 20–50% of cases, and quality varies by hospital. Read this result as reflecting how hypertension is recorded at least as much as how common it is."
     direction: higher_is_worse
     wonder:
       group_column: "Gestational Hypertension"

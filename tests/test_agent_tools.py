@@ -72,3 +72,22 @@ def test_mcp_server_lists_and_runs_tools():
     assert names == {"data_status", "list_state_flags", "get_state", "explain_state_flag", "outlook_track_record"}
     out = asyncio.run(server.call_tool("get_state", {"state": "Atlantis"}))
     assert "error" in json.dumps(out, default=str)
+
+
+def test_gestational_hypertension_carries_reporting_caveat(res):
+    caveat = T._caveats()["gestational_hypertension"]
+    assert "20–50%" in caveat
+    # Same text as the explorer and its assistant (js/ews-tools.js).
+    js = (Path(__file__).resolve().parents[1] / "js" / "ews-tools.js").read_text()
+    assert f"gestational_hypertension: '{caveat}'" in js
+    st = next(iter(res["states_data"]))
+    out = T.get_state(res, st)["indicators"]
+    assert out["Gestational hypertension"]["reporting_caveat"] == caveat
+    assert all("reporting_caveat" not in v for k, v in out.items() if k != "Gestational hypertension")
+    assert T.explain_state_flag(res, st, "gestational_hypertension")["reporting_caveat"] == caveat
+    assert T.explain_state_flag(res, st, "preterm_birth")["reporting_caveat"] is None
+    gh = T.list_state_flags(res, "gestational_hypertension")
+    if gh["count"]:
+        assert gh["reporting_caveats"] == {"Gestational hypertension": caveat}
+    pre = T.list_state_flags(res, "preterm_birth")
+    assert "reporting_caveats" not in pre

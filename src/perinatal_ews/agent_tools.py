@@ -50,6 +50,18 @@ def _labels() -> dict:
     return {k: v["label"] for k, v in load_config()["indicators"].items()}
 
 
+def _caveats() -> dict:
+    """Reporting-quality caveats by indicator key (the ``caveat`` field of the indicator config)."""
+    return {k: v["caveat"] for k, v in load_config()["indicators"].items() if v.get("caveat")}
+
+
+def _caveats_for(keys) -> dict | None:
+    """{label: caveat} for the given indicator keys that have one, or None if none do."""
+    labels, cav = _labels(), _caveats()
+    out = {labels.get(k, k): cav[k] for k in dict.fromkeys(keys) if k in cav}
+    return out or None
+
+
 def _indicator(name: str) -> str:
     labels = _labels()
     key = name.strip().lower().replace(" ", "_").replace("-", "_")
@@ -108,14 +120,19 @@ def list_state_flags(results: dict, indicator: str | None = None, level: str = "
                              "ratio_to_expected": e["rr"], "births": e["births"],
                              "chance_full_year_flagged": o.get("p_flag")})
     rows.sort(key=lambda r: (r["level"] != "alert", -(r["ratio_to_expected"] or 0)))
-    return {**_source(results), "count": len(rows), "flags": rows,
-            "note": "A flag is a statistical signal for follow-up, not proof of a real change in health."}
+    out = {**_source(results), "count": len(rows), "flags": rows,
+           "note": "A flag is a statistical signal for follow-up, not proof of a real change in health."}
+    keys = {lab: k for k, lab in labels.items()}
+    cav = _caveats_for(keys.get(r["indicator"], r["indicator"]) for r in rows)
+    if cav:
+        out["reporting_caveats"] = cav
+    return out
 
 
 def get_state(results: dict, state: str) -> dict:
     """All indicators for one state this year so far, with last full year and the full-year outlook."""
     st = _state(results, state)
-    labels = _labels()
+    labels, caveats = _labels(), _caveats()
     out = {}
     for k, e in results["states_data"][st]["ind"].items():
         o = e.get("outlook") or {}
@@ -126,6 +143,8 @@ def get_state(results: dict, state: str) -> dict:
                                                               "rate_pct": _pct(e.get("full_year_rate"))},
             "outlook_full_year": {"projected_rate_pct": _pct(o.get("proj")), "range80_pct": [_pct(o.get("lo")), _pct(o.get("hi"))],
                                   "chance_flagged": o.get("p_flag"), "chance_alert": o.get("p_alert")} if o else None}
+        if k in caveats:
+            out[labels.get(k, k)]["reporting_caveat"] = caveats[k]
     return {**_source(results), "state": st, "state_name": STATE_NAMES.get(st, st), "indicators": out}
 
 
@@ -163,6 +182,7 @@ def explain_state_flag(results: dict, state: str, indicator: str) -> dict:
                               "chance_flagged": o.get("p_flag"), "chance_alert": o.get("p_alert"),
                               "track_record": outlook_track_record(results)["summary"]} if o else None,
         "by_mothers_race": race,
+        "reporting_caveat": _caveats().get(ind),
         "does_not_mean": ["It does not show a cause.", "It says nothing about any individual's risk.",
                           "It can reflect changes in how births are recorded rather than in health."],
         "suggested_follow_up": checks,
