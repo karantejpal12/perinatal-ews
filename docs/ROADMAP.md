@@ -29,7 +29,7 @@ Work first on these. Items marked "needs data" require a fresh CDC WONDER downlo
 - [x] Run the Python and JavaScript tests automatically on every change (GitHub Actions) and show the status in the README. (2026-10-19)
 - [x] Test the full-year outlook when only one month remains and when the year is already complete. (2026-10-20)
 - [x] Monthly update script: when the data reach December, skip the outlook backtest (nothing remains to project) instead of failing. (2026-10-21)
-- [ ] Test the completeness check (`choose_months`) when the latest month is far below normal and when a month is missing.
+- [x] Test the completeness check (`choose_months`) when the latest month is far below normal and when a month is missing; a gap inside the year-to-date window, or no complete month at all, now stops the update with a clear message instead of silently undercounting. (2026-10-28)
 - [ ] Test pooled estimates when every year in the window is suppressed or unavailable.
 - [ ] Test that input validation keeps two-letter state codes and pads numeric county codes.
 - [ ] Test the data-quality check (Isolation Forest) on very small inputs: it should skip with a message, not fail.

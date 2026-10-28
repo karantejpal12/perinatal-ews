@@ -57,6 +57,9 @@ def choose_months(monthly_births: pd.DataFrame, threshold: float = 0.97) -> dict
     """Decide how many months of the current year to use.
 
     `monthly_births`: columns year, month, births (national), for the current and previous year.
+    The latest month is kept only if its births, relative to the same month last year, are at least
+    `threshold` of the typical ratio for earlier months; if last year's month is missing it is dropped.
+    Raises ValueError if a month before the chosen one has no births, or if no complete month remains.
     """
     mb = monthly_births[monthly_births["births"] > 0]
     year = int(mb["year"].max())
@@ -68,6 +71,13 @@ def choose_months(monthly_births: pd.DataFrame, threshold: float = 0.97) -> dict
     completeness = float(ratios.get(latest, np.nan) / typical) if typical else np.nan
     use_latest = bool(np.isfinite(completeness) and completeness >= threshold)
     m = latest if use_latest else latest - 1
+    if m < 1:
+        raise ValueError(f"Only {year}-{latest:02d} is available and it looks incomplete "
+                         f"(completeness {completeness:.2f}); there is no complete month of {year} to compare yet.")
+    gaps = [k for k in range(1, m + 1) if k not in cur.index]
+    if gaps:
+        raise ValueError(f"National births for {year} are missing month(s) {', '.join(map(str, gaps))} within "
+                         f"January-{m}; the year-to-date totals would be incomplete. Re-download the monthly births.")
     return {"ytd_year": year, "latest_month_available": f"{year}-{latest:02d}", "latest_month": latest,
             "latest_month_completeness": round(completeness, 4) if np.isfinite(completeness) else None,
             "excluded_latest_month": not use_latest, "ytd_through_month": m}

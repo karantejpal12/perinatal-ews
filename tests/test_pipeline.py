@@ -424,6 +424,41 @@ def test_choose_months_drops_an_incomplete_latest_month():
     assert not c2["excluded_latest_month"] and c2["ytd_through_month"] == 8
 
 
+def _monthly(cur: dict, prev_births: int = 300000, year: int = 2026) -> pd.DataFrame:
+    rows = [dict(year=year - 1, month=m, births=prev_births) for m in range(1, 13)]
+    rows += [dict(year=year, month=m, births=cur.get(m, 0)) for m in range(1, 13)]
+    return pd.DataFrame(rows)
+
+
+def test_choose_months_latest_month_far_below_normal():
+    from perinatal_ews.latest import choose_months
+
+    c = choose_months(_monthly({**{m: 294000 for m in range(1, 6)}, 6: 60000}))   # June at about a fifth
+    assert c["excluded_latest_month"] and c["ytd_through_month"] == 5
+    assert c["latest_month_available"] == "2026-06" and c["latest_month_completeness"] == pytest.approx(0.2041, abs=1e-3)
+    # just above and just below the 97% threshold
+    assert not choose_months(_monthly({**{m: 300000 for m in range(1, 6)}, 6: 291500}))["excluded_latest_month"]
+    assert choose_months(_monthly({**{m: 300000 for m in range(1, 6)}, 6: 290500}))["excluded_latest_month"]
+
+
+def test_choose_months_when_a_month_is_missing():
+    from perinatal_ews.latest import choose_months
+
+    # last year's figure for the latest month is missing: completeness cannot be judged, so the month is dropped
+    df = _monthly({m: 294000 for m in range(1, 7)})
+    df.loc[(df.year == 2025) & (df.month == 6), "births"] = 0
+    c = choose_months(df)
+    assert c["excluded_latest_month"] and c["latest_month_completeness"] is None and c["ytd_through_month"] == 5
+    # a gap inside the year-to-date window would undercount every total, so it is an error
+    with pytest.raises(ValueError, match=r"missing month\(s\) 3 within January-6"):
+        choose_months(_monthly({m: 294000 for m in (1, 2, 4, 5, 6)}))
+    # a gap only in the dropped latest month is fine
+    assert choose_months(_monthly({**{m: 294000 for m in range(1, 6)}, 6: 1000}))["ytd_through_month"] == 5
+    # only January, and it is incomplete: nothing to compare yet
+    with pytest.raises(ValueError, match="no complete month of 2026"):
+        choose_months(_monthly({1: 100000}))
+
+
 def test_monthly_update_flags_year_to_date_change_and_records_dates(cfg, tmp_path):
     from perinatal_ews.latest import explorer_payload, run_latest
 
