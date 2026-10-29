@@ -57,7 +57,8 @@ Work first on these. Items marked "needs data" require a fresh CDC WONDER downlo
 ## Documentation
 
 - [ ] Data dictionary for every published results file: columns, units and meaning.
-- [ ] Indicator definitions: the birth-certificate items and NCHS definitions behind each of the four indicators, how missing values are handled (for example, how the month prenatal care began is set when dates are missing), and known comparability issues across states and years.
+- [x] Indicator definitions: the birth-certificate items and NCHS definitions behind each of the four indicators, how missing values are handled (for example, how the month prenatal care began is set when dates are missing), and known comparability issues across states and years: [indicators.md](indicators.md). (2026-10-29)
+- [ ] Check the CDC WONDER label for birth weight not stated ("Not Stated" in the documentation, "Unknown or Not Stated" in the config) in a fresh export, so that such births are left out of the low-birth-weight denominator as intended (needs data).
 - [x] "Interpreting a flag" guide for health department staff: what an alert does and does not mean, and suggested follow-up checks (local data quality, several years of trend, access to care and social factors): [interpreting_flags.md](interpreting_flags.md). (2026-10-29)
 - [ ] Full references in the methodology (empirical Bayes, false discovery rate, conformal prediction, Isolation Forest, k-means).
 - [ ] Frequently asked questions.

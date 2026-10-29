@@ -171,7 +171,7 @@ Design, guardrails and tests: [docs/ai_assistant.md](docs/ai_assistant.md). `nod
 
 ## How detection works
 
-See [docs/methodology.md](docs/methodology.md) for the full method. In short:
+See [docs/methodology.md](docs/methodology.md) for the full method, [docs/indicators.md](docs/indicators.md) for the indicator definitions and [docs/interpreting_flags.md](docs/interpreting_flags.md) for how to read a flag. In short:
 
 1. Each county's baseline is its pooled rate over 3 years, skipping the year just before the target so a change that started then is not absorbed into "normal".
 2. Baselines are shrunk toward the all-county rate using an empirical-Bayes beta prior, so small counties are not judged on noise.

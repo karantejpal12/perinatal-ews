@@ -47,6 +47,8 @@ The relative-risk floors stop very large counties from alerting on changes that 
 
 **Trend.** Annual percent change in odds from a weighted least-squares fit of logit(rate) on year, reported for context.
 
+Definitions of the four indicators, the birth-certificate items behind them and how missing values are handled are in [indicators.md](indicators.md).
+
 ## Persistent burden
 
 Change alerts never flag a county whose rate is high but stable. A separate persistent-burden flag (`perinatal_ews.persistent`, written to `persistent_burden.csv` by `perinatal-ews run`) covers that case, following the persistence criterion of Brown et al. (2020):
