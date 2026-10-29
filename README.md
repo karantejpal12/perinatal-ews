@@ -98,7 +98,7 @@ Findings the tool surfaced:
 - **Subgroups add signal.** Running the test within Medicaid and privately insured births produced 144 subgroup alerts, including changes that were too diluted to show in the county total.
 - **Self-monitoring.** Gestational hypertension shows a major distribution shift (stability index 0.33) because it has risen nationally from 5.8% to 10.2% since 2016; detection adjusts for this national trend. The backtest gives alert rates of 2.7–4.2% per year for 2021–2024, and 71–83% of alerts stay elevated the next year.
 
-These are statistical flags for follow-up, not confirmed problems. Each needs local review.
+These are statistical flags for follow-up, not confirmed problems. Each needs local review: see [Interpreting a flag](docs/interpreting_flags.md) for what each result means and the checks to do first.
 
 **Persistently among the highest (2020–2024).** Change alerts cannot flag a county whose rate is high but stable, so a separate flag counts the years in which each county was in the highest fifth of the 578 counties (three or more of five years = persistent, after Brown et al., 2020). Between 102 and 110 counties are persistent for each indicator, and 89% of these results are stable under the change alerts, so the two flags mostly point to different counties. See [methodology](docs/methodology.md#persistent-burden).
 

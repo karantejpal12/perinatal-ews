@@ -192,7 +192,7 @@ details.more[open] summary { margin-bottom: 10px; }
     <div class="howto">
       <div><b>1. Choose what the map shows</b>Each option says which year it covers: this year by state (updated monthly), or 2024 in detail by county.</div>
       <div><b>2. Select a state or county</b>Click it on the map, search for a county below, or open the States tab.</div>
-      <div><b>3. Read flags as leads</b>Alert and watch are statistical signals for local follow-up, not confirmed problems.</div>
+      <div><b>3. Read flags as leads</b>Alert and watch are statistical signals for local follow-up, not confirmed problems. <a href="https://github.com/karantejpal12/perinatal-ews/blob/main/docs/interpreting_flags.md" target="_blank" rel="noopener">How to interpret a flag</a>.</div>
     </div>
     <div class="stack" style="gap:10px">
       <div class="filters">
@@ -479,7 +479,8 @@ details.more[open] summary { margin-bottom: 10px; }
       }
       box.append(el('p', { text: t }));
     }
-    box.append(el('p', {}, 'Full details: ', el('a', { href: 'https://github.com/karantejpal12/perinatal-ews/blob/main/docs/methodology.md', target: '_blank', rel: 'noopener' }, 'methodology'), '.'));
+    box.append(el('p', {}, 'Full details: ', el('a', { href: 'https://github.com/karantejpal12/perinatal-ews/blob/main/docs/methodology.md', target: '_blank', rel: 'noopener' }, 'methodology'), ' · ',
+      el('a', { href: 'https://github.com/karantejpal12/perinatal-ews/blob/main/docs/interpreting_flags.md', target: '_blank', rel: 'noopener' }, 'how to interpret a flag and what to check first'), '.'));
     return box;
   }
 

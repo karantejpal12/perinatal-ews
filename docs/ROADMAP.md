@@ -21,7 +21,9 @@ Work first on these. Items marked "needs data" require a fresh CDC WONDER downlo
 - [ ] All counties (needs data access): apply for the NCHS restricted-use natality file, which identifies every county, and pool years in small counties to reach reporting minimums, so rural counties can be scored.
 - [ ] Missing-data sensitivity (needs data): download unknown counts by county and year for each indicator, report the unknown share, and run the sensitivity analysis (for gestational hypertension, also the export grouped by Eclampsia for the eclampsia variant).
 - [ ] Held-out validation of detection: leave out each county-year (recent years first), predict it from the rest, and report interval coverage against the predictive distribution of held-out counts (so binomial noise is included) and prediction error.
-- [ ] Space-time comparison: fit a space-time smoothing model (R package SUMMER) on the same held-out county-years and compare coverage and error with the current pooled empirical-Bayes approach; write up in the validation page.
+- [ ] Space-time comparison: fit a space-time smoothing model (R package SUMMER) on the same held-out county-years and compare coverage and error with the current pooled empirical-Bayes approach, and compare the models with WAIC as well as cross-validation, checking for oversmoothing where neighbouring counties differ; write up in the validation page.
+- [ ] Gestational diabetes as a fifth indicator (needs data): the birth certificate records it in the same risk-factor checkboxes as gestational hypertension, so it needs the same reporting-quality caveat and missing-data sensitivity.
+- [ ] Linked-data check of birth-certificate items: compare gestational hypertension (and, if available, diabetes and prenatal care) on the birth certificate with hospital discharge records in a linked dataset such as Massachusetts PELL, to measure how completely each item is reported. Needs a data partner.
 - [ ] Internal reference group (code): compare each county with a reference group defined by Perinatal Periods of Risk criteria (non-Hispanic White mothers, aged 20 or older, with at least some college; Gilbert CS, Xaverius PK, Tibbits MK et al., *Matern Child Health J* 2022;26:2396–2406), querying CDC WONDER with filters. Each county is compared with its own reference group (within-county rates, not the national 2014–2016 rates), and only where every cell meets the PPOR minimum of 60, pooling adjacent years to reach it; counties that still fall short are reported as insufficient data. The minimum of 60 applies to the outcome count (for example, preterm births in the reference group) for every indicator.
 
 ## Reliability and testing
@@ -43,6 +45,7 @@ Work first on these. Items marked "needs data" require a fresh CDC WONDER downlo
 - [x] County view: show a 95% confidence interval with every rate, and mark rates based on 10–19 events as unstable (NCHS: fewer than 20 events). (2026-10-26)
 - [x] "How this was calculated" panel beside each county result: how the expected rate is set, the alert and watch thresholds, and what the forecast probability means and how well calibrated it was in testing. (2026-10-26)
 - [x] "How this was calculated" panel for the state view (year-so-far comparison and full-year outlook). (2026-10-29)
+- [ ] Hospital bypass as context, not a covariate: births are counted by the mother's county of residence while clinical items are recorded by the delivering hospital, so show the share of births delivered outside the county of residence as a secondary context and sensitivity indicator (where patients travel, and possible breaks in continuity of care), not as a model input.
 - [ ] Reporting-completeness signal: the share of births with each item unknown or not stated, by area and year, shown beside every flag, with a note when completeness changed.
 - [ ] Label every explorer table and chart as final or provisional data, with the data year and retrieval date.
 - [ ] Validation page (`docs/validation.md`) bringing together every evaluation: alert rates on historical data, sensitivity and false-alert rate on synthetic data, forward-in-time forecast accuracy and calibration, and the outlook backtest.
@@ -54,7 +57,7 @@ Work first on these. Items marked "needs data" require a fresh CDC WONDER downlo
 
 - [ ] Data dictionary for every published results file: columns, units and meaning.
 - [ ] Indicator definitions: the birth-certificate items and NCHS definitions behind each of the four indicators, how missing values are handled (for example, how the month prenatal care began is set when dates are missing), and known comparability issues across states and years.
-- [ ] "Interpreting a flag" guide for health department staff: what an alert does and does not mean, and suggested follow-up checks (local data quality, several years of trend, access to care and social factors).
+- [x] "Interpreting a flag" guide for health department staff: what an alert does and does not mean, and suggested follow-up checks (local data quality, several years of trend, access to care and social factors): [interpreting_flags.md](interpreting_flags.md). (2026-10-29)
 - [ ] Full references in the methodology (empirical Bayes, false discovery rate, conformal prediction, Isolation Forest, k-means).
 - [ ] Frequently asked questions.
 - [ ] Docstrings for every public function, one module at a time (`detect`, `pooling`, `latest`, `outlook`, `context`).
