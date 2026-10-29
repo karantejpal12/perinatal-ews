@@ -100,6 +100,8 @@ Findings the tool surfaced:
 
 These are statistical flags for follow-up, not confirmed problems. Each needs local review.
 
+**Persistently among the highest (2020–2024).** Change alerts cannot flag a county whose rate is high but stable, so a separate flag counts the years in which each county was in the highest fifth of the 578 counties (three or more of five years = persistent, after Brown et al., 2020). Between 102 and 110 counties are persistent for each indicator, and 89% of these results are stable under the change alerts, so the two flags mostly point to different counties. See [methodology](docs/methodology.md#persistent-burden).
+
 To reproduce, run [`scripts/fetch_wonder_counties.js`](scripts/fetch_wonder_counties.js) in your browser on the CDC WONDER request form (instructions in the file), then `perinatal-ews run`.
 
 ## Next-year forecast (machine learning)

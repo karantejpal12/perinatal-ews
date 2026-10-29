@@ -112,3 +112,24 @@ test('gestational hypertension results carry the reporting-quality caveat, other
   // The caveat's figures are in the tool result, so quoting it is not reported as an unsupported number.
   assert.deepEqual(EWS.checkNumbers(`Gestational hypertension: ${cav}`, [r]), []);
 });
+
+test('persistent-burden filter lists exactly the persistent county results, most years first', () => {
+  for (const k of Object.keys(D.indicators)) {
+    const r = tool('list_counties').run(D, { filter: 'persistent_burden', indicator: k, limit: 100 });
+    assert.equal(r.total_matching, D.persistent.persistent_counties[k], k);
+    assert.ok(r.rows.every(x => x.years_in_highest_fifth >= D.persistent.min_years), k);
+    for (let i = 1; i < r.rows.length; i++) assert.ok(r.rows[i - 1].years_in_highest_fifth >= r.rows[i].years_in_highest_fifth, k);
+  }
+});
+
+test('county record reports persistent burden as a level over 2020-2024, separate from status', () => {
+  const r = tool('get_county').run(D, { fips: '01097' });
+  for (const e of Object.values(r.indicators)) {
+    const p = e.persistent_burden; assert.ok(p);
+    assert.equal(p.which_years.length, p.years_in_highest_fifth);
+    assert.equal(p.status === 'persistent', p.years_in_highest_fifth >= D.persistent.min_years);
+    assert.ok(p.which_years.every(y => y >= D.persistent.window_start && y <= D.persistent.window_end));
+  }
+  const n = tool('national_summary').run(D, {});
+  assert.deepEqual(Object.values(n.persistently_among_highest.counties_by_indicator), Object.values(D.persistent.persistent_counties));
+});

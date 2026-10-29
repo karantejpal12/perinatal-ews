@@ -43,6 +43,9 @@ def main() -> None:
            if (res / "county_typology.csv").exists() else None)
     anom = (pd.read_csv(res / "data_anomalies.csv", dtype={"geo_id": str})
             if (res / "data_anomalies.csv").exists() else None)
+    pb = (pd.read_csv(res / "persistent_burden.csv", dtype={"geo_id": str, "worst_quintile_years": str})
+          .query("subgroup == 'All'").set_index(["geo_id", "indicator"])
+          if (res / "persistent_burden.csv").exists() else None)
     year = int(det["year"].max())
     years = sorted(int(y) for y in tidy["year"].unique())
 
@@ -106,6 +109,13 @@ def main() -> None:
                 entry["similar"] = {"rate": _r(b["observed_rate"]), "expected": _r(b["context_expected_rate"]),
                                     "low": _r(b.get("similar_range_low")), "high": _r(b.get("similar_range_high")),
                                     "verdict": b["compared_with_similar"]}
+            if pb is not None and (c.geo_id, k) in pb.index:
+                p = pb.loc[(c.geo_id, k)]
+                yrs = str(p["worst_quintile_years"]) if pd.notna(p["worst_quintile_years"]) else ""
+                entry["persistent"] = {"status": p["status"], "years_worst": int(p["years_in_worst_quintile"]),
+                                       "years_ranked": int(p["years_ranked"]),
+                                       "worst_years": [int(y) for y in yrs.split(",") if y.strip()],
+                                       "reliable": bool(p["reliable"])}
             ind[k] = entry
         rec = {"id": c.geo_id, "name": c.geo_name, "state": c.state, "ind": ind}
         if ctx is not None and c.geo_id in ctx.index:
@@ -147,6 +157,13 @@ def main() -> None:
                            "drug overdose deaths; SAMHSA FindTreatment.gov facility listings (Oct 2026); CMS Maternal "
                            "Health - Hospital (Maternal Morbidity Structural Measure)."),
     }
+    if pb is not None:
+        payload["persistent"] = {
+            "window_start": int(pb["window_start"].min()), "window_end": int(pb["window_end"].max()),
+            "min_years": 3,
+            "persistent_counties": {k: int(((pb.index.get_level_values("indicator") == k)
+                                            & (pb["status"] == "persistent")).sum()) for k in indicators},
+        }
     if (res / "typology_summary.csv").exists():
         ts = pd.read_csv(res / "typology_summary.csv")
         payload["types"] = {int(r.type): {"counties": int(r.counties), "description": r.description} for r in ts.itertuples()}

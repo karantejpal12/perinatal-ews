@@ -107,3 +107,26 @@ def test_runs_on_synthetic_data_by_subgroup_and_window(cfg):
     assert share == pytest.approx(0.2, abs=0.01)
     with pytest.raises(ValueError):
         persistent_burden(tidy, cfg, window=3, min_years=4)
+
+
+def test_published_persistent_burden_matches_explorer_data():
+    """The explorer's persistent-burden fields are exactly results/2024/persistent_burden.csv."""
+    import json
+    from pathlib import Path
+
+    root = Path(__file__).resolve().parents[1]
+    pb = pd.read_csv(root / "results/2024/persistent_burden.csv", dtype={"geo_id": str, "worst_quintile_years": str})
+    pb = pb[pb["subgroup"] == "All"].set_index(["geo_id", "indicator"])
+    data = json.loads((root / "results/2024/explorer.json").read_text())
+    n = 0
+    for c in data["counties"]:
+        for k, e in c["ind"].items():
+            p = e["persistent"]
+            row = pb.loc[(c["id"], k)]
+            assert p["status"] == row["status"]
+            assert p["years_worst"] == row["years_in_worst_quintile"] == len(p["worst_years"])
+            assert (p["status"] == "persistent") == (p["years_worst"] >= data["persistent"]["min_years"])
+            n += 1
+    assert n == len(pb)
+    for k, cnt in data["persistent"]["persistent_counties"].items():
+        assert cnt == int(((pb.index.get_level_values("indicator") == k) & (pb["status"] == "persistent")).sum())

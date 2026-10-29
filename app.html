@@ -95,6 +95,7 @@ details.calc p { margin: 6px 0 0; }
 .need { font-size: 13.5px; border-radius: 8px; padding: 10px 12px; background: var(--watch-bg); color: var(--ink); }
 .need.high { background: var(--alert-bg); }
 .flag-note { font-size: 13px; background: var(--watch-bg); color: var(--ink); border-radius: 6px; padding: 8px 10px; }
+.flag-note.persistent { background: var(--accent-soft); }
 .filters { display: flex; flex-wrap: wrap; gap: 10px; align-items: end; }
 .filters label { display: flex; flex-direction: column; gap: 4px; font-size: 12px; color: var(--ink-3); font-weight: 600; letter-spacing: .02em; }
 select { font: inherit; font-size: 14px; padding: 8px 10px; border: 1px solid var(--rule); border-radius: 6px; background: var(--surface); color: var(--ink); }
@@ -203,6 +204,7 @@ details.more[open] summary { margin-bottom: 10px; }
           <optgroup label="2024 in detail, by county (final data)">
             <option value="status">Status in 2024</option>
             <option value="similar">Compared with similar counties</option>
+            <option value="persistent">Persistently among the highest (2020–2024)</option>
             <option value="type">County type</option>
             <option value="overdose">Drug overdose deaths</option>
             <option value="need">Need and access</option>
@@ -240,6 +242,7 @@ details.more[open] summary { margin-bottom: 10px; }
         <label for="f-level">Status<select id="f-level">
           <option value="flag">Alert or watch in 2024</option><option value="alert">Alert only in 2024</option>
           <option value="risk">Stable in 2024, high 2025 risk</option>
+          <option value="persistent">Persistently among the highest, 2020–2024</option>
           <option value="need">On the need-and-access list</option></select></label>
         <button class="btn" id="f-reset" type="button">Reset filters</button>
       </div>
@@ -480,6 +483,21 @@ details.more[open] summary { margin-bottom: 10px; }
     return box;
   }
 
+  // Persistent burden (results/2024/persistent_burden.csv; docs/methodology.md#persistent-burden).
+  const PW = () => D.persistent ? `${D.persistent.window_start}–${D.persistent.window_end}` : '';
+  function persistentText(p) {
+    const yrs = p.worst_years.length ? ` (${p.worst_years.join(', ')})` : '';
+    return `In the highest fifth of the ${D.counties.length} scored counties in ${p.years_worst} of ${p.years_ranked} years, ${PW()}${yrs}`;
+  }
+  function persistentNote(e) {
+    const p = e.persistent; if (!p || !D.persistent) return null;
+    if (p.status === 'persistent') return el('p', { class: 'flag-note persistent' }, el('b', { text: 'Persistently among the highest. ' }),
+      persistentText(p) + `. This is about the level of the rate, not a change: a county can be stable and still persistently high.` +
+      (p.reliable ? '' : ' At least one of these years rests on fewer than 20 events.'));
+    if (p.years_worst > 0) return el('p', { class: 'note', text: persistentText(p) + `; ${D.persistent.min_years} or more makes a county persistent.` });
+    return null;
+  }
+
   function renderCounty(c) {
     const box = $('#county'); box.textContent = '';
     const head = el('div', { class: 'county-head' },
@@ -515,6 +533,7 @@ details.more[open] summary { margin-bottom: 10px; }
       if (patterns.has(k + '|' + c.state)) card.append(el('div', { class: 'flag-note', text: `Many ${c.state} counties were flagged for this indicator in ${D.year}. The change may be state-wide (policy, coverage or how the state records it) rather than local.` }));
       if (CAVEAT[k]) card.append(el('p', { class: 'flag-note caveat', text: CAVEAT[k] }));
       if (e.sustained) card.append(el('p', { class: 'note', text: 'Also elevated the year before.' }));
+      const pn = persistentNote(e); if (pn) card.append(pn);
       if (e.factors) card.append(el('p', { class: 'why', text: `Main forecast factors (approximate): ${e.factors}` }));
       card.append(howCalculated(e, ci));
       if (e.similar && e.similar.expected != null) card.append(el('p', { class: 'why', text:
@@ -590,13 +609,15 @@ details.more[open] summary { margin-bottom: 10px; }
         const subFlag = Object.values(e.subgroups || {}).some(sd => sd.level === 'alert' || sd.level === 'watch');
         const ok = lv === 'alert' ? e.level === 'alert' : lv === 'flag' ? flagged
           : lv === 'need' ? (c.need && (flagged || subFlag || (e.risk || 0) >= 0.3))
+          : lv === 'persistent' ? !!(e.persistent && e.persistent.status === 'persistent')
           : (e.level === 'stable' && (e.risk || 0) >= 0.25);
         if (ok) rows.push({ c, k, e });
       }
     }
     const order = { alert: 0, watch: 1, stable: 2 };
     const pr = r => (r.c.need && r.c.need.priority === 'high' ? 0 : 1);
-    rows.sort((a, b) => lv === 'need' ? (pr(a) - pr(b)) || (order[a.e.level] - order[b.e.level]) : lv === 'risk' ? (b.e.risk || 0) - (a.e.risk || 0) : (order[a.e.level] - order[b.e.level]) || ((b.e.rr || 0) - (a.e.rr || 0)));
+    rows.sort((a, b) => lv === 'need' ? (pr(a) - pr(b)) || (order[a.e.level] - order[b.e.level])
+      : lv === 'persistent' ? (b.e.persistent.years_worst - a.e.persistent.years_worst) || ((b.e.rate || 0) - (a.e.rate || 0)) : lv === 'risk' ? (b.e.risk || 0) - (a.e.risk || 0) : (order[a.e.level] - order[b.e.level]) || ((b.e.rr || 0) - (a.e.rr || 0)));
     const body = $('#list'); body.textContent = '';
     for (const r of rows.slice(0, 200)) {
       const tr = el('tr', { class: 'row', tabindex: '0', onclick: () => { openCounty(r.c.id); window.scrollTo({ top: 0, behavior: 'smooth' }); },
@@ -627,6 +648,10 @@ details.more[open] summary { margin-bottom: 10px; }
       const v = /higher/.test(e.similar.verdict) ? 'higher' : /lower/.test(e.similar.verdict) ? 'lower' : 'inline';
       return { color: PAL[v], text: `${pct(e.similar.rate)} vs ${pct(e.similar.expected)} in similar counties (${e.similar.verdict})` };
     }
+    if (metric === 'persistent') {
+      const p = e && e.persistent; if (!p || !D.persistent) return null;
+      return { color: p.years_worst ? seq(p.years_worst / 5) : PAL.inline, text: persistentText(p) + (p.status === 'persistent' ? ' · persistent' : '') };
+    }
     if (metric === 'type') return c.type ? { color: PAL.types[(c.type - 1) % 8], text: `Type ${c.type}: ${(D.types[c.type] || {}).description || ''}` } : null;
     if (metric === 'overdose') { const v = c.ctx && c.ctx.overdose_rate_2024; return v != null ? { color: seq(v / 60), text: `${v.toFixed(1)} overdose deaths per 100,000 (2024)` } : null; }
     if (metric === 'need') return c.need ? { color: PAL[c.need.priority], text: c.need.priority === 'high' ? 'High priority: ' + c.need.reasons : 'For review: ' + c.need.reasons } : { color: PAL.inline, text: 'Not on the list' };
@@ -639,6 +664,7 @@ details.more[open] summary { margin-bottom: 10px; }
     if (metric === 'status') { item(PAL.alert, 'Alert'); item(PAL.watch, 'Watch'); item(PAL.stable, 'Stable'); }
     else if (metric === 'risk') [0, 0.15, 0.3, 0.45, 0.6].forEach(v => item(seq(v / 0.6), v === 0.6 ? '60%+' : pct(v, 0)));
     else if (metric === 'similar') { item(PAL.higher, 'Higher than similar counties'); item(PAL.inline, 'In line'); item(PAL.lower, 'Lower'); }
+    else if (metric === 'persistent') { item(PAL.inline, 'Never in the highest fifth'); [1, 2, 3, 4, 5].forEach(v => item(seq(v / 5), `${v} of 5 years${v === 3 ? ' (persistent: 3+)' : ''}`)); }
     else if (metric === 'type') Object.entries(D.types || {}).forEach(([t, v]) => item(PAL.types[(t - 1) % 8], `Type ${t} (${v.counties}): ${v.description}`));
     else if (metric === 'overdose') [0, 15, 30, 45, 60].forEach(v => item(seq(v / 60), v === 60 ? '60+' : String(v)));
     else if (metric === 'need') { item(PAL.high, 'High priority'); item(PAL.review, 'For review'); item(PAL.inline, 'Not listed'); }
@@ -649,14 +675,14 @@ details.more[open] summary { margin-bottom: 10px; }
   function drawMap() {
     if (!MAP || !window.d3) return;
     const metric = $('#m-metric').value, ind = $('#m-ind').value;
-    const withInd = ['status', 'risk', 'similar', 'state_ytd', 'state_outlook'].includes(metric);
+    const withInd = ['status', 'risk', 'similar', 'persistent', 'state_ytd', 'state_outlook'].includes(metric);
     $('#m-ind-wrap').hidden = !withInd;
     const y = LATEST ? LATEST.ytd_year : null;
     const PERIOD = { state_ytd: LATEST && `${LATEST.ytd_label} · by state · provisional`, state_outlook: LATEST && `Full year ${y} · by state · outlook`,
-      status: `${D.year} · by county · final data`, similar: '2022–2024 · by county', type: 'by county', overdose: '2024 · by county',
+      status: `${D.year} · by county · final data`, similar: '2022–2024 · by county', persistent: `${PW()} · by county · final data`, type: 'by county', overdose: '2024 · by county',
       need: `${D.year} · by county`, unusual: `${D.year} · by county`, risk: `${D.forecast_year} · by county · forecast` };
     const TITLE = { state_ytd: 'Status so far this year', state_outlook: `Chance the full year ${y} is flagged`, status: `Status in ${D.year}`,
-      similar: 'Compared with similar counties', type: 'County types', overdose: 'Drug overdose death rate', need: 'Need and access',
+      similar: 'Compared with similar counties', persistent: 'Years in the highest fifth of counties', type: 'County types', overdose: 'Drug overdose death rate', need: 'Need and access',
       unusual: 'Unusual data check', risk: `Chance of a ${D.forecast_year} flag` };
     $('#map-title').textContent = TITLE[metric] + (withInd ? ': ' + D.indicators[ind] : '');
     $('#map-period').textContent = PERIOD[metric] || '';
@@ -682,7 +708,8 @@ details.more[open] summary { margin-bottom: 10px; }
         : `Each state's births from ${LATEST.ytd_label} compared with the same months of earlier years (CDC provisional data). Select a state to open it.`;
       return;
     }
-    $('#map-note').textContent = 'Only the 578 counties with 100,000+ residents are scored; other areas are shown in grey. Select a county to open it.';
+    $('#map-note').textContent = 'Only the 578 counties with 100,000+ residents are scored; other areas are shown in grey. Select a county to open it.' +
+      (metric === 'persistent' ? ` Each year from ${PW()}, the scored counties are ranked by rate; a county in the highest fifth in 3 or more of the 5 years is persistently among the highest. This shows the level of the rate, not a change, and it ranks only large counties against each other.` : '');
     MAP.paths.each(function (f) {
       const c = byId.get(f.id); const v = c && mapValue(c, metric, ind);
       this.setAttribute('fill', v ? v.color : 'var(--surface-2)');

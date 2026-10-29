@@ -47,6 +47,13 @@
   const flagged = e => e && (e.level === 'alert' || e.level === 'watch');
   const subFlagged = e => Object.values((e && e.subgroups) || {}).some(sd => sd.level === 'alert' || sd.level === 'watch');
 
+  // Persistent burden: years among the last five in the highest fifth of scored counties (level, not change).
+  function persistentRecord(D, p) {
+    return { status: p.status, years_in_highest_fifth: p.years_worst, years_ranked: p.years_ranked, which_years: p.worst_years,
+      window: `${D.persistent.window_start}-${D.persistent.window_end}`, rule: `${D.persistent.min_years} or more of the years in the highest fifth of the ${D.counties.length} scored counties = persistent`,
+      reliable: p.reliable };
+  }
+
   function countyRecord(D, c) {
     const ind = {};
     for (const [k, e] of Object.entries(c.ind)) {
@@ -59,6 +66,7 @@
         rates_by_year: Object.fromEntries(D.years.map((y, i) => [y, e.trend[i]])),
       };
       if (CAVEATS[k]) ind[indLabel(D, k)].reporting_caveat = CAVEATS[k];
+      if (e.persistent && D.persistent) ind[indLabel(D, k)].persistent_burden = persistentRecord(D, e.persistent);
     }
     return { fips: c.id, county: c.name, state: c.state, data_year: D.year, forecast_year: D.forecast_year,
       indicators: ind, county_context: c.ctx || null, context_median_of_scored_counties: D.context_median || null,
@@ -86,6 +94,8 @@
     if (risky.length) parts.push(`The forecast gives a ${pct(risky[0][1].risk, 0)} chance of a ${D.forecast_year} flag for ${indLabel(D, risky[0][0]).toLowerCase()}.`);
     const hi = Object.entries(c.ind).filter(([, e]) => e.similar && /higher/.test(e.similar.verdict));
     if (hi.length) parts.push(`Compared with counties in similar conditions, ${hi.map(([k, e]) => `${indLabel(D, k).toLowerCase()} is higher (${pct(e.similar.rate)} vs ${pct(e.similar.expected)})`).join('; ')}.`);
+    const pers = D.persistent ? Object.entries(c.ind).filter(([, e]) => e.persistent && e.persistent.status === 'persistent') : [];
+    if (pers.length) parts.push(`Separately from change flags, its rate was among the highest fifth of the ${D.counties.length} scored counties in ${pers.length > 1 ? 'most years' : `${pers[0][1].persistent.years_worst} of ${pers[0][1].persistent.years_ranked} years`} of ${D.persistent.window_start}–${D.persistent.window_end} for ${pers.map(([k, e]) => `${indLabel(D, k).toLowerCase()}${pers.length > 1 ? ` (${e.persistent.years_worst} of ${e.persistent.years_ranked})` : ''}`).join(', ')}; this is a persistently high level, not a recent change.`);
     if (c.need) parts.push(`Need and access (${c.need.priority === 'high' ? 'high priority' : 'for review'}): ${c.need.reasons}.`);
     if (c.unusual) parts.push(`The machine-learning data check found this county's ${D.year} record unusual (${c.unusual}); confirm the data before acting on its flags.`);
     parts.push('These are statistical flags for local follow-up, not confirmed problems.');
@@ -117,6 +127,7 @@
       by[indLabel(D, k)] = { counties_scored: es.length, alerts: es.filter(e => e.level === 'alert').length,
         watch: es.filter(e => e.level === 'watch').length,
         high_next_year_risk: es.filter(e => (e.risk || 0) >= 0.3).length };
+      if (D.persistent) by[indLabel(D, k)].persistently_among_highest = es.filter(e => e.persistent && e.persistent.status === 'persistent').length;
     }
     return {
       state: st, data_year: D.year, counties: cs.length, counties_in_state: COUNTIES_IN_STATE[st] ?? null,
@@ -164,14 +175,17 @@
           : f === 'stable_but_high_risk' ? e.level === 'stable' && (e.risk || 0) >= 0.25
           : f === 'need_and_access' ? !!c.need && (flagged(e) || subFlagged(e) || (e.risk || 0) >= 0.3)
           : f === 'higher_than_similar' ? !!(e.similar && /higher/.test(e.similar.verdict))
-          : f === 'unusual_data' ? !!c.unusual : false;
+          : f === 'unusual_data' ? !!c.unusual
+          : f === 'persistent_burden' ? !!(e.persistent && e.persistent.status === 'persistent') : false;
         if (ok) rows.push({ county: c.name, state: c.state, fips: c.id, indicator: indLabel(D, k), status: e.level,
           rate: e.rate, expected_rate: e.expected, observed_vs_expected: e.rr, next_year_risk: e.risk ?? null,
-          similar_counties_rate: e.similar ? e.similar.expected : null, need_priority: c.need ? c.need.priority : null });
+          similar_counties_rate: e.similar ? e.similar.expected : null, need_priority: c.need ? c.need.priority : null,
+          years_in_highest_fifth: e.persistent ? e.persistent.years_worst : null });
       }
     }
     const key = { alert: 0, watch: 1, stable: 2 };
-    rows.sort((x, y) => (a.filter || '').includes('risk') ? (y.next_year_risk || 0) - (x.next_year_risk || 0)
+    rows.sort((x, y) => a.filter === 'persistent_burden' ? (y.years_in_highest_fifth - x.years_in_highest_fifth) || ((y.rate || 0) - (x.rate || 0))
+      : (a.filter || '').includes('risk') ? (y.next_year_risk || 0) - (x.next_year_risk || 0)
       : (key[x.status] - key[y.status]) || ((y.observed_vs_expected || 0) - (x.observed_vs_expected || 0)));
     const shown = rows.slice(0, lim);
     const out = { total_matching: rows.length, showing: shown.length, rows: shown };
@@ -188,6 +202,8 @@
     }
     return { data_year: D.year, forecast_year: D.forecast_year, counties: D.counties.length, years: D.years,
       by_indicator: by, statewide_patterns: (D.state_patterns || []).map(p => ({ state: p.state, indicator: indLabel(D, p.indicator), flagged: p.flagged, counties: p.counties })),
+      persistently_among_highest: D.persistent ? { window: `${D.persistent.window_start}-${D.persistent.window_end}`,
+        counties_by_indicator: Object.fromEntries(Object.entries(D.persistent.persistent_counties).map(([k, n]) => [indLabel(D, k), n])) } : null,
       need_and_access_counties: D.counties.filter(c => c.need).length,
       need_and_access_high_priority: D.counties.filter(c => c.need && c.need.priority === 'high').map(c => `${c.name}, ${c.state}`),
       forecast_validation: D.forecast_metrics || null, similar_county_model_fit: D.benchmark_quality || null,
@@ -204,6 +220,7 @@
     county_types: 'Unsupervised k-means clustering groups the 578 counties into peer types by recent indicator levels, county size, adult health, social conditions, overdose burden and treatment access. The number of types was chosen by silhouette score and checked for stability on 50 bootstrap resamples (adjusted Rand index). Types are a summary of a continuum, not sharp categories.',
     data_anomalies: 'An Isolation Forest (unsupervised anomaly detection) scores every county-year record; the 2% least typical are flagged, with the features that make them unusual. It complements the rule that flags births changing by more than 30%: on synthetic data with injected errors it found about two-thirds of single-indicator errors the rule misses, with 0.5% false flags.',
     prediction_ranges: 'For the similar-county comparison, each county gets a 90% range for counties like it, from cross-conformal prediction on normalised residuals. Counties outside the range are higher or lower than similar counties. On the real data the ranges contained 90-91% of counties.',
+    persistent_burden: 'Separately from change alerts, each year the scored counties are ranked by rate; a county in the highest fifth in 3 or more of the last 5 years is persistently among the highest (after Brown CC et al., Inquiry 2020). It describes the level of the rate, not a change: a county can be stable and persistently high. Only large counties are ranked against each other, and the neighbouring-county condition of the original method is dropped because public data identify only counties of 100,000+ residents.',
     limitations: 'County data come from CDC WONDER natality for counties with 100,000+ residents; counts of 9 or fewer are suppressed. Flags are statistical leads, not confirmed problems. Context measures describe places, not people, and are associations, not causes. The tool is not for clinical or individual decisions.',
   };
 
@@ -213,12 +230,12 @@
       run: (D, a) => { const s = String(a.query || '').toLowerCase().replace(/ county| parish/g, '').trim();
         const [n, st] = s.split(',').map(x => x && x.trim());
         return D.counties.filter(c => c.name.toLowerCase().includes(n || '') && (!st || c.state.toLowerCase() === st)).slice(0, 15).map(c => ({ fips: c.id, county: c.name, state: c.state })); } },
-    { name: 'get_county', description: 'All results for one county: 2024 status, rates, expected rates, payer subgroups, year-by-year rates, next-year risk and its main factors, comparison with similar counties, county context (overdose, treatment, hospitals, adult health, poverty) and need-and-access status. Also returns a plain-language brief.',
+    { name: 'get_county', description: 'All results for one county: 2024 status, rates, expected rates, payer subgroups, year-by-year rates, next-year risk and its main factors, comparison with similar counties, persistent burden (years in the highest fifth of counties, 2020-2024), county context (overdose, treatment, hospitals, adult health, poverty) and need-and-access status. Also returns a plain-language brief.',
       input_schema: { type: 'object', properties: { fips: { type: 'string', description: '5-digit county FIPS code' } }, required: ['fips'] },
       run: (D, a) => { const c = findCounty(D, a.fips); return c ? { ...countyRecord(D, c), plain_language_brief: countyBrief(D, c) } : { error: 'County not found. Use search_counties. Only counties with 100,000+ residents are included.' }; } },
     { name: 'list_counties', description: 'List county-indicator results matching a filter, optionally within one state and/or indicator.',
       input_schema: { type: 'object', properties: {
-        filter: { type: 'string', enum: ['flagged', 'alert', 'subgroup_flag', 'high_next_year_risk', 'stable_but_high_risk', 'need_and_access', 'higher_than_similar', 'unusual_data'] },
+        filter: { type: 'string', enum: ['flagged', 'alert', 'subgroup_flag', 'high_next_year_risk', 'stable_but_high_risk', 'need_and_access', 'higher_than_similar', 'unusual_data', 'persistent_burden'] },
         state: { type: 'string', description: 'Two-letter state code' },
         indicator: { type: 'string', enum: ['late_no_prenatal_care', 'preterm_birth', 'low_birth_weight', 'gestational_hypertension'] },
         limit: { type: 'integer', description: 'Max rows (default 25, max 100)' } }, required: ['filter'] },
