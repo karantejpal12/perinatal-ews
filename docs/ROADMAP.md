@@ -42,7 +42,7 @@ Work first on these. Items marked "needs data" require a fresh CDC WONDER downlo
 
 - [x] County view: show a 95% confidence interval with every rate, and mark rates based on 10–19 events as unstable (NCHS: fewer than 20 events). (2026-10-26)
 - [x] "How this was calculated" panel beside each county result: how the expected rate is set, the alert and watch thresholds, and what the forecast probability means and how well calibrated it was in testing. (2026-10-26)
-- [ ] "How this was calculated" panel for the state view (year-so-far comparison and full-year outlook).
+- [x] "How this was calculated" panel for the state view (year-so-far comparison and full-year outlook). (2026-10-29)
 - [ ] Reporting-completeness signal: the share of births with each item unknown or not stated, by area and year, shown beside every flag, with a note when completeness changed.
 - [ ] Label every explorer table and chart as final or provisional data, with the data year and retrieval date.
 - [ ] Validation page (`docs/validation.md`) bringing together every evaluation: alert rates on historical data, sensitivity and false-alert rate on synthetic data, forward-in-time forecast accuracy and calibration, and the outlook backtest.

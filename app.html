@@ -819,6 +819,18 @@ details.more[open] summary { margin-bottom: 10px; }
     return [el('div', { class: 'filters' }, el('label', { for: 'ly-ind' }, 'Indicator', sel)), tbox,
       el('p', { class: 'note', text: `These rows use only the months of ${LATEST.ytd_year} so far (provisional data), not pooled years, so in smaller states most groups have fewer than 20 events or counts that CDC WONDER suppresses (under 10); a combined group is also missing when any of its member groups is suppressed. The table of earlier years below pools three years of final data and reports more groups.` })];
   }
+  // "How this was calculated" for the state view's year-so-far block (src/perinatal_ews/latest.py, outlook.py).
+  function howCalculatedState() {
+    const y = LATEST.ytd_year, fy = LATEST.full_year_provisional, n = Object.keys(LATEST.states_data).length;
+    const box = el('details', { class: 'calc' }, el('summary', { text: 'How this was calculated' }));
+    box.append(el('p', { text: `Rate so far: births in ${LATEST.ytd_label} with the outcome, divided by births with the item reported (CDC provisional data; births with the item unknown are left out). Expected: the state's own rate for the same months of ${y - 4}–${y - 2}, pooled over three years (${y - 1} is skipped so that a change that began last year is not treated as normal), pulled toward the rate of all ${n === 51 ? '50 states and DC' : n + ' areas'} in proportion to how small the state is, then scaled by the change across all of them since then.` }));
+    box.append(el('p', { text: 'Status uses the same rules as the county results: an alert needs the gap between observed and expected to be larger than chance after allowing for testing every state (Benjamini–Hochberg q ≤ 0.05), a rate at least 1.10 times expected and at least 20 events; a watch flag needs z ≥ 2, a rate at least 1.05 times expected and at least 10 events. Stable means no change from the state\'s own history was detected; it does not mean the rate is low.' }));
+    box.append(el('p', { text: `Full-year projection: for each state and indicator, how the rest of the year usually differs from the first months is learned from the last five complete years (each state's own pattern, pulled toward the all-state pattern when its history is noisy). The rest of ${y} is then simulated many times with the uncertainty seen when this was tried on past years, and each simulated full year is passed through the same detection rules. The 80% range holds the middle 80% of simulated full-year rates, and the chance the full year is flagged is the share of simulations ending in an alert or a watch.` }));
+    if (fy) box.append(el('p', { text: `${fy} (whole year): the last complete year in the provisional data, scored with the same rules against ${fy - 4}–${fy - 2}.` }));
+    box.append(el('p', {}, 'Full details: ', el('a', { href: 'https://github.com/karantejpal12/perinatal-ews/blob/main/docs/ml_methods.md', target: '_blank', rel: 'noopener' }, 'methods'), ' and ',
+      el('a', { href: 'https://github.com/karantejpal12/perinatal-ews/blob/main/src/perinatal_ews/outlook.py', target: '_blank', rel: 'noopener' }, 'outlook code'), '.'));
+    return box;
+  }
   function drawLatest(st, box) {
     const L = LATEST && LATEST.states_data[st]; if (!L) return;
     const y = LATEST.ytd_year, fy = LATEST.full_year_provisional;
@@ -841,6 +853,7 @@ details.more[open] summary { margin-bottom: 10px; }
         el('th', { class: 'num', text: `Full ${y}, projected (80% range)` }), el('th', { class: 'num', text: `Chance full ${y} is flagged` }),
         el('th', { text: `${fy} (whole year)` }))), tb)),
       ...caveatNotes(Object.keys(L.ind)),
+      howCalculatedState(),
       el('p', { class: 'note', style: 'margin:0', text: bt ? `How reliable the outlook is: tested on ${bt.years[0]}–${bt.years[bt.years.length - 1]} using only January–${LATEST.ytd_label.split('–')[1] ? LATEST.ytd_label.split('–')[1].split(' ')[0] : ''} of each year, it ranked the states whose full year was later flagged well (AUROC ${bt.outlook.auroc.toFixed(2)}), and the 80% ranges contained the actual full-year rate ${Math.round(100 * bt.interval80_coverage)}% of the time. Each month's outlook is saved and will be scored when the year is complete. The outlook can differ from the status so far: with more months of births, a difference of the same size becomes statistically clearer, and the rest of the year does not always follow the first months.` : '' }));
     const races = L.race || {};
     if (Object.keys(races).length) {
