@@ -326,6 +326,35 @@ def test_pooling_skips_and_reports_unavailable_years():
     assert g["years_used"] == "2019,2020,2021"
 
 
+def test_pooling_when_every_year_in_the_window_is_suppressed_or_unavailable():
+    from perinatal_ews.pooling import pooled_estimates, small_numbers_analysis
+
+    t = _race_tidy()
+    t.loc[(t.subgroup == "Black") & t.year.between(2022, 2024), "numerator"] = np.nan   # all suppressed
+    p = pooled_estimates(t, window=3, unavailable_years=[2017, 2018, 2019])
+    sup = p[(p.subgroup == "Black") & (p.window == "2022-2024")].iloc[0]
+    assert sup["n_years"] == 0 and sup["years_used"] == ""
+    assert sup["years_missing_or_suppressed"] == "2022,2023,2024" and sup["years_unavailable"] == ""
+    assert sup["status"].startswith("too few years")
+    assert np.isnan(sup[["numerator", "denominator", "rate", "ci_low", "ci_high"]].astype(float)).all()
+    una = p[(p.subgroup == "White") & (p.window == "2017-2019")].iloc[0]
+    assert una["n_years"] == 0 and una["years_unavailable"] == "2017,2018,2019"
+    assert una["years_missing_or_suppressed"] == "" and np.isnan(una["rate"])
+    # With fill_window and nothing available within the span searched, the window covers that span.
+    f = pooled_estimates(t, window=3, unavailable_years=[2017, 2018, 2019], fill_window=True, max_span=3)
+    r = f[(f.subgroup == "White") & (f.window_end == 2019)].iloc[0]
+    assert r["window"] == "2017-2019" and r["years_unavailable"] == "2017,2018,2019" and r["n_years"] == 0
+    e = pooled_estimates(t, window=3, unavailable_years=[2016, 2017, 2018], fill_window=True, max_span=6)
+    r = e[(e.subgroup == "White") & (e.window_end == 2018)].iloc[0]
+    assert r["window"] == "2016-2018" and r["years_missing_or_suppressed"] == ""   # never before the data begin
+    # A group with no reportable year anywhere is reported as insufficient data and never compared.
+    t.loc[t.subgroup == "Black", "numerator"] = np.nan
+    pp, c = small_numbers_analysis(t, window=3, combine={})
+    assert (pp.loc[pp.subgroup == "Black", "report_as"] == "insufficient data").all()
+    assert pp.loc[pp.subgroup == "Black", "rate"].isna().all()
+    assert c.set_index("subgroup").loc["Black", "change"].startswith("not compared")
+
+
 def test_small_groups_are_combined_and_labelled():
     from perinatal_ews.pooling import small_numbers_analysis
 

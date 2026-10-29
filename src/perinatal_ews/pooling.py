@@ -76,7 +76,8 @@ def to_state(tidy: pd.DataFrame) -> pd.DataFrame:
     return out[["geo_id", "geo_name", "state", "year", "indicator", "subgroup"] + sums]
 
 
-def _windows(years: list[int], end_years: list[int], window: int, unavailable: set, fill_window: bool, max_span: int):
+def _windows(years: list[int], end_years: list[int], window: int, unavailable: set, fill_window: bool, max_span: int,
+             first_year: int | None = None):
     for end in end_years:
         if fill_window:
             used, y = [], end
@@ -85,7 +86,10 @@ def _windows(years: list[int], end_years: list[int], window: int, unavailable: s
                     used.append(y)
                 y -= 1
             used = sorted(used)
-            start = used[0] if used else end
+            # With no year found, report the whole span searched (not before the data begin), so every
+            # skipped year is listed rather than a one-year window that hides the earlier gaps.
+            lowest = end - max_span + 1 if first_year is None else max(end - max_span + 1, first_year)
+            start = used[0] if used else lowest
         else:
             start = end - window + 1
             used = [y for y in range(start, end + 1) if y in years and y not in unavailable]
@@ -105,7 +109,8 @@ def pooled_estimates(tidy: pd.DataFrame, window: int = 3, unavailable_years: lis
     for (geo, name, st, ind, sub), g in tidy.groupby(["geo_id", "geo_name", "state", "indicator", "subgroup"]):
         g = g.set_index("year")
         have = [y for y in g.index if pd.notna(g.at[y, "numerator"]) and pd.notna(g.at[y, "denominator"])]
-        for end, start, used, missing in _windows(have, ends, window, unavailable, fill_window, max_span):
+        for end, start, used, missing in _windows(have, ends, window, unavailable, fill_window, max_span,
+                                                      first_year=years[0]):
             listed = [y for y in missing if y in unavailable]
             absent = [y for y in missing if y not in unavailable]
             n_used = len(used)

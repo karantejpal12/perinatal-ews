@@ -33,7 +33,7 @@ Work first on these. Items marked "needs data" require a fresh CDC WONDER downlo
 - [x] Test the full-year outlook when only one month remains and when the year is already complete. (2026-10-20)
 - [x] Monthly update script: when the data reach December, skip the outlook backtest (nothing remains to project) instead of failing. (2026-10-21)
 - [x] Test the completeness check (`choose_months`) when the latest month is far below normal and when a month is missing; a gap inside the year-to-date window, or no complete month at all, now stops the update with a clear message instead of silently undercounting. (2026-10-28)
-- [ ] Test pooled estimates when every year in the window is suppressed or unavailable.
+- [x] Test pooled estimates when every year in the window is suppressed or unavailable: no rate, "too few years" status, every skipped year listed, "insufficient data" when reported and never compared; with `--fill-window`, a window that finds no year now shows the whole span searched instead of a one-year window. (2026-10-29)
 - [ ] Test that input validation keeps two-letter state codes and pads numeric county codes.
 - [ ] Test the data-quality check (Isolation Forest) on very small inputs: it should skip with a message, not fail.
 - [ ] JavaScript tests for each `list_counties` filter, including combinations that match nothing.
