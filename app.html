@@ -504,6 +504,7 @@ details.more[open] summary { margin-bottom: 10px; }
     const head = el('div', { class: 'county-head' },
       el('h2', { text: `${c.name}, ${c.state}` }),
       el('span', { class: 'meta', text: `FIPS ${c.id}` }),
+      el('span', { class: 'period', text: `${D.years[0]}–${D.year} · final data` }),
       el('button', { class: 'share', type: 'button', text: 'Copy link to this county', onclick: async (e) => {
         const url = location.href.split('#')[0] + '#county-' + c.id;
         try { await navigator.clipboard.writeText(url); e.target.textContent = 'Link copied'; } catch { prompt('Copy this link', url); }
@@ -858,7 +859,7 @@ details.more[open] summary { margin-bottom: 10px; }
       el('p', { class: 'note', style: 'margin:0', text: bt ? `How reliable the outlook is: tested on ${bt.years[0]}–${bt.years[bt.years.length - 1]} using only January–${LATEST.ytd_label.split('–')[1] ? LATEST.ytd_label.split('–')[1].split(' ')[0] : ''} of each year, it ranked the states whose full year was later flagged well (AUROC ${bt.outlook.auroc.toFixed(2)}), and the 80% ranges contained the actual full-year rate ${Math.round(100 * bt.interval80_coverage)}% of the time. Each month's outlook is saved and will be scored when the year is complete. The outlook can differ from the status so far: with more months of births, a difference of the same size becomes statistically clearer, and the rest of the year does not always follow the first months.` : '' }));
     const races = L.race || {};
     if (Object.keys(races).length) {
-      const det = el('details', { class: 'more' }, el('summary', { text: `By mother's race (${y} so far vs the same months of ${y - 3}–${y - 1})` }), ...raceTableNow(races));
+      const det = el('details', { class: 'more' }, el('summary', { text: `By mother's race (${y} so far, provisional, vs the same months of ${y - 3}–${y - 1})` }), ...raceTableNow(races));
       block.append(det);
     }
     block.append(el('p', { class: 'note', style: 'margin:0', text: `Provisional data: the most recent months can be incomplete and are revised. Latest month available ${LATEST.latest_month_available}${LATEST.excluded_latest_month ? ' (left out as incomplete)' : ''}; retrieved ${LATEST.updated}.` }));

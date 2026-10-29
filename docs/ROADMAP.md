@@ -48,7 +48,7 @@ Work first on these. Items marked "needs data" require a fresh CDC WONDER downlo
 - [x] "How this was calculated" panel for the state view (year-so-far comparison and full-year outlook). (2026-10-29)
 - [ ] Hospital bypass as context, not a covariate: births are counted by the mother's county of residence while clinical items are recorded by the delivering hospital, so show the share of births delivered outside the county of residence as a secondary context and sensitivity indicator (where patients travel, and possible breaks in continuity of care), not as a model input.
 - [ ] Reporting-completeness signal: the share of births with each item unknown or not stated, by area and year, shown beside every flag, with a note when completeness changed.
-- [ ] Label every explorer table and chart as final or provisional data, with the data year and retrieval date.
+- [x] Label every explorer table and chart as final or provisional data, with the data year and retrieval date (provisional results also show when they were retrieved, since they are revised; final data are not). (2026-10-29)
 - [ ] Validation page (`docs/validation.md`) bringing together every evaluation: alert rates on historical data, sensitivity and false-alert rate on synthetic data, forward-in-time forecast accuracy and calibration, and the outlook backtest.
 - [ ] Compare county and state estimates with published state vital-records reports for a sample of states, and document any differences.
 - [ ] Forecast and alert performance by county size and by county characteristics (rurality, births by payer, race and ethnicity mix), in the model card.
