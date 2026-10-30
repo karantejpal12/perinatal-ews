@@ -35,6 +35,34 @@ def test_schema_rejects_bad_rows():
         schema.validate(bad)
 
 
+def _rows(geo_ids):
+    return pd.DataFrame(
+        [[g, "x", "S", 2020, "a", "All", 1, 10] for g in geo_ids], columns=schema.REQUIRED_COLUMNS)
+
+
+def test_schema_pads_county_codes_and_keeps_state_codes():
+    out = schema.validate(_rows(["1001", " 25017 ", "6037", "HI", "DC", "ma", "9", "01001X"]))
+    assert out["geo_id"].tolist() == ["01001", "25017", "06037", "HI", "DC", "ma", "00009", "01001X"]
+
+
+def test_schema_pads_integer_and_float_county_codes():
+    ints = schema.validate(_rows([1001, 25017]))
+    assert ints["geo_id"].tolist() == ["01001", "25017"]
+    floats = schema.validate(_rows([1001.0, 6037.0]))  # e.g. a numeric column with a missing value
+    assert floats["geo_id"].tolist() == ["01001", "06037"]
+
+
+def test_schema_leaves_longer_numeric_codes_alone():
+    out = schema.validate(_rows(["123456", "1001.5"]))
+    assert out["geo_id"].tolist() == ["123456", "1001.5"]
+
+
+def test_schema_padding_exposes_duplicate_counties():
+    # "1001" and "01001" are the same county once padded, so they are a duplicate key.
+    with pytest.raises(schema.SchemaError, match="duplicate"):
+        schema.validate(_rows(["1001", "01001"]))
+
+
 def test_wilson_interval_bounds():
     lo, hi = indicators.wilson_interval([0, 50, 100], [100, 100, 100])
     assert lo[0] == pytest.approx(0, abs=1e-12) and hi[2] == pytest.approx(1, abs=1e-12)

@@ -36,6 +36,8 @@ def validate(df: pd.DataFrame) -> pd.DataFrame:
 
     out = df[REQUIRED_COLUMNS + [c for c in df.columns if c not in REQUIRED_COLUMNS]].copy()
     gid = out["geo_id"].astype(str).str.strip()
+    # A numeric column read as floats (e.g. 1001.0) loses its leading zero and gains ".0"; drop the ".0".
+    gid = gid.str.replace(r"^(\d{1,5})\.0+$", r"\1", regex=True)
     # Pad numeric county FIPS codes to 5 digits; leave other identifiers (e.g. state "HI") as they are.
     out["geo_id"] = gid.where(~gid.str.fullmatch(r"\d{1,5}"), gid.str.zfill(5))
     out["year"] = pd.to_numeric(out["year"], errors="raise").astype(int)
