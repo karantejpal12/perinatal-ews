@@ -28,11 +28,14 @@ all births drops and 0-4% of the others.
 """
 from __future__ import annotations
 
+import math
+
 import numpy as np
 import pandas as pd
 
 from .schema import TOTAL_SUBGROUP
 
+COLUMNS = ["geo_id", "year", "anomaly_score", "unusual", "why_unusual", "geo_name", "state"]
 LABELS = {"log_births": "births", "births_change": "change in births"}
 
 
@@ -72,10 +75,23 @@ def _label(f: str) -> str:
 
 def record_anomalies(tidy: pd.DataFrame, contamination: float = 0.02, year: int | None = None,
                      seed: int = 0) -> pd.DataFrame:
-    """Score every county-year; return the most unusual records (all years, or one year)."""
+    """Score every county-year; return the most unusual records (all years, or one year).
+
+    The model flags a share `contamination` of records, so it needs at least
+    1 / contamination county-year records (50 at the default 2%) to flag even
+    one. With fewer records (or none with births), the check is skipped: an
+    empty table is returned and the reason is in its `attrs["skipped"]`.
+    """
     from sklearn.ensemble import IsolationForest
 
     X = _features(tidy)
+    min_records = math.ceil(1 / contamination)
+    if len(X) < min_records:
+        out = pd.DataFrame({c: pd.Series(dtype=t) for c, t in zip(
+            COLUMNS, [str, int, float, bool, str, str, str])})
+        out.attrs["skipped"] = (f"Data-quality check (Isolation Forest) skipped: {len(X)} county-year records with "
+                                f"births, fewer than the {min_records} needed to flag {contamination:.0%} of them.")
+        return out
     # The first year has no change features; give it neutral values so it can still be scored.
     Xf = X.copy()
     for c in Xf.columns:

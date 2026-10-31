@@ -49,6 +49,8 @@ def _run(tidy: pd.DataFrame, cfg: dict, out: Path, year: int | None, truth: pd.D
     data_quality(tidy, year).to_csv(out / "data_quality.csv", index=False)
     from .anomaly import record_anomalies
     anomalies = record_anomalies(tidy)
+    if "skipped" in anomalies.attrs:
+        print(anomalies.attrs["skipped"])
     anomalies.to_csv(out / "data_anomalies.csv", index=False)
     distribution_drift(tidy, cfg, year).to_csv(out / "distribution_drift.csv", index=False)
     backtest(tidy, cfg).to_csv(out / "backtest.csv", index=False)

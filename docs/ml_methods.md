@@ -28,7 +28,7 @@ Stability: re-clustering 50 bootstrap resamples agrees with the full-data cluste
 
 ## Data-quality check (anomaly detection)
 
-`anomaly.py`. Every county-year record is described by log births, the change in births, and for each indicator the rate, its change from the year before and its distance from the county's own median, with changes divided by their sampling standard error. An Isolation Forest (400 trees) flags the 2% least typical records and lists the features that make each one unusual.
+`anomaly.py`. Every county-year record is described by log births, the change in births, and for each indicator the rate, its change from the year before and its distance from the county's own median, with changes divided by their sampling standard error. An Isolation Forest (400 trees) flags the 2% least typical records and lists the features that make each one unusual. Flagging 2% needs at least 50 county-year records with births; with fewer (a test file, a handful of counties), the check is skipped with a message in the console and the report, and `data_anomalies.csv` is written empty.
 
 Validation on synthetic data, averaged over five datasets with 15 injected errors of each kind:
 

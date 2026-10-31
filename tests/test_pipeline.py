@@ -309,6 +309,49 @@ def test_anomaly_model_finds_injected_errors_the_rule_misses():
     assert v.loc["false flags on clean records (%)", "found_by_model_pct"] <= 2
 
 
+@pytest.mark.parametrize("case", ["empty", "one record", "one county", "no births", "no total rows"])
+def test_anomaly_check_skips_with_message_on_very_small_inputs(data, case):
+    from perinatal_ews.anomaly import COLUMNS, record_anomalies
+
+    tidy, _ = data
+    g, y = tidy["geo_id"].iloc[0], tidy["year"].min()
+    small = {
+        "empty": tidy.iloc[0:0],
+        "one record": tidy[(tidy["geo_id"] == g) & (tidy["year"] == y)],
+        "one county": tidy[tidy["geo_id"] == g],  # 9 county-years, fewer than the 50 needed at 2%
+        "no births": tidy.assign(denominator=0),
+        "no total rows": tidy[tidy["subgroup"] != schema.TOTAL_SUBGROUP],
+    }[case]
+    out = record_anomalies(small)
+    assert out.empty and list(out.columns) == COLUMNS
+    assert "skipped" in out.attrs and "fewer than the 50 needed" in out.attrs["skipped"]
+
+
+def test_run_on_small_input_reports_skipped_anomaly_check(data, tmp_path, capsys):
+    from perinatal_ews.cli import main
+
+    tidy, _ = data
+    f = tmp_path / "small.csv"
+    tidy[tidy["geo_id"].isin(tidy["geo_id"].drop_duplicates().head(3))].to_csv(f, index=False)
+    main(["run", "--input", str(f), "--out", str(tmp_path / "o")])
+    msg = "skipped: 27 county-year records with births, fewer than the 50 needed"
+    assert msg in capsys.readouterr().out
+    assert pd.read_csv(tmp_path / "o" / "data_anomalies.csv").empty
+    assert msg in (tmp_path / "o" / "report.html").read_text()
+
+
+def test_anomaly_check_runs_at_the_minimum_size(data):
+    from perinatal_ews.anomaly import record_anomalies
+
+    tidy, _ = data
+    counties = tidy["geo_id"].drop_duplicates().head(6)  # 6 counties x 9 years = 54 records
+    out = record_anomalies(tidy[tidy["geo_id"].isin(counties)])
+    assert "skipped" not in out.attrs
+    assert len(out) >= 1 and out["unusual"].all()
+    assert record_anomalies(tidy[tidy["geo_id"].isin(counties)], contamination=0.01).attrs["skipped"].startswith(
+        "Data-quality check (Isolation Forest) skipped: 54 county-year records")
+
+
 def _race_tidy():
     """Small fictional state-level table with race groups and a 2017-2018 gap."""
     rows = []

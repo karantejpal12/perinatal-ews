@@ -4,6 +4,7 @@ All notable changes to perinatal-ews. Each release is archived on Zenodo (concep
 
 ## Unreleased
 
+- Data-quality check (Isolation Forest): on very small inputs (fewer than the 50 county-year records needed to flag 2%, including empty input or no births) it is now skipped with a message in the console and the report instead of stopping the run with a scikit-learn error; tests cover empty, one-record, one-county, no-births and minimum-size inputs.
 - Input validation: tests that county codes are padded to five digits (from text, whole numbers, or with surrounding spaces) while state codes such as "HI" and other identifiers are kept as they are, and that "1001" and "01001" are caught as the same county; county codes read as decimals (for example 1001.0) are now padded to "01001" instead of being kept as "1001.0", which would not match any county. Published numbers are unchanged (the published inputs are read as text).
 - Pooled estimates: tests for windows in which every year is suppressed or unavailable (no rate, every skipped year listed, reported as insufficient data and not compared); with `--fill-window`, a window that finds no available year now covers the whole span searched (from the data's first year at the earliest) and lists every skipped year, instead of showing a one-year window. Published numbers are unchanged (they use fixed windows).
 - Explorer: the county view and the year-so-far race table now say which years they cover and whether the data are final or provisional, completing the period labels on every map, table and section.

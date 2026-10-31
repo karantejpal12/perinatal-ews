@@ -443,7 +443,9 @@ An interval that includes zero means the ranking gain is not statistically clear
         health.append('<div class="table-wrap"><table><thead><tr><th>Indicator</th><th>County</th><th>Issue</th>'
                       f"<th>Detail</th></tr></thead><tbody>{rows}</tbody></table></div>")
 
-    if anomalies is not None:
+    if anomalies is not None and "skipped" in anomalies.attrs:
+        health.append(f'<p><b>Unusual records (machine-learning check).</b> {escape(anomalies.attrs["skipped"])}</p>')
+    elif anomalies is not None:
         an = anomalies[anomalies["year"] == year]
         arows = "".join(f'<tr><td class="place">{escape(str(r.geo_name))}<small>{escape(str(r.state))} · {escape(r.geo_id)}</small></td>'
                         f'<td>{escape(r.why_unusual or "combination of small differences")}</td></tr>' for r in an.head(15).itertuples())
