@@ -52,6 +52,7 @@ def main() -> None:
     t = tidy[(tidy["subgroup"] == "All") & (tidy["numerator"] >= 10)].copy()
     t["rate"] = t["numerator"] / t["denominator"]
     rates = {(r.geo_id, r.indicator, int(r.year)): r.rate for r in t.itertuples()}
+    births_n = {(r.geo_id, r.indicator, int(r.year)): int(r.denominator) for r in t.itertuples()}
 
     counties = (tidy[["geo_id", "geo_name", "state"]].drop_duplicates("geo_id").sort_values(["state", "geo_name"]))
     indicators = ["late_no_prenatal_care", "preterm_birth", "low_birth_weight", "gestational_hypertension"]
@@ -71,6 +72,7 @@ def main() -> None:
         "acs_pov150": "Residents below 150% of poverty (%)",
     }
     ctx_ids = set(counties["geo_id"])
+    peers = _nearest_peers(ctx, sorted(ctx_ids)) if ctx is not None else {}
     ctx_median = ({k: _r(ctx.loc[ctx.index.isin(ctx_ids), k].median(), 2) for k in CTX_FIELDS if k in ctx.columns}
                   if ctx is not None else {})
 
@@ -83,6 +85,8 @@ def main() -> None:
             d = tot.loc[(c.geo_id, k)]
             entry = {
                 "trend": [_r(rates.get((c.geo_id, k, y))) for y in years],
+                # Births behind each year's rate, for the 95% interval drawn around each point.
+                "trend_n": [births_n.get((c.geo_id, k, y)) for y in years],
                 "level": d["level"],
                 "rate": _r(d["rate"]) if d["observed"] >= 10 else None,
                 "expected": _r(d["expected_rate"]),
@@ -123,6 +127,8 @@ def main() -> None:
             rec["ctx"] = {k: (_r(row[k], 1) if pd.notna(row[k]) else None) for k in CTX_FIELDS if k in ctx.columns}
             births = max((e.get("births") or 0) for e in ind.values()) if ind else 0
             rec["births"] = births or None
+        if c.geo_id in peers:
+            rec["peers"] = peers[c.geo_id]
         if typ is not None and c.geo_id in typ.index:
             rec["type"] = int(typ.at[c.geo_id, "type"])
         if anom is not None:
@@ -157,6 +163,8 @@ def main() -> None:
                            "drug overdose deaths; SAMHSA FindTreatment.gov facility listings (Oct 2026); CMS Maternal "
                            "Health - Hospital (Maternal Morbidity Structural Measure)."),
     }
+    if ctx is not None:
+        payload["similar_measures"] = list(SIMILAR_MEASURES.values())
     if pb is not None:
         payload["persistent"] = {
             "window_start": int(pb["window_start"].min()), "window_end": int(pb["window_end"].max()),
@@ -184,6 +192,30 @@ def main() -> None:
     if a.state_race:
         _state_race(Path(a.state_race), Path(a.out).with_name("state_race.json"))
     print(f"wrote {a.out}: {len(out_c)} counties, {Path(a.out).stat().st_size / 1024:.0f} KB")
+
+
+# The measures the similar-county model uses (perinatal_ews.context.BENCHMARK_COLUMNS).
+from perinatal_ews.context import BENCHMARK_COLUMNS as SIMILAR_MEASURES  # noqa: E402
+
+
+def _nearest_peers(ctx: pd.DataFrame, ids: list[str], k: int = 5) -> dict[str, list[str]]:
+    """The k scored counties closest to each one on the similar-county measures.
+
+    Measures are standardised across the scored counties (missing values set to the median)
+    and compared by Euclidean distance. This is for orientation only: the similar-county
+    expected rate comes from a model fitted on all other counties, not from these k.
+    """
+    cols = [c for c in SIMILAR_MEASURES if c in ctx.columns]
+    x = ctx.reindex(ids)[cols].astype(float)
+    x = x.fillna(x.median())
+    sd = x.std(ddof=0).replace(0, 1.0)
+    z = ((x - x.mean()) / sd).to_numpy()
+    out = {}
+    for i, g in enumerate(ids):
+        d = ((z - z[i]) ** 2).sum(axis=1)
+        d[i] = float("inf")
+        out[g] = [ids[j] for j in d.argsort()[:k]]
+    return out
 
 
 def _state_race(folder: Path, out: Path) -> None:

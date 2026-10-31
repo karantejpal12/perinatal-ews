@@ -1,0 +1,111 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>perinatal-ews methods</title>
+<meta name="description" content="How perinatal-ews selects counties, calculates rates, sets alerts, compares similar counties and measures uncertainty, in plain language.">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500&family=Public+Sans:wght@400;600;700&display=swap">
+<style>
+:root {
+  --bg: #f6f7f9; --surface: #ffffff; --ink: #14181f; --ink-2: #4a5160; --ink-3: #6b7280;
+  --rule: #dfe3ea; --accent: #2a78d6;
+  --font-body: "Public Sans", "Segoe UI", system-ui, sans-serif;
+  --font-data: "IBM Plex Mono", ui-monospace, Menlo, monospace;
+}
+@media (prefers-color-scheme: dark) { :root {
+  --bg: #121418; --surface: #1a1d22; --ink: #eceef2; --ink-2: #b9bfca; --ink-3: #9198a4;
+  --rule: #2c313a; --accent: #3987e5; color-scheme: dark; } }
+* { box-sizing: border-box; }
+body { margin: 0; background: var(--bg); color: var(--ink); font-family: var(--font-body); font-size: 16px; line-height: 1.6; }
+.page { max-width: 820px; margin: 0 auto; padding-block: 40px 64px;
+  padding-left: max(16px, env(safe-area-inset-left, 0px)); padding-right: max(16px, env(safe-area-inset-right, 0px));
+  display: flex; flex-direction: column; gap: 34px; }
+.eyebrow { font-family: var(--font-data); font-size: 12px; letter-spacing: .08em; text-transform: uppercase; color: var(--ink-3); }
+h1 { font-size: clamp(28px, 5vw, 40px); line-height: 1.15; margin: 6px 0 12px; }
+h2 { font-size: 19px; margin: 0 0 10px; }
+p { margin: 0 0 10px; max-width: 70ch; color: var(--ink-2); }
+ul { margin: 0 0 10px; padding-left: 20px; color: var(--ink-2); max-width: 70ch; }
+li { margin-bottom: 5px; }
+a { color: var(--accent); }
+table { border-collapse: collapse; width: 100%; font-size: 14px; background: var(--surface); border: 1px solid var(--rule); border-radius: 8px; overflow: hidden; }
+th, td { text-align: left; padding: 8px 10px; border-bottom: 1px solid var(--rule); vertical-align: top; }
+th { font-weight: 600; color: var(--ink); }
+td.num { font-family: var(--font-data); font-variant-numeric: tabular-nums; white-space: nowrap; }
+.table-wrap { overflow-x: auto; }
+.note { font-size: 14px; color: var(--ink-3); }
+nav a { margin-right: 14px; }
+footer { border-top: 1px solid var(--rule); padding-top: 16px; font-size: 14px; color: var(--ink-3); }
+</style>
+</head>
+<body>
+<div class="page">
+  <header>
+    <nav class="note"><a href="./">Home</a><a href="app.html">Explorer</a><a href="https://github.com/karantejpal12/perinatal-ews">Code and full documentation</a></nav>
+    <div class="eyebrow">Methods in brief</div>
+    <h1>How perinatal-ews works</h1>
+    <p>What each display in the explorer means, how it is calculated, and what it cannot tell you. The full technical methods are in the
+      <a href="https://github.com/karantejpal12/perinatal-ews/blob/main/docs/methodology.md">methodology</a>, with
+      <a href="https://github.com/karantejpal12/perinatal-ews/blob/main/docs/indicators.md">indicator definitions</a> and a
+      <a href="https://github.com/karantejpal12/perinatal-ews/blob/main/docs/interpreting_flags.md">guide to interpreting a flag</a>.</p>
+  </header>
+
+  <section>
+    <h2>Which counties, and how many births</h2>
+    <p>The county results cover the 578 US counties with 100,000 or more residents, because these are the only counties CDC WONDER's public natality data identify. Together they account for about 80% of US births. Smaller counties are combined by CDC into one "unidentified counties" group per state and are not scored; they appear in grey on the maps.</p>
+    <p>In 2024 the scored counties had between 612 and 90,494 births (median 2,641). The data are CDC WONDER Natality, 2016–2024 (final), by the mother's county of residence. Counts of 1 to 9 are suppressed by CDC and never shown.</p>
+  </section>
+
+  <section>
+    <h2>Rates</h2>
+    <p>Each rate is the number of births with the outcome divided by the births with that item recorded (births with the item unknown are left out). Rates are crude: they are not standardised for the mother's age.</p>
+    <p>For the alerts this matters less, because each county is compared with its own recent years, so a county's usual age mix is already built into its expected rate. It matters more when counties are compared with each other (the similar-county comparison and "persistently among the highest"), because counties with older or younger mothers differ for that reason alone. Rates standardised for maternal age are on the <a href="https://github.com/karantejpal12/perinatal-ews/blob/main/docs/ROADMAP.md">roadmap</a>; they need a new download of births by mother's age group.</p>
+  </section>
+
+  <section>
+    <h2>Alert, watch and stable</h2>
+    <p>Each county's expected rate for 2024 is its own rate in 2020–2022 pooled, pulled toward the all-county rate in proportion to how small the county is, and scaled by the change across all counties since then (2023 is skipped so that a change that began last year is not treated as normal). The observed rate is then compared with that expectation, allowing for chance variation.</p>
+    <div class="table-wrap"><table>
+      <thead><tr><th>Result</th><th>Rule</th></tr></thead>
+      <tbody>
+        <tr><td>Alert</td><td>The gap is larger than chance after allowing for testing every county at once (Benjamini–Hochberg q ≤ 0.05), the rate is at least 1.10 times expected, and it rests on at least 20 events.</td></tr>
+        <tr><td>Watch</td><td>z ≥ 2, at least 1.05 times expected, and at least 10 events.</td></tr>
+        <tr><td>Stable</td><td>No change from the county's own history was detected. Stable does not mean low.</td></tr>
+      </tbody>
+    </table></div>
+    <p style="margin-top:10px">An alert therefore needs both statistical evidence and a change large enough to matter for public health (at least 10% above expected), not significance alone.</p>
+    <p><b>False-alert rate</b> means the share of alerts raised where nothing truly changed. It can only be measured where the truth is known, so the method is tested on synthetic data with changes injected at known places. There, 0.34% of unchanged county-indicators were flagged (2 of 586), and 64% of injected changes were flagged (all of them in counties with 5,000 or more births, a third in counties with fewer than 1,000). Validation on the real data, holding out each county-year and predicting it from the rest, is under way.</p>
+  </section>
+
+  <section>
+    <h2>Uncertainty</h2>
+    <p>Every county rate is shown with a 95% confidence interval (Wilson), on the county card and as a bar around each year's point in the trend chart. Rates based on fewer than 20 events are marked unstable, following the NCHS standard. To compare counties directly, open one and select "Add to comparison"; up to four counties are then shown side by side with their intervals.</p>
+  </section>
+
+  <section>
+    <h2>Compared with similar counties</h2>
+    <p>"Similar" means similar in health, social, substance-use and access conditions, not neighbouring. A machine-learning model (gradient-boosted trees) predicts the 2022–2024 rate expected for a county from 18 county measures:</p>
+    <p class="note">adult high blood pressure, obesity, diabetes, smoking, depression, routine check-ups, binge drinking and uninsurance; poverty, unemployment, adults without a high-school diploma, single-parent households, households without broadband, housing cost burden and crowded housing; the drug overdose death rate, and treatment facilities for opioid use disorder and programmes for pregnant and postpartum patients per capita.</p>
+    <p>The model is fitted on the other scored counties (5-fold cross-validation), so no county is compared with a model that saw it. A 90% range (conformal prediction) shows where a county like this one would fall 90% of the time; "higher" or "lower than similar counties" means outside that range. On held-out counties the ranges contained 90–91% of rates as intended, and the model explained more of the variation than state averages (cross-validated R² 0.61 versus 0.23 for low birth weight, 0.55 versus 0.34 for preterm birth). Each county card also lists the five counties closest on these measures, for orientation; the expected rate comes from the model, not from those five.</p>
+  </section>
+
+  <section>
+    <h2>Persistently among the highest</h2>
+    <p>Separately from alerts, each year from 2020 to 2024 the scored counties are ranked by rate. A county in the highest fifth in 3 or more of the 5 years is persistently among the highest. This describes the level of a rate, not a change: a county can be stable and persistently high. It follows Brown and colleagues' definition of low-birthweight hotspots (<i>Inquiry</i>, 2020), without their neighbouring-county condition, and ranks only large counties against each other.</p>
+  </section>
+
+  <section>
+    <h2>Next-year forecast</h2>
+    <p>A gradient-boosted tree model estimates the chance that each county result is flagged the following year, from recent rates, trends, detection scores, county size, payer mix and state-wide changes. It was trained only on earlier years and tested on 2023–2024 outcomes it had not seen: AUROC 0.79 (0.5 is chance, 1 is perfect), close to a simpler logistic model, with 7–9% of results flagged in a typical year. The <a href="https://github.com/karantejpal12/perinatal-ews/blob/main/docs/model_card.md">model card</a> gives calibration and accuracy by county size.</p>
+  </section>
+
+  <section>
+    <h2>Overdose deaths and other county context</h2>
+    <p>Drug overdose death rates are CDC VSRR provisional 12-month counts ending December 2024, per 100,000 residents. The overdose map shows every US county with a published count. Grey means no published count: NCHS suppresses counts of 1 to 9 deaths, so grey is not zero. The other context measures come from CDC PLACES, the American Community Survey, SAMHSA's treatment locator and CMS hospital data. They describe places, not people, and are associations, not causes.</p>
+  </section>
+
+  <footer>Population surveillance tool; not for clinical or individual decisions. Flags are statistical leads for local follow-up, not confirmed problems.</footer>
+</div>
+</body>
+</html>

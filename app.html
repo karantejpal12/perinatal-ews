@@ -10,7 +10,7 @@
 <style>
 /* Layout: app shell = top bar with two tabs; Explore = search + county cards + filterable list; Run = upload panel + report frame */
 :root {
-  --bg: #f6f7f9; --surface: #ffffff; --surface-2: #eef1f5; --ink: #14181f; --ink-2: #4a5160; --ink-3: #6b7280;
+  --bg: #f6f7f9; --surface: #ffffff; --surface-2: #eef1f5; --nodata: #b9bcc2; --ink: #14181f; --ink-2: #4a5160; --ink-3: #6b7280;
   --rule: #dfe3ea; --accent: #2a78d6; --accent-soft: #e3eefb; --expected: #8a919e; --grid: #e6e9ef;
   --alert: #c23434; --alert-bg: #fbeaea; --watch: #8f6200; --watch-bg: #fdf3dc;
   --stable: #2f7d32; --stable-bg: #e7f3e8; --na: #6b7280; --na-bg: #eef0f3;
@@ -18,7 +18,7 @@
   --font-data: "IBM Plex Mono", ui-monospace, Menlo, monospace;
 }
 @media (prefers-color-scheme: dark) { :root {
-  --bg: #121418; --surface: #1a1d22; --surface-2: #22262d; --ink: #eceef2; --ink-2: #b9bfca; --ink-3: #9198a4;
+  --bg: #121418; --surface: #1a1d22; --surface-2: #22262d; --nodata: #4a4f58; --ink: #eceef2; --ink-2: #b9bfca; --ink-3: #9198a4;
   --rule: #2c313a; --accent: #4a92ea; --accent-soft: #1b2a40; --expected: #8a919e; --grid: #2a2f37;
   --alert: #e66767; --alert-bg: #3a2222; --watch: #e0a83a; --watch-bg: #352c18;
   --stable: #5cbf60; --stable-bg: #1d2e1e; --na: #9198a4; --na-bg: #23272e; color-scheme: dark; } }
@@ -73,6 +73,13 @@ p { margin: 0 0 10px; color: var(--ink-2); max-width: 72ch; }
 .chart .dot { fill: var(--accent); stroke: var(--surface); stroke-width: 2; }
 .chart .exp { fill: var(--surface); stroke: var(--expected); stroke-width: 2; }
 .chart .hit { fill: transparent; }
+.chart .ci-bar { stroke: var(--accent); stroke-width: 1.4; stroke-opacity: .45; }
+.legend i.bar { width: 2px; height: 10px; opacity: .5; }
+.compare { border: 1px solid var(--rule); border-radius: 10px; background: var(--surface); padding: 12px 14px; }
+.compare table { font-size: 13px; }
+.compare td small { display: block; color: var(--ink-3); font-size: 11.5px; }
+.compare .x { border: 0; background: transparent; color: var(--ink-3); cursor: pointer; font: inherit; padding: 0 2px; }
+.share.on { border-color: var(--accent); color: var(--accent); }
 .legend { display: flex; gap: 14px; flex-wrap: wrap; font-size: 12px; color: var(--ink-3); }
 .legend i { display: inline-block; width: 14px; height: 2px; background: var(--accent); vertical-align: middle; margin-right: 5px; }
 .legend i.ring { width: 9px; height: 9px; border-radius: 50%; background: transparent; border: 2px solid var(--expected); }
@@ -145,6 +152,8 @@ footer { max-width: 1120px; margin: 0 auto; padding: 16px max(16px, env(safe-are
 .map-wrap .stl { fill: none; stroke: var(--ink-3); stroke-width: .6; stroke-opacity: .7; pointer-events: none; }
 .map-wrap .co { stroke: var(--surface); stroke-width: .35; cursor: pointer; }
 .map-wrap .co:hover, .map-wrap .co.sel { stroke: var(--ink); stroke-width: 1.4; }
+.map-wrap .co-o { stroke: var(--surface); stroke-width: .25; }
+.map-wrap .co-o:hover { stroke: var(--ink); stroke-width: 1; }
 .map-tip { position: absolute; pointer-events: none; background: var(--ink); color: var(--bg); font-size: 12.5px; padding: 6px 9px; border-radius: 6px; max-width: 260px; line-height: 1.35; }
 .map-legend { display: flex; flex-wrap: wrap; gap: 6px 14px; font-size: 12.5px; color: var(--ink-2); align-items: center; }
 .map-legend i { display: inline-block; width: 12px; height: 12px; border-radius: 3px; vertical-align: -2px; margin-right: 5px; }
@@ -178,7 +187,7 @@ details.more[open] summary { margin-bottom: 10px; }
     <button class="tab" role="tab" id="tab-ask" aria-selected="false" aria-controls="view-ask">Ask AI</button>
     <button class="tab" role="tab" id="tab-run" aria-selected="false" aria-controls="view-run">Run on your data</button>
   </div>
-  <nav class="links"><a href="./">About</a><a href="results/2024/report.html">Full bulletin</a><a href="https://github.com/karantejpal12/perinatal-ews">GitHub</a></nav>
+  <nav class="links"><a href="./">About</a><a href="methods.html">Methods</a><a href="results/2024/report.html">Full bulletin</a><a href="https://github.com/karantejpal12/perinatal-ews">GitHub</a></nav>
 </div></div>
 
 <div class="fresh" id="fresh" hidden><div class="fresh-in" id="fresh-in"></div></div>
@@ -227,6 +236,7 @@ details.more[open] summary { margin-bottom: 10px; }
       <div class="sugg" id="sugg" role="listbox" hidden></div>
     </div>
 
+    <div id="compare" class="compare stack" aria-live="polite" hidden></div>
     <div id="county" class="stack" aria-live="polite">
       <p class="status" id="load-status">Loading county data…</p>
     </div>
@@ -415,9 +425,12 @@ details.more[open] summary { margin-bottom: 10px; }
   /* ---------- explore ---------- */
   let D = null, byId = new Map(), patterns = new Set();
 
-  function trendChart(years, trend, expected, label) {
+  function trendChart(years, trend, expected, label, ns) {
     const W = 340, H = 150, L = 38, R = 12, T = 12, B = 24;
-    const vals = trend.filter(v => v != null).concat(expected != null ? [expected] : []);
+    // 95% Wilson interval for each year's rate, from the births behind it.
+    const cis = trend.map((v, i) => (v != null && ns && ns[i]) ? window.EWS.rateInterval(v, ns[i]) : null);
+    const vals = trend.filter(v => v != null).concat(expected != null ? [expected] : [])
+      .concat(cis.filter(Boolean).flatMap(c => [c.lo, c.hi]));
     if (!vals.length) return el('p', { class: 'note', text: 'Too few events to show a trend.' });
     let lo = Math.min(...vals), hi = Math.max(...vals);
     const pad = Math.max((hi - lo) * 0.25, hi * 0.08, 0.002); lo = Math.max(0, lo - pad); hi = hi + pad;
@@ -436,13 +449,14 @@ details.more[open] summary { margin-bottom: 10px; }
       const c = sv('circle', { class: 'exp', cx: x(years.length - 1), cy: y(expected), r: 5 });
       const tt = sv('title'); tt.textContent = `Expected ${D.year}: ${pct(expected)}`; c.append(tt); s.append(c);
     }
+    cis.forEach((c, i) => { if (c) s.append(sv('line', { class: 'ci-bar', x1: x(i), x2: x(i), y1: y(c.lo), y2: y(c.hi) })); });
     trend.forEach((v, i) => {
       if (v == null) return;
       const last = i === trend.length - 1;
       const d = sv('circle', { class: 'dot', cx: x(i), cy: y(v), r: last ? 4.5 : 3 });
       s.append(d);
       const h = sv('circle', { class: 'hit', cx: x(i), cy: y(v), r: 10 });
-      const tt = sv('title'); tt.textContent = `${years[i]}: ${pct(v)}`; h.append(tt); s.append(h);
+      const tt = sv('title'); tt.textContent = `${years[i]}: ${pct(v)}` + (cis[i] ? ` (95% CI ${pct(cis[i].lo)}–${pct(cis[i].hi)}; ${ns[i].toLocaleString()} births)` : ''); h.append(tt); s.append(h);
     });
     return s;
   }
@@ -479,7 +493,8 @@ details.more[open] summary { margin-bottom: 10px; }
       }
       box.append(el('p', { text: t }));
     }
-    box.append(el('p', {}, 'Full details: ', el('a', { href: 'https://github.com/karantejpal12/perinatal-ews/blob/main/docs/methodology.md', target: '_blank', rel: 'noopener' }, 'methodology'), ' · ',
+    if (e.similar && e.similar.expected != null) box.append(el('p', { text: `Compared with similar counties: a machine-learning model predicts the ${D.benchmark_years || 'recent'} rate expected for a county with this county's ${(D.similar_measures || []).length || 18} health, social, substance-use and access measures (${(D.similar_measures || []).join(', ')}). It is fitted on the other scored counties (5-fold cross-validation), so a county is never compared with a model that saw it. "Similar" means similar on these measures, not neighbouring; the 90% range is where a county like this one would fall 90% of the time, and "higher" or "lower" means outside it. The counties listed under the cards are the five closest on these measures, for orientation.` }));
+    box.append(el('p', {}, 'Full details: ', el('a', { href: 'methods.html' }, 'methods in brief'), ' · ', el('a', { href: 'https://github.com/karantejpal12/perinatal-ews/blob/main/docs/methodology.md', target: '_blank', rel: 'noopener' }, 'methodology'), ' · ',
       el('a', { href: 'https://github.com/karantejpal12/perinatal-ews/blob/main/docs/interpreting_flags.md', target: '_blank', rel: 'noopener' }, 'how to interpret a flag and what to check first'), '.'));
     return box;
   }
@@ -499,18 +514,54 @@ details.more[open] summary { margin-bottom: 10px; }
     return null;
   }
 
+  // Side-by-side comparison of up to CMP_MAX counties (kept while the page is open).
+  const CMP = [], CMP_MAX = 4;
+  function toggleCompare(id) {
+    const i = CMP.indexOf(id);
+    if (i >= 0) CMP.splice(i, 1); else { if (CMP.length >= CMP_MAX) CMP.shift(); CMP.push(id); }
+    renderCompare();
+  }
+  function renderCompare() {
+    const box = $('#compare'); box.textContent = '';
+    const cs = CMP.map(id => byId.get(id)).filter(Boolean);
+    box.hidden = !cs.length; if (!cs.length) return;
+    const head = el('div', { class: 'county-head' }, el('h2', { text: `Comparing ${cs.length} ${cs.length === 1 ? 'county' : 'counties'}` }),
+      el('span', { class: 'period', text: `${D.year} · final data` }),
+      el('button', { class: 'share', type: 'button', text: 'Clear', onclick: () => { CMP.length = 0; renderCompare(); const b = $('#county .share.on'); if (b) { b.classList.remove('on'); b.textContent = 'Add to comparison'; } } }));
+    const thead = el('tr', {}, el('th', { text: 'Indicator' }), ...cs.map(c => el('th', {},
+      el('a', { href: '#county-' + c.id, onclick: ev => { ev.preventDefault(); openCounty(c.id); } }, `${c.name}, ${c.state}`), ' ',
+      el('button', { class: 'x', type: 'button', 'aria-label': `Remove ${c.name} from comparison`, text: '×', onclick: () => { toggleCompare(c.id); } }))));
+    const tb = el('tbody');
+    for (const [k, label] of Object.entries(D.indicators)) {
+      tb.append(el('tr', {}, el('td', { text: label }), ...cs.map(c => {
+        const e = c.ind[k]; if (!e) return el('td', { text: '–' });
+        const ci = window.EWS.rateInterval(e.rate, e.births);
+        const td = el('td', {}, el('b', { text: pct(e.rate) }), ' ', pill(e.level));
+        td.append(el('small', { text: (ci ? `95% CI ${pct(ci.lo)}–${pct(ci.hi)}` : '') + (e.expected != null ? ` · expected ${pct(e.expected)}` : '') }));
+        if (e.persistent && e.persistent.status === 'persistent') td.append(el('small', { text: `Highest fifth in ${e.persistent.years_worst} of ${e.persistent.years_ranked} years` }));
+        if (ci && ci.unstable) td.append(el('small', { text: `Unstable: ${ci.events} events` }));
+        return td;
+      })));
+    }
+    box.append(head, el('div', { class: 'table-wrap' }, el('table', {}, el('thead', {}, thead), tb)),
+      el('p', { class: 'note', style: 'margin:0', text: 'Open a county and select "Add to comparison" to add it here (up to 4). Overlapping confidence intervals mean the difference between two counties may be chance.' }),
+      ...caveatNotes(['gestational_hypertension']));
+  }
+
   function renderCounty(c) {
     const box = $('#county'); box.textContent = '';
     const head = el('div', { class: 'county-head' },
       el('h2', { text: `${c.name}, ${c.state}` }),
       el('span', { class: 'meta', text: `FIPS ${c.id}` }),
       el('span', { class: 'period', text: `${D.years[0]}–${D.year} · final data` }),
+      el('button', { class: 'share' + (CMP.includes(c.id) ? ' on' : ''), type: 'button', text: CMP.includes(c.id) ? 'In comparison' : 'Add to comparison',
+        title: `Keep up to ${CMP_MAX} counties side by side above`, onclick: e => { toggleCompare(c.id); e.target.textContent = CMP.includes(c.id) ? 'In comparison' : 'Add to comparison'; e.target.classList.toggle('on', CMP.includes(c.id)); } }),
       el('button', { class: 'share', type: 'button', text: 'Copy link to this county', onclick: async (e) => {
         const url = location.href.split('#')[0] + '#county-' + c.id;
         try { await navigator.clipboard.writeText(url); e.target.textContent = 'Link copied'; } catch { prompt('Copy this link', url); }
         setTimeout(() => { e.target.textContent = 'Copy link to this county'; }, 2000);
       } }));
-    const legend = el('div', { class: 'legend' }, el('span', {}, el('i'), 'Observed rate by year'), el('span', {}, el('i', { class: 'ring' }), `Expected ${D.year} rate`));
+    const legend = el('div', { class: 'legend' }, el('span', {}, el('i'), 'Observed rate by year'), el('span', {}, el('i', { class: 'bar' }), '95% confidence interval'), el('span', {}, el('i', { class: 'ring' }), `Expected ${D.year} rate`));
     const cards = el('div', { class: 'cards' });
     for (const [k, label] of Object.entries(D.indicators)) {
       const e = c.ind[k]; if (!e) continue;
@@ -523,7 +574,7 @@ details.more[open] summary { margin-bottom: 10px; }
       card.append(el('div', { class: 'nums' }, rateBox,
         el('div', {}, el('b', { text: pct(e.expected) }), el('span', { text: 'Expected' })),
         el('div', {}, el('b', { text: e.rr == null ? '–' : e.rr.toFixed(2) + '×' }), el('span', { text: 'Observed ÷ expected' }))));
-      const ch = el('div', { class: 'chart' }); ch.append(trendChart(D.years, e.trend, e.expected, label)); card.append(ch);
+      const ch = el('div', { class: 'chart' }); ch.append(trendChart(D.years, e.trend, e.expected, label, e.trend_n)); card.append(ch);
       const subs = el('div', { class: 'subs' });
       for (const [s, sd] of Object.entries(e.subgroups || {})) subs.append(el('span', {}, el('b', { text: s + ': ' }), pct(sd.rate), ' · ', LABEL[sd.level] || sd.level));
       if (subs.childNodes.length) card.append(subs);
@@ -564,6 +615,9 @@ details.more[open] summary { margin-bottom: 10px; }
       extra.push(el('h3', { text: 'County context' }), grid,
         el('p', { class: 'note', text: (D.context_source || '') + ' These describe the county, not individual people.' }));
     }
+    const peerList = (c.peers || []).map(id => byId.get(id)).filter(Boolean);
+    if (peerList.length) extra.unshift(el('p', { class: 'why' }, `Counties most like ${c.name} on the similar-county measures (for orientation): `,
+      ...peerList.flatMap((p, i) => [i ? ', ' : '', el('a', { href: '#county-' + p.id, onclick: ev => { ev.preventDefault(); openCounty(p.id); } }, `${p.name}, ${p.state}`)]), '.'));
     box.append(head, brief, ...top, legend, cards, ...extra, el('p', { class: 'note', text: D.source }));
   }
 
@@ -655,7 +709,7 @@ details.more[open] summary { margin-bottom: 10px; }
       return { color: p.years_worst ? seq(p.years_worst / 5) : PAL.inline, text: persistentText(p) + (p.status === 'persistent' ? ' · persistent' : '') };
     }
     if (metric === 'type') return c.type ? { color: PAL.types[(c.type - 1) % 8], text: `Type ${c.type}: ${(D.types[c.type] || {}).description || ''}` } : null;
-    if (metric === 'overdose') { const v = c.ctx && c.ctx.overdose_rate_2024; return v != null ? { color: seq(v / 60), text: `${v.toFixed(1)} overdose deaths per 100,000 (2024)` } : null; }
+    if (metric === 'overdose') { const v = c.ctx && c.ctx.overdose_rate_2024; return v != null ? { color: seq(v / 60), text: `${v.toFixed(1)} overdose deaths per 100,000 (2024)` } : { color: 'var(--nodata)', text: 'no published 2024 overdose count (suppressed or not reported)' }; }
     if (metric === 'need') return c.need ? { color: PAL[c.need.priority], text: c.need.priority === 'high' ? 'High priority: ' + c.need.reasons : 'For review: ' + c.need.reasons } : { color: PAL.inline, text: 'Not on the list' };
     if (metric === 'unusual') return c.unusual ? { color: PAL.review, text: 'Unusual record: ' + c.unusual } : { color: PAL.inline, text: 'Nothing unusual found' };
     return null;
@@ -668,7 +722,7 @@ details.more[open] summary { margin-bottom: 10px; }
     else if (metric === 'similar') { item(PAL.higher, 'Higher than similar counties'); item(PAL.inline, 'In line'); item(PAL.lower, 'Lower'); }
     else if (metric === 'persistent') { item(PAL.inline, 'Never in the highest fifth'); [1, 2, 3, 4, 5].forEach(v => item(seq(v / 5), `${v} of 5 years${v === 3 ? ' (persistent: 3+)' : ''}`)); }
     else if (metric === 'type') Object.entries(D.types || {}).forEach(([t, v]) => item(PAL.types[(t - 1) % 8], `Type ${t} (${v.counties}): ${v.description}`));
-    else if (metric === 'overdose') [0, 15, 30, 45, 60].forEach(v => item(seq(v / 60), v === 60 ? '60+' : String(v)));
+    else if (metric === 'overdose') { [0, 15, 30, 45, 60].forEach(v => item(seq(v / 60), v === 60 ? '60+ per 100,000' : String(v))); item('var(--nodata)', 'No published count (not zero)'); return; }
     else if (metric === 'need') { item(PAL.high, 'High priority'); item(PAL.review, 'For review'); item(PAL.inline, 'Not listed'); }
     else if (metric === 'unusual') { item(PAL.review, `Unusual ${D.year} record`); item(PAL.inline, 'Nothing unusual'); }
     item('var(--surface-2)', 'Not scored');
@@ -710,7 +764,10 @@ details.more[open] summary { margin-bottom: 10px; }
         : `Each state's births from ${LATEST.ytd_label} compared with the same months of earlier years (CDC provisional data). Select a state to open it.`;
       return;
     }
-    $('#map-note').textContent = 'Only the 578 counties with 100,000+ residents are scored; other areas are shown in grey. Select a county to open it.' +
+    showOtherCounties(metric === 'overdose');
+    $('#map-note').textContent = (metric === 'overdose'
+      ? 'Drug overdose death rates are shown for every county with a published 2024 count (CDC VSRR provisional data), not only the 578 scored counties. Grey means no published count: NCHS suppresses counts of 1 to 9 deaths, so grey is not zero. Select a scored county to open it.'
+      : 'Only the 578 counties with 100,000+ residents are scored; other areas are shown in grey. Select a county to open it.') +
       (metric === 'persistent' ? ` Each year from ${PW()}, the scored counties are ranked by rate; a county in the highest fifth in 3 or more of the 5 years is persistently among the highest. This shows the level of the rate, not a change, and it ranks only large counties against each other.` : '');
     MAP.paths.each(function (f) {
       const c = byId.get(f.id); const v = c && mapValue(c, metric, ind);
@@ -739,7 +796,7 @@ details.more[open] summary { margin-bottom: 10px; }
         .on('mouseleave', () => { tip.hidden = true; })
         .on('click', (ev, f) => { const ab = STATE_FIPS_ABBR[f.id]; if ($('#m-metric').value.startsWith('state_') && ab) location.hash = '#state-' + ab; });
       wrap.append(tip);
-      const paths = svg.append('g').selectAll('path').data(co.features).join('path').attr('class', 'co').attr('d', path)
+      const paths = svg.append('g').attr('class', 'co-layer').selectAll('path').data(co.features).join('path').attr('class', 'co').attr('d', path)
         .attr('tabindex', 0)
         .on('mousemove', function (ev) {
           const r = wrap.getBoundingClientRect(); tip.textContent = this.__tip; tip.hidden = false;
@@ -749,11 +806,29 @@ details.more[open] summary { margin-bottom: 10px; }
         .on('click', (ev, f) => { openCounty(f.id); $('#county').scrollIntoView({ behavior: 'smooth' }); })
         .on('keydown', (ev, f) => { if (ev.key === 'Enter') { openCounty(f.id); $('#county').scrollIntoView(); } });
       svg.append('g').selectAll('path').data(st.features).join('path').attr('class', 'stl').attr('d', path);
-      MAP = { paths, states };
+      MAP = { paths, states, svg, path, wrap, tip };
       drawMap();
     } catch (e) { $('#map').textContent = 'The map could not be loaded. The county search and lists below still work.'; }
   }
   function highlightOnMap(id) { if (MAP) MAP.paths.classed('sel', f => f.id === id); }
+  // Every other US county, with its overdose rate; loaded only for the overdose map.
+  let OTHERS = null, othersLoading = null;
+  function showOtherCounties(on) {
+    if (!MAP) return;
+    if (!on) { if (OTHERS) OTHERS.style('display', 'none'); return; }
+    if (OTHERS) { OTHERS.style('display', null); return; }
+    if (othersLoading) return;
+    othersLoading = fetch('results/map/counties_other.json').then(r => r.json()).then(fc => {
+      OTHERS = MAP.svg.insert('g', '.co-layer').selectAll('path').data(fc.features).join('path').attr('class', 'co-o').attr('d', MAP.path)
+        .attr('fill', f => f.properties.od != null ? seq(f.properties.od / 60) : 'var(--nodata)')
+        .on('mousemove', function (ev, f) {
+          const r = MAP.wrap.getBoundingClientRect(); MAP.tip.textContent = `${f.properties.n} · ` + (f.properties.od != null ? `${f.properties.od.toFixed(1)} overdose deaths per 100,000 (2024); not a scored county` : 'no published 2024 count (suppressed or not reported)'); MAP.tip.hidden = false;
+          const x = Math.min(ev.clientX - r.left + 12, r.width - 270); MAP.tip.style.left = Math.max(4, x) + 'px'; MAP.tip.style.top = (ev.clientY - r.top + 12) + 'px';
+        })
+        .on('mouseleave', () => { MAP.tip.hidden = true; });
+      if ($('#m-metric').value !== 'overdose') OTHERS.style('display', 'none');
+    }).catch(() => {});
+  }
 
   /* ---------- states ---------- */
   let SR = null, srLoading = null;
