@@ -4,6 +4,7 @@ All notable changes to perinatal-ews. Each release is archived on Zenodo (concep
 
 ## Unreleased
 
+- AI assistant `list_counties`: tests check every filter (alone, by indicator and by state) against its rule, the sort order and the row limit; an unknown filter, indicator or state code now returns an error naming the valid values instead of an empty list that read as "no counties match", and a state with no scored county (for example Wyoming) says that only counties of 100,000+ residents are scored. Published numbers are unchanged.
 - [Methods in brief](methods.html): a plain-language page on which counties are scored and their sizes, how rates are calculated (crude, not age-standardised), the alert rules and what the false-alert rate means, uncertainty, the similar-county comparison, persistent burden, the forecast and the overdose data; linked from the explorer and home page.
 - Explorer: 95% confidence bars around every year in the trend charts; side-by-side comparison of up to four counties with their intervals; the similar-county comparison now explains which 18 measures define "similar" and lists the five closest counties; the overdose map shows every US county with a published 2024 count and labels grey areas as unpublished (suppressed), not zero (`results/map/counties_other.json`, built by `build_map_geometry.py --context`). Published numbers are unchanged.
 - Roadmap: maternal-age-standardised rates.

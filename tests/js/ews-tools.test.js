@@ -133,3 +133,60 @@ test('county record reports persistent burden as a level over 2020-2024, separat
   const n = tool('national_summary').run(D, {});
   assert.deepEqual(Object.values(n.persistently_among_highest.counties_by_indicator), Object.values(D.persistent.persistent_counties));
 });
+
+test('each list_counties filter returns exactly the county results that meet its rule', () => {
+  const lc = tool('list_counties');
+  const flg = e => e.level === 'alert' || e.level === 'watch';
+  const sub = e => Object.values(e.subgroups || {}).some(s => s.level === 'alert' || s.level === 'watch');
+  const rules = {
+    flagged: (c, e) => flg(e),
+    alert: (c, e) => e.level === 'alert',
+    subgroup_flag: (c, e) => sub(e),
+    high_next_year_risk: (c, e) => (e.risk || 0) >= 0.3,
+    stable_but_high_risk: (c, e) => e.level === 'stable' && (e.risk || 0) >= 0.25,
+    need_and_access: (c, e) => !!c.need && (flg(e) || sub(e) || (e.risk || 0) >= 0.3),
+    higher_than_similar: (c, e) => !!(e.similar && /higher/.test(e.similar.verdict)),
+    unusual_data: c => !!c.unusual,
+    persistent_burden: (c, e) => !!(e.persistent && e.persistent.status === 'persistent'),
+  };
+  assert.deepEqual(Object.keys(rules).sort(), [...lc.input_schema.properties.filter.enum].sort());
+  for (const [f, rule] of Object.entries(rules)) {
+    const want = new Set();
+    for (const c of D.counties) for (const [k, e] of Object.entries(c.ind)) if (rule(c, e)) want.add(`${c.id}|${D.indicators[k]}`);
+    const r = lc.run(D, { filter: f, limit: 100 });
+    assert.equal(r.total_matching, want.size, f);
+    assert.equal(r.showing, Math.min(want.size, 100), f);
+    assert.ok(r.rows.every(x => want.has(`${x.fips}|${x.indicator}`)), f);
+    for (const k of Object.keys(D.indicators)) {
+      const n = [...want].filter(w => w.endsWith(`|${D.indicators[k]}`)).length;
+      assert.equal(lc.run(D, { filter: f, indicator: k }).total_matching, n, `${f} ${k}`);
+    }
+    const ga = lc.run(D, { filter: f, state: 'ga', limit: 100 });
+    assert.ok(ga.rows.every(x => x.state === 'GA'), f);
+    assert.equal(ga.total_matching, [...want].filter(w => D.counties.find(c => c.id === w.split('|')[0]).state === 'GA').length, f);
+  }
+  assert.deepEqual(lc.run(D, {}).total_matching, lc.run(D, { filter: 'flagged' }).total_matching);
+  const risk = lc.run(D, { filter: 'high_next_year_risk', limit: 100 }).rows;
+  for (let i = 1; i < risk.length; i++) assert.ok(risk[i - 1].next_year_risk >= risk[i].next_year_risk);
+  const fl = lc.run(D, { filter: 'flagged', limit: 100 }).rows, order = { alert: 0, watch: 1 };
+  for (let i = 1; i < fl.length; i++) assert.ok(order[fl[i - 1].status] <= order[fl[i].status]);
+});
+
+test('list_counties: combinations that match nothing return no rows, and unknown values are errors', () => {
+  const lc = tool('list_counties');
+  // Wyoming has no county of 100,000+ residents, so nothing is scored there.
+  const wy = lc.run(D, { filter: 'flagged', state: 'WY' });
+  assert.equal(wy.total_matching, 0); assert.deepEqual(wy.rows, []); assert.match(wy.note, /Wyoming/);
+  // A real state and indicator with no match: no rows, no note, no caveat.
+  const none = Object.keys(D.indicators).flatMap(k => Object.keys(EWS.STATE_NAMES).filter(s => D.counties.some(c => c.state === s))
+    .map(s => ({ filter: 'alert', state: s, indicator: k }))).find(a => lc.run(D, a).total_matching === 0);
+  assert.ok(none);
+  const r = lc.run(D, none);
+  assert.deepEqual(r, { total_matching: 0, showing: 0, rows: [] });
+  for (const a of [{ filter: 'worst' }, { filter: 'alert', indicator: 'stillbirth' }, { filter: 'alert', state: 'XX' }]) {
+    const e = lc.run(D, a);
+    assert.ok(e.error, JSON.stringify(a)); assert.equal(e.rows, undefined);
+  }
+  assert.match(lc.run(D, { filter: 'worst' }).error, /persistent_burden/);
+  assert.equal(lc.run(D, { filter: 'flagged', limit: 1000 }).showing, 100);
+});

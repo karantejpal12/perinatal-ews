@@ -162,14 +162,21 @@
     return parts.join(' ');
   }
 
+  const LIST_FILTERS = ['flagged', 'alert', 'subgroup_flag', 'high_next_year_risk', 'stable_but_high_risk', 'need_and_access', 'higher_than_similar', 'unusual_data', 'persistent_burden'];
+
   function listCounties(D, a = {}) {
     const lim = Math.min(Number(a.limit) || 25, 100);
+    const f = a.filter || 'flagged';
+    const st = a.state ? String(a.state).toUpperCase() : null;
+    // An unknown filter, indicator or state is an error, so it is not reported as "no counties match".
+    if (!LIST_FILTERS.includes(f)) return { error: `Unknown filter "${a.filter}". Use one of: ${LIST_FILTERS.join(', ')}.` };
+    if (a.indicator && !(a.indicator in D.indicators)) return { error: `Unknown indicator "${a.indicator}". Use one of: ${Object.keys(D.indicators).join(', ')}.` };
+    if (st && !(st in STATE_NAMES)) return { error: `Unknown state "${a.state}". Use a two-letter state code.` };
     const rows = [];
     for (const c of D.counties) {
-      if (a.state && c.state !== String(a.state).toUpperCase()) continue;
+      if (st && c.state !== st) continue;
       for (const [k, e] of Object.entries(c.ind)) {
         if (a.indicator && k !== a.indicator) continue;
-        const f = a.filter || 'flagged';
         const ok = f === 'alert' ? e.level === 'alert' : f === 'flagged' ? flagged(e)
           : f === 'subgroup_flag' ? subFlagged(e) : f === 'high_next_year_risk' ? (e.risk || 0) >= 0.3
           : f === 'stable_but_high_risk' ? e.level === 'stable' && (e.risk || 0) >= 0.25
@@ -184,11 +191,12 @@
       }
     }
     const key = { alert: 0, watch: 1, stable: 2 };
-    rows.sort((x, y) => a.filter === 'persistent_burden' ? (y.years_in_highest_fifth - x.years_in_highest_fifth) || ((y.rate || 0) - (x.rate || 0))
-      : (a.filter || '').includes('risk') ? (y.next_year_risk || 0) - (x.next_year_risk || 0)
+    rows.sort((x, y) => f === 'persistent_burden' ? (y.years_in_highest_fifth - x.years_in_highest_fifth) || ((y.rate || 0) - (x.rate || 0))
+      : f.includes('risk') ? (y.next_year_risk || 0) - (x.next_year_risk || 0)
       : (key[x.status] - key[y.status]) || ((y.observed_vs_expected || 0) - (x.observed_vs_expected || 0)));
     const shown = rows.slice(0, lim);
     const out = { total_matching: rows.length, showing: shown.length, rows: shown };
+    if (st && !D.counties.some(c => c.state === st)) out.note = `No county in ${STATE_NAMES[st]} is scored: only counties with 100,000+ residents are identified in the public data.`;
     const cav = caveatsFor(D, Object.keys(D.indicators).filter(k => shown.some(r => r.indicator === indLabel(D, k))));
     if (cav) out.reporting_caveats = cav;
     return out;
@@ -235,7 +243,7 @@
       run: (D, a) => { const c = findCounty(D, a.fips); return c ? { ...countyRecord(D, c), plain_language_brief: countyBrief(D, c) } : { error: 'County not found. Use search_counties. Only counties with 100,000+ residents are included.' }; } },
     { name: 'list_counties', description: 'List county-indicator results matching a filter, optionally within one state and/or indicator.',
       input_schema: { type: 'object', properties: {
-        filter: { type: 'string', enum: ['flagged', 'alert', 'subgroup_flag', 'high_next_year_risk', 'stable_but_high_risk', 'need_and_access', 'higher_than_similar', 'unusual_data', 'persistent_burden'] },
+        filter: { type: 'string', enum: LIST_FILTERS },
         state: { type: 'string', description: 'Two-letter state code' },
         indicator: { type: 'string', enum: ['late_no_prenatal_care', 'preterm_birth', 'low_birth_weight', 'gestational_hypertension'] },
         limit: { type: 'integer', description: 'Max rows (default 25, max 100)' } }, required: ['filter'] },
