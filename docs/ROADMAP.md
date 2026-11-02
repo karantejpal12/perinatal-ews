@@ -38,7 +38,7 @@ Work first on these. Items marked "needs data" require a fresh CDC WONDER downlo
 - [x] Test that input validation keeps two-letter state codes and pads numeric county codes; county codes that arrive as numbers read as decimals (for example 1001.0, when a numeric column has a missing value) are now padded too, instead of kept as "1001.0". (2026-10-30)
 - [x] Test the data-quality check (Isolation Forest) on very small inputs: empty input, no births or fewer than the 50 county-year records needed to flag 2% now skip the check with a message (console and report) instead of failing. (2026-10-31)
 - [x] JavaScript tests for each `list_counties` filter, including combinations that match nothing; an unknown filter, indicator or state code now returns an error instead of an empty list (which read as "no counties match"), and a state with no scored county says why. (2026-11-01)
-- [ ] Test that no published state-by-race result in `latest.json` shows a rate based on fewer than 20 events.
+- [x] Test that no published state-by-race result in `latest.json` shows a rate based on fewer than 20 events: every entry is matched to its event counts in `state_race_ytd.csv`, and rates, intervals, reference rates and rate ratios appear only where both the current and reference counts reach 20. (2026-11-02)
 - [ ] Check that every relative link in the README and `docs/` points to a file that exists.
 - [ ] JSON Schema for `results/latest/latest.json`, with a test that the published file matches it.
 
