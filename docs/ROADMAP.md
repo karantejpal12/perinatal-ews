@@ -39,7 +39,7 @@ Work first on these. Items marked "needs data" require a fresh CDC WONDER downlo
 - [x] Test the data-quality check (Isolation Forest) on very small inputs: empty input, no births or fewer than the 50 county-year records needed to flag 2% now skip the check with a message (console and report) instead of failing. (2026-10-31)
 - [x] JavaScript tests for each `list_counties` filter, including combinations that match nothing; an unknown filter, indicator or state code now returns an error instead of an empty list (which read as "no counties match"), and a state with no scored county says why. (2026-11-01)
 - [x] Test that no published state-by-race result in `latest.json` shows a rate based on fewer than 20 events: every entry is matched to its event counts in `state_race_ytd.csv`, and rates, intervals, reference rates and rate ratios appear only where both the current and reference counts reach 20. (2026-11-02)
-- [ ] Check that every relative link in the README and `docs/` points to a file that exists.
+- [x] Check that every relative link in the README and `docs/` points to a file that exists: `tests/test_doc_links.py` checks every relative link and heading anchor in the README, changelog and `docs/` (all resolve today). (2026-11-03)
 - [ ] JSON Schema for `results/latest/latest.json`, with a test that the published file matches it.
 
 ## Uncertainty, validation and interpretation
