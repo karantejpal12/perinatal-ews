@@ -27,7 +27,7 @@ Claude Desktop: add this to `claude_desktop_config.json` (Settings → Developer
 
 Claude Code: `claude mcp add perinatal-ews -- perinatal-ews mcp`.
 
-By default the server reads the repository copy of `results/latest/latest.json` if you run it from a clone, and otherwise downloads the published file once at start-up. `--results PATH_OR_URL` points it at another copy, for example an agency's own run.
+By default the server reads the repository copy of `results/latest/latest.json` if you run it from a clone, and otherwise downloads the published file once at start-up. `--results PATH_OR_URL` points it at another copy, for example an agency's own run. Such a copy should match [latest.schema.json](latest.schema.json), the schema of the published file.
 
 ## Tools
 

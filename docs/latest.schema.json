@@ -1,0 +1,138 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://github.com/karantejpal12/perinatal-ews/blob/main/docs/latest.schema.json",
+  "title": "perinatal-ews latest.json",
+  "description": "Shape of results/latest/latest.json, the year-so-far state results behind the explorer's state view, the AI assistant and the MCP server. Written by scripts/update_latest.py (perinatal_ews.latest.explorer_payload plus the outlook). Rates are proportions (0.105 = 10.5%). tests/test_latest_schema.py checks the published file against this schema.",
+  "type": "object",
+  "required": ["updated", "latest_month_available", "latest_month_completeness", "excluded_latest_month",
+               "ytd_year", "ytd_through_month", "ytd_label", "final_years", "provisional_years",
+               "full_year_provisional", "geography", "states", "counts", "sources", "states_data"],
+  "additionalProperties": false,
+  "properties": {
+    "updated": {"type": "string", "format": "date", "pattern": "^\\d{4}-\\d{2}-\\d{2}$",
+                "description": "Date the provisional data were retrieved from CDC WONDER."},
+    "latest_month_available": {"type": "string", "pattern": "^\\d{4}-(0[1-9]|1[0-2])$",
+                               "description": "Latest month CDC WONDER had published (YYYY-MM), whether or not it was used."},
+    "latest_month_completeness": {"type": ["number", "null"], "minimum": 0,
+                                  "description": "Births in the latest month relative to the same month a year earlier, scaled by the typical ratio; null when it could not be judged."},
+    "excluded_latest_month": {"type": "boolean", "description": "True when the latest month was left out as incomplete."},
+    "ytd_year": {"type": "integer", "minimum": 2000, "description": "Year of the year-so-far comparison."},
+    "ytd_through_month": {"type": "integer", "minimum": 1, "maximum": 12,
+                          "description": "Last month included in the year-so-far window (January to this month)."},
+    "ytd_label": {"type": "string", "minLength": 1, "description": "Window in words, for example 'January–August 2026'."},
+    "final_years": {"type": "string", "description": "Span of final (non-provisional) years used as history, for example '2016–2024'; empty if none."},
+    "provisional_years": {"type": "array", "items": {"type": "integer"}, "uniqueItems": true,
+                          "description": "Years that are provisional in this download."},
+    "full_year_provisional": {"type": ["integer", "null"],
+                              "description": "Most recent complete provisional year, scored as a full year; null if none."},
+    "geography": {"const": "state"},
+    "states": {"type": "integer", "minimum": 0, "description": "Number of areas scored (50 states and DC)."},
+    "counts": {
+      "type": "object", "required": ["alerts", "watch"], "additionalProperties": false,
+      "description": "Headline counts of state-indicator results at each level in the year-so-far comparison.",
+      "properties": {"alerts": {"type": "integer", "minimum": 0}, "watch": {"type": "integer", "minimum": 0}}
+    },
+    "sources": {
+      "type": "object", "additionalProperties": {"type": "string"},
+      "properties": {"provisional": {"type": "string"}, "final": {"type": "string"}}
+    },
+    "states_data": {
+      "type": "object",
+      "description": "Results by two-letter state code.",
+      "propertyNames": {"pattern": "^[A-Z]{2}$"},
+      "additionalProperties": {"$ref": "#/$defs/state"}
+    },
+    "outlook_backtest": {"$ref": "#/$defs/backtest"},
+    "outlook_track_record": {
+      "type": "array",
+      "description": "Scores of outlooks saved in earlier months, once their year is complete (absent until then).",
+      "items": {
+        "type": "object",
+        "required": ["made_with_data_through", "year", "state_indicators", "full_year_flags", "interval80_coverage"],
+        "properties": {
+          "made_with_data_through": {"type": "string", "pattern": "^\\d{4}-(0[1-9]|1[0-2])$"},
+          "year": {"type": "integer"},
+          "state_indicators": {"type": "integer", "minimum": 0},
+          "full_year_flags": {"type": "integer", "minimum": 0},
+          "interval80_coverage": {"$ref": "#/$defs/proportion"}
+        },
+        "additionalProperties": {"type": ["number", "null"]}
+      }
+    }
+  },
+  "$defs": {
+    "proportion": {"type": "number", "minimum": 0, "maximum": 1},
+    "proportion_or_null": {"type": ["number", "null"], "minimum": 0, "maximum": 1},
+    "ratio_or_null": {"type": ["number", "null"], "minimum": 0},
+    "indicator": {"enum": ["low_birth_weight", "preterm_birth", "late_no_prenatal_care", "gestational_hypertension"]},
+    "level": {"enum": ["alert", "watch", "stable", "insufficient data"]},
+    "state": {
+      "type": "object", "required": ["ind", "race"], "additionalProperties": false,
+      "properties": {
+        "ind": {
+          "type": "object", "description": "All births, by indicator.",
+          "propertyNames": {"$ref": "#/$defs/indicator"},
+          "additionalProperties": {"$ref": "#/$defs/indicator_result"}
+        },
+        "race": {
+          "type": "object", "description": "Year so far by mother's race, compared with the same months of the three previous years combined.",
+          "propertyNames": {"$ref": "#/$defs/indicator"},
+          "additionalProperties": {"type": "array", "items": {"$ref": "#/$defs/race_result"}}
+        }
+      }
+    },
+    "indicator_result": {
+      "type": "object", "additionalProperties": false,
+      "required": ["level", "rate", "expected", "rr", "births"],
+      "properties": {
+        "level": {"$ref": "#/$defs/level"},
+        "rate": {"$ref": "#/$defs/proportion_or_null", "description": "Year-so-far rate; null when fewer than 10 events."},
+        "expected": {"$ref": "#/$defs/proportion_or_null", "description": "Rate expected from the state's own history and the national trend."},
+        "rr": {"$ref": "#/$defs/ratio_or_null", "description": "Observed over expected rate; null when fewer than 10 events."},
+        "births": {"type": ["integer", "null"], "minimum": 0},
+        "full_year_level": {"$ref": "#/$defs/level", "description": "Level for the most recent complete provisional year."},
+        "full_year_rate": {"$ref": "#/$defs/proportion_or_null"},
+        "outlook": {
+          "type": "object", "additionalProperties": false,
+          "required": ["proj", "lo", "hi", "p_flag", "p_alert"],
+          "description": "Full-year outlook for ytd_year: projected rate with 80% interval and probabilities of a watch-or-alert and an alert.",
+          "properties": {
+            "proj": {"$ref": "#/$defs/proportion"}, "lo": {"$ref": "#/$defs/proportion"}, "hi": {"$ref": "#/$defs/proportion"},
+            "p_flag": {"$ref": "#/$defs/proportion"}, "p_alert": {"$ref": "#/$defs/proportion"}
+          }
+        }
+      }
+    },
+    "race_result": {
+      "type": "object", "additionalProperties": false,
+      "required": ["g", "rate", "lo", "hi", "ref", "rr", "change", "status", "report"],
+      "properties": {
+        "g": {"type": "string", "minLength": 1, "description": "Race group (CDC WONDER single-race categories and combined groups)."},
+        "rate": {"$ref": "#/$defs/proportion_or_null", "description": "Shown only when status is 'reliable' (20 or more events)."},
+        "lo": {"$ref": "#/$defs/proportion_or_null", "description": "Lower end of the 95% interval."},
+        "hi": {"$ref": "#/$defs/proportion_or_null", "description": "Upper end of the 95% interval."},
+        "ref": {"$ref": "#/$defs/proportion_or_null", "description": "Reference rate (same months, three previous years); shown only with 20 or more reference events."},
+        "rr": {"$ref": "#/$defs/ratio_or_null", "description": "Rate ratio, current over reference."},
+        "change": {"enum": ["higher", "lower", "no clear change", "not compared"]},
+        "status": {"type": "string", "pattern": "^(reliable|suppressed or missing|unreliable \\(<\\d+ events\\))$"},
+        "report": {"type": "string", "minLength": 1, "description": "Group the result is reported as ('insufficient data' when neither the group nor a combined group has enough events)."}
+      }
+    },
+    "backtest": {
+      "type": "object",
+      "description": "Outlook backtest on recent complete years (absent when the data reach December).",
+      "required": ["state_indicators", "full_year_flags", "interval80_coverage", "months_known", "years"],
+      "properties": {
+        "state_indicators": {"type": "integer", "minimum": 0},
+        "full_year_flags": {"type": "integer", "minimum": 0},
+        "interval80_coverage": {"$ref": "#/$defs/proportion"},
+        "months_known": {"type": "integer", "minimum": 1, "maximum": 12},
+        "years": {"type": "array", "items": {"type": "integer"}},
+        "brier_year_so_far_flag": {"type": ["number", "null"]},
+        "outlook": {"type": "object", "additionalProperties": {"type": ["number", "null"]}},
+        "outlook_at_50pct": {"type": "object", "additionalProperties": {"type": ["number", "null"]}},
+        "year_so_far_flag": {"type": "object", "additionalProperties": {"type": ["number", "null"]}}
+      }
+    }
+  }
+}

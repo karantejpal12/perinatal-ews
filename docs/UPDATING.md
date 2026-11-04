@@ -21,7 +21,7 @@ The site always shows how current the data are: the banner at the top of the exp
        --months data/latest/wonder_provisional_months_YYYY-MM.json
    ```
 
-4. Check the printed summary, then commit and push. The site updates within a few minutes:
+4. Check the printed summary and run `pytest -q`, which checks the new `latest.json` against its [schema](latest.schema.json) and the published-results rules; then commit and push. The site updates within a few minutes:
 
    ```bash
    git add data/latest results/latest results/history
