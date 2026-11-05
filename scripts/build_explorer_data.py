@@ -4,7 +4,8 @@
         --results results/2024 --out results/2024/explorer.json
 
 Only rates whose numerator is 10 or more are included, so no count or rate based
-on 9 or fewer events is published (NCHS data use restrictions).
+on 9 or fewer events is published (NCHS data use restrictions). The output's shape is
+described in docs/explorer.schema.json and checked by tests/test_explorer_schema.py.
 """
 from __future__ import annotations
 

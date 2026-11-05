@@ -1,0 +1,178 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://github.com/karantejpal12/perinatal-ews/blob/main/docs/explorer.schema.json",
+  "title": "perinatal-ews explorer.json",
+  "description": "Shape of results/2024/explorer.json, the county results behind the explorer's county view, county table and map. Written by scripts/build_explorer_data.py. Rates are proportions (0.105 = 10.5%); a rate is published only where it rests on 10 or more events, otherwise it is null. tests/test_explorer_schema.py checks the published file and a file built from synthetic data against this schema.",
+  "type": "object",
+  "required": ["year", "forecast_year", "years", "indicators", "source", "state_patterns", "counties",
+               "context_fields", "context_median", "context_source"],
+  "additionalProperties": false,
+  "properties": {
+    "year": {"type": "integer", "minimum": 2000, "description": "Year scored for change detection."},
+    "forecast_year": {"type": "integer", "description": "Year the forecast risk refers to (year + 1)."},
+    "years": {"type": "array", "items": {"type": "integer"}, "minItems": 1, "uniqueItems": true,
+              "description": "Years of the trend arrays, oldest first."},
+    "indicators": {"type": "object", "propertyNames": {"$ref": "#/$defs/indicator"},
+                   "additionalProperties": {"type": "string", "minLength": 1},
+                   "description": "Indicator key to display label."},
+    "source": {"type": "string", "minLength": 1},
+    "state_patterns": {
+      "type": "array",
+      "description": "States where several counties were flagged for the same indicator (a possible statewide shift).",
+      "items": {
+        "type": "object", "additionalProperties": false,
+        "required": ["indicator", "state", "flagged", "counties", "rate_before", "rate_now"],
+        "properties": {
+          "indicator": {"$ref": "#/$defs/indicator"},
+          "state": {"$ref": "#/$defs/state"},
+          "flagged": {"type": "integer", "minimum": 0},
+          "counties": {"type": "integer", "minimum": 1},
+          "rate_before": {"$ref": "#/$defs/rate"},
+          "rate_now": {"$ref": "#/$defs/rate"}
+        }
+      }
+    },
+    "counties": {"type": "array", "items": {"$ref": "#/$defs/county"}},
+    "context_fields": {"type": "object", "additionalProperties": {"type": "string", "minLength": 1},
+                       "description": "County context measure key to label; empty when the build had no context file."},
+    "context_median": {"type": "object", "additionalProperties": {"type": ["number", "null"]},
+                       "description": "Median of each context measure across the scored counties."},
+    "context_source": {"type": "string"},
+    "similar_measures": {"type": "array", "items": {"type": "string", "minLength": 1},
+                         "description": "Measures the similar-county comparison uses."},
+    "persistent": {
+      "type": "object", "additionalProperties": false,
+      "required": ["window_start", "window_end", "min_years", "persistent_counties"],
+      "properties": {
+        "window_start": {"type": "integer"},
+        "window_end": {"type": "integer"},
+        "min_years": {"type": "integer", "minimum": 1},
+        "persistent_counties": {"type": "object", "propertyNames": {"$ref": "#/$defs/indicator"},
+                                "additionalProperties": {"type": "integer", "minimum": 0}}
+      }
+    },
+    "types": {
+      "type": "object", "propertyNames": {"pattern": "^[1-9][0-9]*$"},
+      "description": "County types (k-means typology), keyed by type number.",
+      "additionalProperties": {
+        "type": "object", "additionalProperties": false, "required": ["counties", "description"],
+        "properties": {"counties": {"type": "integer", "minimum": 1}, "description": {"type": "string", "minLength": 1}}
+      }
+    },
+    "types_quality": {
+      "type": "object", "additionalProperties": false, "required": ["k", "silhouette", "bootstrap_ari_median"],
+      "properties": {
+        "k": {"type": "integer", "minimum": 2},
+        "silhouette": {"type": "number", "minimum": -1, "maximum": 1},
+        "bootstrap_ari_median": {"type": "number", "maximum": 1}
+      }
+    },
+    "forecast_metrics": {
+      "type": "array",
+      "items": {
+        "type": "object", "additionalProperties": false,
+        "required": ["model", "auroc", "auprc", "brier", "selected", "outcome_years"],
+        "properties": {
+          "model": {"type": "string", "minLength": 1},
+          "auroc": {"$ref": "#/$defs/probability"},
+          "auprc": {"$ref": "#/$defs/probability"},
+          "brier": {"$ref": "#/$defs/probability"},
+          "selected": {"type": "boolean"},
+          "outcome_years": {"type": "string"}
+        }
+      }
+    },
+    "benchmark_quality": {
+      "type": "array",
+      "items": {
+        "type": "object", "additionalProperties": false,
+        "required": ["indicator", "r2_context_model", "r2_state_average"],
+        "properties": {
+          "indicator": {"$ref": "#/$defs/indicator"},
+          "r2_context_model": {"type": ["number", "null"], "maximum": 1},
+          "r2_state_average": {"type": ["number", "null"], "maximum": 1}
+        }
+      }
+    },
+    "benchmark_years": {"type": "string", "pattern": "^\\d{4}(-\\d{4})?$"}
+  },
+  "$defs": {
+    "indicator": {"enum": ["late_no_prenatal_care", "preterm_birth", "low_birth_weight", "gestational_hypertension"]},
+    "state": {"type": "string", "pattern": "^[A-Z]{2}$"},
+    "county_id": {"type": "string", "pattern": "^\\d{5}$"},
+    "level": {"enum": ["alert", "watch", "stable", "insufficient data"]},
+    "rate": {"type": ["number", "null"], "minimum": 0, "maximum": 1},
+    "probability": {"type": ["number", "null"], "minimum": 0, "maximum": 1},
+    "count": {"type": ["integer", "null"], "minimum": 0},
+    "county": {
+      "type": "object", "additionalProperties": false,
+      "required": ["id", "name", "state", "ind"],
+      "properties": {
+        "id": {"$ref": "#/$defs/county_id"},
+        "name": {"type": "string", "minLength": 1},
+        "state": {"$ref": "#/$defs/state"},
+        "ind": {"type": "object", "propertyNames": {"$ref": "#/$defs/indicator"},
+                "additionalProperties": {"$ref": "#/$defs/county_indicator"}},
+        "ctx": {"type": "object", "additionalProperties": {"type": ["number", "null"]},
+                "description": "County context values, keyed as in context_fields."},
+        "births": {"type": ["integer", "null"], "minimum": 1,
+                   "description": "Births in the scored year (largest denominator across indicators)."},
+        "peers": {"type": "array", "items": {"$ref": "#/$defs/county_id"}, "uniqueItems": true,
+                  "description": "Scored counties closest on the similar-county measures (orientation only)."},
+        "type": {"type": "integer", "minimum": 1},
+        "unusual": {"type": "string", "minLength": 1,
+                    "description": "Why the data-quality check (Isolation Forest) found the scored year's record unusual."},
+        "need": {
+          "type": "object", "additionalProperties": false, "required": ["priority", "reasons"],
+          "properties": {"priority": {"enum": ["high", "review"]}, "reasons": {"type": "string", "minLength": 1}}
+        }
+      }
+    },
+    "county_indicator": {
+      "type": "object", "additionalProperties": false,
+      "required": ["trend", "trend_n", "level", "rate", "expected", "rr", "births", "sustained", "excess", "subgroups"],
+      "properties": {
+        "trend": {"type": "array", "items": {"$ref": "#/$defs/rate"},
+                  "description": "Rate each year (as in years); null where fewer than 10 events."},
+        "trend_n": {"type": "array", "items": {"$ref": "#/$defs/count"},
+                    "description": "Births behind each year's rate; null where the rate is null."},
+        "level": {"$ref": "#/$defs/level"},
+        "rate": {"$ref": "#/$defs/rate"},
+        "expected": {"$ref": "#/$defs/rate"},
+        "rr": {"type": ["number", "null"], "minimum": 0, "description": "Rate relative to the expected rate."},
+        "births": {"$ref": "#/$defs/count"},
+        "sustained": {"type": "boolean"},
+        "excess": {"type": ["integer", "null"], "description": "Events above the expected number (negative when below)."},
+        "subgroups": {
+          "type": "object", "propertyNames": {"enum": ["Medicaid", "Private insurance"]},
+          "additionalProperties": {
+            "type": "object", "additionalProperties": false, "required": ["level", "rate", "expected"],
+            "properties": {"level": {"$ref": "#/$defs/level"}, "rate": {"$ref": "#/$defs/rate"},
+                           "expected": {"$ref": "#/$defs/rate"}}
+          }
+        },
+        "risk": {"$ref": "#/$defs/probability", "description": "Forecast probability of an alert in forecast_year."},
+        "factors": {"type": "string", "minLength": 1, "description": "Main forecast factors, in words."},
+        "similar": {
+          "type": "object", "additionalProperties": false, "required": ["rate", "expected", "low", "high", "verdict"],
+          "properties": {
+            "rate": {"$ref": "#/$defs/rate"}, "expected": {"$ref": "#/$defs/rate"},
+            "low": {"$ref": "#/$defs/rate"}, "high": {"$ref": "#/$defs/rate"},
+            "verdict": {"enum": ["higher than similar counties", "lower than similar counties", "in line with similar counties"]}
+          }
+        },
+        "persistent": {
+          "type": "object", "additionalProperties": false,
+          "required": ["status", "years_worst", "years_ranked", "worst_years", "reliable"],
+          "properties": {
+            "status": {"enum": ["persistent", "not persistent", "insufficient data"]},
+            "years_worst": {"type": "integer", "minimum": 0},
+            "years_ranked": {"type": "integer", "minimum": 0},
+            "worst_years": {"type": "array", "items": {"type": "integer"}, "uniqueItems": true},
+            "reliable": {"type": "boolean"}
+          }
+        }
+      }
+    }
+  }
+}

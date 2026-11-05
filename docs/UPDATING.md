@@ -38,7 +38,7 @@ CDC's latest month is the least complete. The fetch script compares births in th
 ## Yearly update (when CDC adds a new final year)
 
 1. Run [`scripts/fetch_wonder_counties.js`](../scripts/fetch_wonder_counties.js) on the final natality request form, then `perinatal-ews run --forecast --context data/context/county_context.csv` as in the README.
-2. Rebuild the explorer data with `scripts/build_explorer_data.py`.
+2. Rebuild the explorer data with `scripts/build_explorer_data.py`, then run `pytest -q`, which checks the new `explorer.json` against its [schema](explorer.schema.json).
 3. Score the previous year's archived forecast against the new final year (`perinatal_ews.latest.score_forecast`), and publish a new release so Zenodo archives it.
 4. When the provisional database marks a year as final, nothing else changes: the monthly update uses it automatically.
 

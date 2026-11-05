@@ -41,7 +41,9 @@ Work first on these. Items marked "needs data" require a fresh CDC WONDER downlo
 - [x] Test that no published state-by-race result in `latest.json` shows a rate based on fewer than 20 events: every entry is matched to its event counts in `state_race_ytd.csv`, and rates, intervals, reference rates and rate ratios appear only where both the current and reference counts reach 20. (2026-11-02)
 - [x] Check that every relative link in the README and `docs/` points to a file that exists: `tests/test_doc_links.py` checks every relative link and heading anchor in the README, changelog and `docs/` (all resolve today). (2026-11-03)
 - [x] JSON Schema for `results/latest/latest.json`, with a test that the published file matches it: [latest.schema.json](latest.schema.json); `tests/test_latest_schema.py` checks the published file, the file the monthly update writes (synthetic data) and that the headline alert and watch counts match the state results. (2026-11-04)
-- [ ] JSON Schemas for the other files the explorer reads (county results, map and context files), with the same tests.
+- [x] JSON Schema for the county results, `results/2024/explorer.json`: [explorer.schema.json](explorer.schema.json); `tests/test_explorer_schema.py` checks the published file and a file built from synthetic data, and that trend arrays match the years, no trend point rests on fewer than 10 events, similar-county lists name scored counties and county types add up. (2026-11-05)
+- [ ] JSON Schema for the state results by race, `results/2024/state_race.json`, with the same tests.
+- [ ] JSON Schemas for the map files (`results/map/states.json`, `counties.json`, `counties_other.json`), with a test that every scored county has a shape.
 
 ## Uncertainty, validation and interpretation
 
