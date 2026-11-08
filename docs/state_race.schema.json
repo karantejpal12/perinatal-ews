@@ -1,0 +1,67 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://github.com/karantejpal12/perinatal-ews/blob/main/docs/state_race.schema.json",
+  "title": "perinatal-ews state_race.json",
+  "description": "Shape of results/2024/state_race.json, the pooled results by mother's race behind the explorer's state view. Written by scripts/build_explorer_data.py (--state-race) from the output of `perinatal-ews pooled`. Rates are proportions (0.105 = 10.5%). A rate, its interval and its counts are published only for reliable estimates (20 or more events, at least 2 years with data); every other estimate shows nulls and names what to report instead. tests/test_state_race_schema.py checks the published file and a file built from synthetic data against this schema.",
+  "type": "object",
+  "required": ["window", "previous_window", "states", "source"],
+  "additionalProperties": false,
+  "properties": {
+    "window": {"type": "string", "pattern": "^[0-9]{4}-[0-9]{4}$", "description": "Latest pooled window, for example 2022-2024."},
+    "previous_window": {"type": "string", "pattern": "^([0-9]{4}-[0-9]{4})?$",
+                        "description": "The previous, non-overlapping window each change is measured against; empty when no estimate was compared."},
+    "source": {"type": "string", "minLength": 1},
+    "states": {
+      "type": "object", "minProperties": 1,
+      "propertyNames": {"pattern": "^[A-Z]{2}$"},
+      "description": "Two-letter state code to indicator to one entry per race group.",
+      "additionalProperties": {
+        "type": "object", "minProperties": 1,
+        "propertyNames": {"$ref": "#/$defs/indicator"},
+        "additionalProperties": {"type": "array", "minItems": 1, "items": {"$ref": "#/$defs/estimate"}}
+      }
+    }
+  },
+  "$defs": {
+    "indicator": {"enum": ["preterm_birth", "low_birth_weight", "late_no_prenatal_care", "gestational_hypertension"]},
+    "rate": {"type": "number", "minimum": 0, "maximum": 1},
+    "estimate": {
+      "type": "object", "additionalProperties": false,
+      "required": ["g", "rate", "lo", "hi", "n", "births", "status", "report", "years", "combined", "change"],
+      "properties": {
+        "g": {"type": "string", "minLength": 1, "description": "Race group (\"All\" for all mothers)."},
+        "rate": {"oneOf": [{"$ref": "#/$defs/rate"}, {"type": "null"}]},
+        "lo": {"oneOf": [{"$ref": "#/$defs/rate"}, {"type": "null"}], "description": "Lower end of the 95% Wilson interval."},
+        "hi": {"oneOf": [{"$ref": "#/$defs/rate"}, {"type": "null"}], "description": "Upper end of the 95% Wilson interval."},
+        "n": {"type": ["integer", "null"], "minimum": 20, "description": "Events pooled over the years used."},
+        "births": {"type": ["integer", "null"], "minimum": 1, "description": "Births pooled over the years used."},
+        "status": {"type": "string",
+                   "pattern": "^(reliable|suppressed \\(<10 events\\)|unreliable \\(<[0-9]+ events\\)|too few years with data \\(<[0-9]+\\))$"},
+        "report": {"type": "string", "minLength": 1,
+                   "description": "What to report: the group itself when reliable, otherwise the first reliable combined group it belongs to, otherwise \"insufficient data\"."},
+        "years": {"type": "string", "pattern": "^([0-9]{4}(,[0-9]{4})*)?$",
+                  "description": "Years with data in the window, comma-separated; empty when none."},
+        "combined": {"type": "boolean", "description": "True for a combined group (for example Asian (combined))."},
+        "change": {"enum": ["higher", "lower", "no clear change", "not compared (an estimate is not reliable)"],
+                   "description": "Change from the previous window: higher or lower when the 95% interval of the rate ratio excludes 1."},
+        "prev": {"$ref": "#/$defs/rate", "description": "Rate in the previous window."},
+        "rr": {"type": "number", "exclusiveMinimum": 0, "description": "Rate ratio, latest window ÷ previous window."}
+      },
+      "allOf": [
+        {
+          "if": {"properties": {"status": {"const": "reliable"}}},
+          "then": {"properties": {"rate": {"type": "number"}, "lo": {"type": "number"}, "hi": {"type": "number"},
+                                  "n": {"type": "integer"}, "births": {"type": "integer"}}},
+          "else": {"properties": {"rate": {"type": "null"}, "lo": {"type": "null"}, "hi": {"type": "null"},
+                                  "n": {"type": "null"}, "births": {"type": "null"},
+                                  "change": {"const": "not compared (an estimate is not reliable)"}}}
+        },
+        {
+          "if": {"properties": {"change": {"enum": ["higher", "lower", "no clear change"]}}},
+          "then": {"required": ["prev", "rr"]},
+          "else": {"not": {"anyOf": [{"required": ["prev"]}, {"required": ["rr"]}]}}
+        }
+      ]
+    }
+  }
+}

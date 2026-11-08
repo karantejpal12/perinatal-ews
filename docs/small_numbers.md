@@ -11,7 +11,7 @@ Added in response to feedback from a state maternal and child health epidemiolog
 
 ## Real-data example: all states by mother's race, 2016–2024
 
-Data: CDC WONDER Natality, 2016–2024 expanded, grouped by state, year and mother's single race (15 groups), for the four indicators; combined groups were requested directly from WONDER so suppression in a member group does not affect them. The explorer's state view shows the 2022–2024 pooled results for every state, with the comparison against 2019–2021.
+Data: CDC WONDER Natality, 2016–2024 expanded, grouped by state, year and mother's single race (15 groups), for the four indicators; combined groups were requested directly from WONDER so suppression in a member group does not affect them. The explorer's state view shows the 2022–2024 pooled results for every state, with the comparison against 2019–2021; the shape of that file (`results/2024/state_race.json`) is described in [state_race.schema.json](state_race.schema.json).
 
 Across all states and indicators in 2022–2024: 2,409 pooled estimates are reliable, 209 groups are shown as insufficient data, and the rest are reported through a combined group.
 

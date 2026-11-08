@@ -6,6 +6,8 @@
 Only rates whose numerator is 10 or more are included, so no count or rate based
 on 9 or fewer events is published (NCHS data use restrictions). The output's shape is
 described in docs/explorer.schema.json and checked by tests/test_explorer_schema.py.
+With --state-race it also writes state_race.json (docs/state_race.schema.json,
+tests/test_state_race_schema.py).
 """
 from __future__ import annotations
 
