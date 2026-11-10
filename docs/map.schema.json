@@ -1,0 +1,80 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://github.com/karantejpal12/perinatal-ews/blob/main/docs/map.schema.json",
+  "title": "perinatal-ews map outlines",
+  "description": "Shape of the three GeoJSON files behind the explorer's map, written by scripts/build_map_geometry.py: results/map/states.json (state outlines, $defs/states), results/map/counties.json (one outline per scored county, $defs/counties) and results/map/counties_other.json (every other US county with its name and 2024 drug overdose death rate, used only by the overdose map, $defs/counties_other). Coordinates are [longitude, latitude] in degrees, simplified and rounded; every ring is closed, and exterior rings run clockwise and holes anticlockwise (as d3-geo expects; a ring wound the other way draws as the whole globe). tests/test_map_schema.py checks the published files and files built from a synthetic outline file against this schema, and that every scored county in results/2024/explorer.json has exactly one shape.",
+  "anyOf": [{"$ref": "#/$defs/states"}, {"$ref": "#/$defs/counties"}, {"$ref": "#/$defs/counties_other"}],
+  "$defs": {
+    "states": {
+      "type": "object", "required": ["type", "features"], "additionalProperties": false,
+      "properties": {
+        "type": {"const": "FeatureCollection"},
+        "features": {"type": "array", "minItems": 1, "items": {
+          "type": "object", "required": ["type", "id", "properties", "geometry"], "additionalProperties": false,
+          "properties": {
+            "type": {"const": "Feature"},
+            "id": {"type": "string", "pattern": "^[0-9]{2}$", "description": "Two-digit state FIPS code (Puerto Rico, 72, is left out)."},
+            "properties": {"type": "object", "maxProperties": 0},
+            "geometry": {"$ref": "#/$defs/geometry"}
+          }
+        }}
+      }
+    },
+    "counties": {
+      "type": "object", "required": ["type", "features"], "additionalProperties": false,
+      "properties": {
+        "type": {"const": "FeatureCollection"},
+        "features": {"type": "array", "minItems": 1, "items": {
+          "type": "object", "required": ["type", "id", "properties", "geometry"], "additionalProperties": false,
+          "properties": {
+            "type": {"const": "Feature"},
+            "id": {"$ref": "#/$defs/county_id"},
+            "properties": {"type": "object", "maxProperties": 0, "description": "Empty: names and results come from results/2024/explorer.json."},
+            "geometry": {"$ref": "#/$defs/geometry"}
+          }
+        }}
+      }
+    },
+    "counties_other": {
+      "type": "object", "required": ["type", "features"], "additionalProperties": false,
+      "properties": {
+        "type": {"const": "FeatureCollection"},
+        "features": {"type": "array", "minItems": 1, "items": {
+          "type": "object", "required": ["type", "id", "properties", "geometry"], "additionalProperties": false,
+          "properties": {
+            "type": {"const": "Feature"},
+            "id": {"$ref": "#/$defs/county_id"},
+            "properties": {
+              "type": "object", "required": ["n", "od"], "additionalProperties": false,
+              "properties": {
+                "n": {"type": "string", "minLength": 1, "description": "County name and state, for example \"Autauga, AL\"; the FIPS code if no name is known."},
+                "od": {"type": ["number", "null"], "minimum": 0,
+                       "description": "Drug overdose deaths per 100,000 residents in 2024, to one decimal; null where no count was published (suppressed or not reported), which the map shows as unpublished, not zero."}
+              }
+            },
+            "geometry": {"$ref": "#/$defs/geometry"}
+          }
+        }}
+      }
+    },
+    "county_id": {"type": "string", "pattern": "^[0-9]{5}$", "description": "Five-digit county FIPS code."},
+    "position": {
+      "type": "array", "prefixItems": [
+        {"type": "number", "minimum": -180, "maximum": 180},
+        {"type": "number", "minimum": -90, "maximum": 90}
+      ], "minItems": 2, "maxItems": 2
+    },
+    "ring": {"type": "array", "minItems": 4, "items": {"$ref": "#/$defs/position"},
+             "description": "A closed ring: at least four positions, the last equal to the first."},
+    "polygon": {"type": "array", "minItems": 1, "items": {"$ref": "#/$defs/ring"},
+                "description": "Exterior ring first, then any holes."},
+    "geometry": {
+      "oneOf": [
+        {"type": "object", "required": ["type", "coordinates"], "additionalProperties": false,
+         "properties": {"type": {"const": "Polygon"}, "coordinates": {"$ref": "#/$defs/polygon"}}},
+        {"type": "object", "required": ["type", "coordinates"], "additionalProperties": false,
+         "properties": {"type": {"const": "MultiPolygon"}, "coordinates": {"type": "array", "minItems": 1, "items": {"$ref": "#/$defs/polygon"}}}}
+      ]
+    }
+  }
+}

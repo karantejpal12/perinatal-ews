@@ -6,7 +6,8 @@
 Writes counties.json (only the scored counties), states.json (state outlines,
 dissolved from all counties) and, with --context, counties_other.json (every other
 county, with its name and 2024 drug overdose death rate, used only by the explorer's
-overdose map), simplified and with coordinates rounded to keep the files small. Needs shapely. County outlines: US Census cartographic boundary
+overdose map), simplified, with exterior rings clockwise as d3-geo expects and coordinates
+rounded to keep the files small; docs/map.schema.json describes all three. Needs shapely. County outlines: US Census cartographic boundary
 counties via https://github.com/plotly/datasets (geojson-counties-fips.json).
 """
 from __future__ import annotations
@@ -19,6 +20,8 @@ import pandas as pd
 from shapely.geometry import MultiPolygon, Polygon, mapping, shape
 from shapely.geometry.polygon import orient
 from shapely.ops import unary_union
+
+from perinatal_ews.latest import FIPS_TO_ABBR
 
 
 def _round(geom, nd=3):
@@ -39,6 +42,20 @@ def _clockwise(geom):
     return geom
 
 
+def _name(fid, row, props):
+    """"Name, ST" from the county context, else from the outline file's NAME, else the FIPS code.
+
+    Some counties have a row in the context file with no name (for example in Kentucky and Pennsylvania);
+    formatting that row gave "nan, nan".
+    """
+    st = FIPS_TO_ABBR.get(fid[:2])
+    if row is not None and pd.notna(row["name"]) and pd.notna(row["state"]):
+        return f"{row['name']}, {row['state']}"
+    if props.get("NAME") and st:
+        return f"{props['NAME']}, {st}"
+    return fid
+
+
 def main() -> None:
     ap = argparse.ArgumentParser()
     ap.add_argument("--tidy", required=True)
@@ -55,16 +72,16 @@ def main() -> None:
         by_state.setdefault(f["id"][:2], []).append(g)
         if f["id"] in ids:
             counties.append({"type": "Feature", "id": f["id"], "properties": {},
-                             "geometry": _round(g.simplify(0.01, preserve_topology=True))})
+                             "geometry": _round(_clockwise(g.simplify(0.01, preserve_topology=True)))})
         elif ctx is not None and f["id"][:2] != "72":
             row = ctx.loc[f["id"]] if f["id"] in ctx.index else None
             od = row["overdose_rate_2024"] if row is not None else None
-            props = {"n": f"{row['name']}, {row['state']}" if row is not None else f["id"],
+            props = {"n": _name(f["id"], row, f.get("properties") or {}),
                      "od": round(float(od), 1) if od is not None and pd.notna(od) else None}
             others.append({"type": "Feature", "id": f["id"], "properties": props,
                            "geometry": _round(_clockwise(g.simplify(0.02, preserve_topology=True)), 3)})
     states = [{"type": "Feature", "id": st, "properties": {},
-               "geometry": _round(unary_union(gs).simplify(0.03, preserve_topology=True), 2)}
+               "geometry": _round(_clockwise(unary_union(gs).simplify(0.03, preserve_topology=True)), 2)}
               for st, gs in sorted(by_state.items()) if st != "72"]
     out = Path(a.out)
     out.mkdir(parents=True, exist_ok=True)
