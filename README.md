@@ -171,7 +171,7 @@ Design, guardrails and tests: [docs/ai_assistant.md](docs/ai_assistant.md). `nod
 
 ## How detection works
 
-See [docs/methodology.md](docs/methodology.md) for the full method, [docs/indicators.md](docs/indicators.md) for the indicator definitions and [docs/interpreting_flags.md](docs/interpreting_flags.md) for how to read a flag. In short:
+See [docs/methodology.md](docs/methodology.md) for the full method, [docs/indicators.md](docs/indicators.md) for the indicator definitions, [docs/interpreting_flags.md](docs/interpreting_flags.md) for how to read a flag and [docs/validation.md](docs/validation.md) for every evaluation in one place. In short:
 
 1. Each county's baseline is its pooled rate over 3 years, skipping the year just before the target so a change that started then is not absorbed into "normal".
 2. Baselines are shrunk toward the all-county rate using an empirical-Bayes beta prior, so small counties are not judged on noise.
@@ -189,7 +189,7 @@ See [docs/methodology.md](docs/methodology.md) for the full method, [docs/indica
 | Sensitivity, counties with 5,000+ births | 100% |
 | Sensitivity, counties under 1,000 births | 33% |
 
-Backtesting earlier years, before any injected change, gives alert rates of 0–0.2%, which is what a calibrated detector should show. The weaker sensitivity in small counties is real and reported on purpose: a single year of a few hundred births rarely carries enough signal, so small-county results should be read with multi-year trends. Results vary by seed; `pytest` checks the guarantees.
+Backtesting earlier years, before any injected change, gives alert rates of 0–0.2%, which is what a calibrated detector should show. The weaker sensitivity in small counties is real and reported on purpose: a single year of a few hundred births rarely carries enough signal, so small-county results should be read with multi-year trends. Results vary by seed; `pytest` checks the guarantees. All evaluations, including on the US data, are collected in [Validation](docs/validation.md).
 
 ## Project layout
 
