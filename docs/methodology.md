@@ -61,6 +61,16 @@ The flag is reported beside change alerts, not merged into them: a county can be
 
 **Results, 2020–2024** ([`results/2024/persistent_burden.csv`](../results/2024/persistent_burden.csv); shown in the explorer as "Persistently among the highest"). Between 102 and 110 counties are persistent for each indicator (late or no prenatal care 110, preterm birth 107, low birth weight 104, gestational hypertension 102), and 44 to 66 of them were in the highest fifth in all five years. Of the 423 persistent county results, 377 (89%) are stable in 2024 under the change alerts, so the two flags mostly identify different counties. None rests on fewer than 20 events in a worst-quintile year. Persistent gestational hypertension can reflect how completely hospitals in a state record the item as well as how common it is (see Limitations).
 
+## Internal reference group
+
+Change alerts compare a county with its own past and persistent burden ranks it against other counties. A third comparison, from Perinatal Periods of Risk (PPOR), asks how much higher a county's rate is than the rate among its own mothers who are least at risk. `perinatal_ews.reference.reference_comparison` computes it from a tidy table that holds, for each county, year and indicator, the total (`All`) and the reference group (subgroup `PPOR reference`: non-Hispanic White mothers aged 20 or older with at least some college; Gilbert et al., 2022). Each county is compared with its own reference group, not with national rates.
+
+- Years are pooled backwards from the target year, up to five, until the reference group's outcome count (for example, preterm births among reference mothers) reaches the PPOR minimum of 60; the county total is pooled over the same years. Years where either count is missing or suppressed are skipped and listed, never treated as zero.
+- If the reference group still has fewer than 60 events, the result is **insufficient data** and no rate or comparison is given.
+- The **excess rate** is the county rate minus the reference rate, with the rate ratio and the excess as a share of the county rate. Because the reference group is part of the county total, the two rates are not independent: the 95% interval for the excess is the share of births outside the reference group times the Newcombe score interval for the difference between those other births' rate and the reference rate (Newcombe, 1998).
+
+This is code only, tested on synthetic data. The CDC WONDER export filtered to the reference group and the published results are on the [roadmap](ROADMAP.md).
+
 ## Subgroups and equity
 
 Detection is repeated within each subgroup present in the data. Separately, for each county and indicator, the highest and lowest reliable subgroup rates are compared (ratio and difference) and shown beside the same gap for all counties combined.
@@ -92,6 +102,8 @@ Version 0.3 adds county context (substance use, maternity care access, adult hea
 ## References
 
 - Brown CC et al. Geographic hotspots for low birthweight: an analysis of counties with persistently high rates. *Inquiry*. 2020;57.
+- Gilbert CS, Xaverius PK, Tibbits MK et al. *Matern Child Health J*. 2022;26:2396–2406.
+- Newcombe RG. Interval estimation for the difference between independent proportions: comparison of eleven methods. *Stat Med*. 1998;17:873–890.
 - Ahrens KA et al. Rural-urban residence and maternal hepatitis C infection, U.S.: 2010–2018. *Am J Prev Med*. 2021.
 - Gregory ECW et al. Assessing the quality of medical and health data from the 2003 birth certificate revision: results from New York City. *National Vital Statistics Reports*. 2019.
 - Martin JA et al. Assessing the quality of medical and health data from the 2003 birth certificate revision: results from two states. *National Vital Statistics Reports*. 2013.
