@@ -31,6 +31,19 @@ Work first on these. Items marked "needs data" require a fresh CDC WONDER downlo
 - [ ] Internal reference group (explorer): show each county's excess over its reference group beside change alerts and persistent burden, with insufficient data where the reference group has fewer than 60 events.
 - [x] Internal reference group (command line): `perinatal-ews reference --input tidy.csv --out out/` writes `reference_comparison.csv` from one or more tidy files, with `--year` (repeatable), `--min-events`, `--max-span` and `--reference-subgroup`; a target year not in the input or a missing reference subgroup stops with a clear message instead of a traceback. Tested on synthetic data. (2026-11-13)
 
+## More maternal and child health indicators
+
+Common maternal and child health measures beyond the current four. Most are shares of births taken from birth-certificate items in CDC WONDER (2016 on), so they fit the existing detection, persistent-burden and pooled small-numbers methods once each indicator's export is defined; teen birth rates need a population denominator. Gestational diabetes is listed under "Methods priorities". Each "needs data" item: define the indicator in `default_config.yaml`, document it in [indicators.md](indicators.md), download 2016–2024 by county and by state, and check the published results before release.
+
+- [ ] Reproducible exports for filtered indicators (code): a `wonder.filters` entry in an indicator's config recording the CDC WONDER query filters its export needs (for example NTSV cesarean: first birth, 37 weeks or more, single birth, head-first), shown in `indicators.md`; `ingest-wonder` checks the export's query header and stops if those filters are missing.
+- [ ] First-trimester prenatal care (needs data): care began in months 1–3 ("Month Prenatal Care Began"), unknown left out. Higher is better (`direction: lower_is_worse`): detection, persistent burden and the outlook already support that direction, but it is the first such indicator, so check every explorer label, colour and summary that assumes higher is worse.
+- [ ] Overweight and obesity before pregnancy (needs data): pre-pregnancy BMI 25 or more, and 30 or more as a separate indicator ("Mother's Pre-pregnancy BMI"), unknown left out; note that BMI is computed from reported height and weight.
+- [ ] Smoking during pregnancy (needs data): any cigarettes in any trimester ("Tobacco Use"), unknown left out, with a reporting caveat (self-reported, under-reported).
+- [ ] NTSV cesarean (needs data): cesarean deliveries among first births at 37 weeks or more, single and head-first ("Delivery Method", from an export filtered as above); small counties will need pooled years.
+- [ ] Teen birth rate (code): births per 1,000 females aged 15–19, with population as the denominator, needs a count (Poisson) version of detection and pooling; build and test on synthetic data first.
+- [ ] Teen birth rate (needs data): births to mothers aged 15–19 by county and year, and Census population estimates for females aged 15–19.
+- [ ] Results by source of payment (needs data): every indicator by payer for the delivery (Medicaid, private insurance, self-pay, other), pooling years and combining groups until counts are reportable, as for mother's race.
+
 ## Reliability and testing
 
 - [x] Run the Python and JavaScript tests automatically on every change (GitHub Actions) and show the status in the README. (2026-10-19)
