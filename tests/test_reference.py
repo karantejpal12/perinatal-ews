@@ -143,3 +143,54 @@ def test_newcombe_difference_known_value():
     assert d == pytest.approx(0.2)
     assert lo == pytest.approx(0.0524, abs=1e-4)
     assert hi == pytest.approx(0.3339, abs=1e-4)
+
+
+def _write(tmp_path, t, name="tidy.csv"):
+    f = tmp_path / name
+    t.to_csv(f, index=False)
+    return f
+
+
+def test_command_writes_the_comparison(tmp_path, capsys):
+    from perinatal_ews.cli import main
+
+    t = _panel({"90001": {y: (500, 5_000, 25, 600) for y in YEARS},
+                "90002": {y: (500, 5_000, 5, 600) for y in YEARS}})
+    main(["reference", "--input", str(_write(tmp_path, t)), "--out", str(tmp_path / "o")])
+    res = pd.read_csv(tmp_path / "o" / "reference_comparison.csv", dtype={"geo_id": str})
+    expected = reference_comparison(t)
+    assert len(res) == len(expected) == 2 * len(YEARS)
+    r = res[(res["geo_id"] == "90001") & (res["target_year"] == 2024)].iloc[0]
+    assert r["status"] == "compared" and r["years_used"] == "2022,2023,2024"
+    assert r["excess_rate"] == pytest.approx(_one(expected, "90001", 2024)["excess_rate"])
+    assert (res[res["geo_id"] == "90002"]["status"] == "insufficient data").all()
+    assert "2024: 1 compared, 1 insufficient data" in capsys.readouterr().out
+
+
+def test_command_options_reach_the_comparison(tmp_path):
+    from perinatal_ews.cli import main
+
+    t = _panel({"90001": {y: (500, 5_000, 25, 600) for y in YEARS}})
+    t["subgroup"] = t["subgroup"].replace(REFERENCE_SUBGROUP, "Lowest risk")
+    a = _write(tmp_path, t[t["year"] < 2021], "a.csv")
+    b = _write(tmp_path, t[t["year"] >= 2021], "b.csv")
+    main(["reference", "--input", str(a), str(b), "--out", str(tmp_path / "o"), "--year", "2024", "--year", "2022",
+          "--reference-subgroup", "Lowest risk", "--min-events", "40", "--max-span", "3"])
+    res = pd.read_csv(tmp_path / "o" / "reference_comparison.csv").set_index("target_year")
+    assert list(res.index) == [2022, 2024]
+    assert res.at[2024, "years_used"] == "2023,2024"     # 50 >= 40 reference events in two years
+    assert res.at[2022, "years_used"] == "2021,2022"     # pooled across the two input files
+
+
+@pytest.mark.parametrize("extra, message", [
+    (["--year", "2030"], "no data for target year"),
+    (["--reference-subgroup", "Nobody"], "reference subgroup"),
+])
+def test_command_reports_bad_input_clearly(tmp_path, capsys, extra, message):
+    from perinatal_ews.cli import main
+
+    t = _panel({"90001": {y: (500, 5_000, 25, 600) for y in YEARS}})
+    with pytest.raises(SystemExit):
+        main(["reference", "--input", str(_write(tmp_path, t)), "--out", str(tmp_path / "o")] + extra)
+    assert message in capsys.readouterr().err
+    assert not (tmp_path / "o" / "reference_comparison.csv").exists()

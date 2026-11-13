@@ -69,6 +69,8 @@ Change alerts compare a county with its own past and persistent burden ranks it 
 - If the reference group still has fewer than 60 events, the result is **insufficient data** and no rate or comparison is given.
 - The **excess rate** is the county rate minus the reference rate, with the rate ratio and the excess as a share of the county rate. Because the reference group is part of the county total, the two rates are not independent: the 95% interval for the excess is the share of births outside the reference group times the Newcombe score interval for the difference between those other births' rate and the reference rate (Newcombe, 1998).
 
+From the command line, `perinatal-ews reference --input tidy.csv --out out/` writes `out/reference_comparison.csv` with one row per county, indicator and target year (every year in the input, or those given with `--year`, which can be repeated); `--min-events`, `--max-span` and `--reference-subgroup` change the defaults above.
+
 This is code only, tested on synthetic data. The CDC WONDER export filtered to the reference group and the published results are on the [roadmap](ROADMAP.md).
 
 ## Subgroups and equity

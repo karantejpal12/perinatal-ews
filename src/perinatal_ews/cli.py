@@ -6,6 +6,8 @@
                       [--forecast] [--context data/context/county_context.csv] [--level state]
     perinatal-ews pooled --input data/tidy.csv --out out/ [--level state] [--window 3]
                          [--unavailable-years 2017,2018] [--fill-window] [--combine groups.yaml]
+    perinatal-ews reference --input data/tidy_with_reference.csv --out out/ [--year 2024]
+                            [--min-events 60] [--max-span 5]
     perinatal-ews mcp [--results path-or-url]
 """
 from __future__ import annotations
@@ -147,6 +149,19 @@ def main(argv: list[str] | None = None) -> None:
     pl.add_argument("--combine", default=None,
                     help="YAML file mapping combined-group labels to lists of subgroups (default: federal-style combinations)")
 
+    rf = sub.add_parser("reference",
+                        help="compare each county with its own lowest-risk mothers (PPOR internal reference group)")
+    rf.add_argument("--input", required=True, nargs="+",
+                    help="tidy CSV file(s) holding the total ('All') and the reference subgroup for each county")
+    rf.add_argument("--out", default="out", help="folder for reference_comparison.csv")
+    rf.add_argument("--year", type=int, action="append", default=None,
+                    help="target year (repeat for several; default: every year in the input)")
+    rf.add_argument("--reference-subgroup", default=None,
+                    help="subgroup label of the reference group (default: 'PPOR reference')")
+    rf.add_argument("--min-events", type=int, default=None,
+                    help="reference-group events needed before comparing (default: the PPOR minimum, 60)")
+    rf.add_argument("--max-span", type=int, default=5, help="most years to pool (default 5)")
+
     mc = sub.add_parser("mcp", help="serve the published results to AI assistants over MCP (read-only)")
     mc.add_argument("--results", default=None,
                     help="latest.json path or URL (default: this repository's copy, else the published file)")
@@ -177,6 +192,11 @@ def main(argv: list[str] | None = None) -> None:
         print(f"Wrote {len(tidy)} rows to {args.out}. Categories counted as non-cases: {others}")
     elif args.cmd == "pooled":
         _pooled(args)
+    elif args.cmd == "reference":
+        try:
+            _reference(args)
+        except ValueError as e:
+            p.error(str(e))
     elif args.cmd == "mcp":
         from .mcp_server import main as mcp_main
         mcp_main(args.results)
@@ -210,6 +230,31 @@ def _pooled(args) -> None:
     print(f"Pooled {args.window}-year windows: {len(p)} estimates; latest window "
           f"{latest['window'].iloc[0] if len(latest) else '-'}: {int((latest['status'] == 'reliable').sum())} reliable, "
           f"{int((latest['report_as'] == 'insufficient data').sum())} insufficient. Outputs in {out}/")
+
+
+def _reference(args) -> None:
+    from .reference import PPOR_MIN_EVENTS, REFERENCE_SUBGROUP, reference_comparison
+
+    tidy = pd.concat([load_tidy_csv(f) for f in args.input], ignore_index=True)
+    sub = args.reference_subgroup or REFERENCE_SUBGROUP
+    years = sorted(set(args.year)) if args.year else None
+    if years:
+        have = set(int(y) for y in tidy["year"].unique())
+        missing = [y for y in years if y not in have]
+        if missing:
+            raise ValueError(f"no data for target year(s) {', '.join(map(str, missing))} in the input")
+    res = reference_comparison(tidy, reference_subgroup=sub,
+                               min_events=PPOR_MIN_EVENTS if args.min_events is None else args.min_events,
+                               max_span=args.max_span, target_years=years)
+    out = Path(args.out)
+    out.mkdir(parents=True, exist_ok=True)
+    res.to_csv(out / "reference_comparison.csv", index=False)
+    latest = res[res["target_year"] == res["target_year"].max()] if len(res) else res
+    year = int(latest["target_year"].iloc[0]) if len(latest) else "-"
+    print(f"Reference-group comparison ({sub!r}): {len(res)} county-indicator-years; {year}: "
+          f"{int((latest['status'] == 'compared').sum())} compared, "
+          f"{int((latest['status'] == 'insufficient data').sum())} insufficient data. "
+          f"Written to {out / 'reference_comparison.csv'}")
 
 
 if __name__ == "__main__":
