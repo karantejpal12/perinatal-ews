@@ -15,6 +15,13 @@
     "indicators": {"type": "object", "propertyNames": {"$ref": "#/$defs/indicator"},
                    "additionalProperties": {"type": "string", "minLength": 1},
                    "description": "Indicator key to display label."},
+    "indicator_sets": {"type": "object", "additionalProperties": false, "required": ["core", "more"],
+                       "description": "core: the four early-warning indicators that the forecast, county types and need-and-access review use; more: the added maternal and child health measures (detection, persistent burden and the similar-county comparison only).",
+                       "properties": {"core": {"type": "array", "items": {"$ref": "#/$defs/indicator"}, "uniqueItems": true},
+                                      "more": {"type": "array", "items": {"$ref": "#/$defs/indicator"}, "uniqueItems": true}}},
+    "indicator_descriptions": {"type": "object", "propertyNames": {"$ref": "#/$defs/indicator"},
+                               "additionalProperties": {"type": "string", "minLength": 1},
+                               "description": "Indicator key to its definition (from the config)."},
     "source": {"type": "string", "minLength": 1},
     "state_patterns": {
       "type": "array",
@@ -97,7 +104,7 @@
     "benchmark_years": {"type": "string", "pattern": "^\\d{4}(-\\d{4})?$"}
   },
   "$defs": {
-    "indicator": {"enum": ["late_no_prenatal_care", "preterm_birth", "low_birth_weight", "gestational_hypertension"]},
+    "indicator": {"enum": ["late_no_prenatal_care", "preterm_birth", "low_birth_weight", "gestational_hypertension", "no_first_trimester_care", "prepregnancy_obesity", "prepregnancy_overweight_obesity", "gestational_diabetes", "smoking_during_pregnancy", "ntsv_cesarean"]},
     "state": {"type": "string", "pattern": "^[A-Z]{2}$"},
     "county_id": {"type": "string", "pattern": "^\\d{5}$"},
     "level": {"enum": ["alert", "watch", "stable", "insufficient data"]},

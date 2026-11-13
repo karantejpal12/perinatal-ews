@@ -23,7 +23,7 @@
     }
   },
   "$defs": {
-    "indicator": {"enum": ["preterm_birth", "low_birth_weight", "late_no_prenatal_care", "gestational_hypertension"]},
+    "indicator": {"enum": ["late_no_prenatal_care", "preterm_birth", "low_birth_weight", "gestational_hypertension", "no_first_trimester_care", "prepregnancy_obesity", "prepregnancy_overweight_obesity", "gestational_diabetes", "smoking_during_pregnancy", "ntsv_cesarean"]},
     "rate": {"type": "number", "minimum": 0, "maximum": 1},
     "estimate": {
       "type": "object", "additionalProperties": false,

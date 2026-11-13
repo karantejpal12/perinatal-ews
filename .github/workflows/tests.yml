@@ -35,4 +35,4 @@ jobs:
         with:
           node-version: "20"
       - name: Run tests
-        run: node --test tests/js/ews-tools.test.js
+        run: node --test tests/js/ews-tools.test.js tests/js/fetch-wonder-more.test.js

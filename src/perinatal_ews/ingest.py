@@ -41,6 +41,54 @@ def read_wonder_text(path: str | Path) -> pd.DataFrame:
     return df.reset_index(drop=True)
 
 
+def read_wonder_query(path: str | Path) -> dict[str, list[str]]:
+    """The query criteria CDC WONDER writes under the results ("Variable: value; value").
+
+    Returns {variable: [values]} for every "Name: values" line after the first line of dashes
+    (dataset, query parameters, group-by and so on). Empty if the export has no such footer.
+    """
+    out: dict[str, list[str]] = {}
+    footer = False
+    with open(path, encoding="utf-8-sig") as fh:
+        for line in fh:
+            text = line.strip().strip('"').strip()
+            if text.startswith("---"):
+                footer = True
+                continue
+            if not footer or ":" not in text:
+                continue
+            name, _, vals = text.partition(":")
+            if name.strip() and vals.strip():
+                out[name.strip()] = [v.strip() for v in vals.split(";") if v.strip()]
+    return out
+
+
+def check_filters(path: str | Path, spec: dict) -> None:
+    """Stop if a filtered indicator's export was not limited the way its config says.
+
+    `spec` is an indicator's `wonder` block. Its optional `filters` maps a CDC WONDER
+    variable to the categories the export must be limited to (for example NTSV cesarean:
+    first births, single, head-first, 37 weeks or more). Each must appear in the export's
+    query criteria with exactly those categories; otherwise the rates would describe the
+    wrong births, so nothing is converted.
+    """
+    want = spec.get("filters") or {}
+    if not want:
+        return
+    have = read_wonder_query(path)
+    problems = []
+    for var, vals in want.items():
+        got = have.get(var)
+        if got is None:
+            problems.append(f"'{var}' is not limited (needs: {'; '.join(vals)})")
+        elif sorted(got) != sorted(str(v) for v in vals):
+            problems.append(f"'{var}' is limited to {'; '.join(got)} (needs: {'; '.join(vals)})")
+    if problems:
+        raise ValueError(f"{path}: this indicator needs a filtered CDC WONDER export, and "
+                         + ", ".join(problems)
+                         + ". Rerun the query with these limits and 'Show query criteria' left on.")
+
+
 def _parse_count(value: str) -> float:
     v = (value or "").strip().replace(",", "")
     if v in NON_NUMERIC:
@@ -78,6 +126,7 @@ def wonder_to_tidy(
     suppressed); by default they are left out, as before.
     """
     spec = config["indicators"][indicator]["wonder"]
+    check_filters(path, spec)
     raw = read_wonder_text(path)
 
     group_col = spec["group_column"]

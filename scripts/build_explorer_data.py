@@ -18,6 +18,8 @@ from pathlib import Path
 
 import pandas as pd
 
+from perinatal_ews.config import core_indicators, load_config
+
 
 def _r(x, nd=4):
     return None if x is None or (isinstance(x, float) and not math.isfinite(x)) or pd.isna(x) else round(float(x), nd)
@@ -29,9 +31,13 @@ def main() -> None:
     ap.add_argument("--results", required=True)
     ap.add_argument("--out", required=True)
     ap.add_argument("--context", default=None, help="data/context/county_context.csv")
-    ap.add_argument("--state-race", default=None, help="folder with pooled_estimates.csv and pooled_comparison.csv")
+    ap.add_argument("--state-race", default=None, nargs="+",
+                    help="folder(s) with pooled_estimates.csv and pooled_comparison.csv (perinatal-ews pooled): "
+                         "by mother's race and, if a second folder is given, by Hispanic origin and payer")
+    ap.add_argument("--config", default=None, help="indicator config (default: the packaged one)")
     a = ap.parse_args()
     res = Path(a.results)
+    cfg = load_config(a.config)
 
     tidy = pd.read_csv(a.tidy, dtype={"geo_id": str})
     det = pd.read_csv(res / "detections.csv", dtype={"geo_id": str})
@@ -58,7 +64,10 @@ def main() -> None:
     births_n = {(r.geo_id, r.indicator, int(r.year)): int(r.denominator) for r in t.itertuples()}
 
     counties = (tidy[["geo_id", "geo_name", "state"]].drop_duplicates("geo_id").sort_values(["state", "geo_name"]))
-    indicators = ["late_no_prenatal_care", "preterm_birth", "low_birth_weight", "gestational_hypertension"]
+    # Config order: the original four first, then the added measures (`set: more`), if scored.
+    scored = set(det["indicator"])
+    indicators = [k for k in cfg["indicators"] if k in scored]
+    core = [k for k in core_indicators(cfg) if k in scored]
     tot = det[det["subgroup"] == "All"].set_index(["geo_id", "indicator"])
     sub = det[det["subgroup"] != "All"].set_index(["geo_id", "indicator", "subgroup"])
     risk = fc.set_index(["geo_id", "indicator"])["risk"] if fc is not None else None
@@ -147,12 +156,11 @@ def main() -> None:
         "year": year,
         "forecast_year": year + 1,
         "years": years,
-        "indicators": {
-            "late_no_prenatal_care": "Late or no prenatal care",
-            "preterm_birth": "Preterm birth",
-            "low_birth_weight": "Low birth weight",
-            "gestational_hypertension": "Gestational hypertension",
-        },
+        "indicators": {k: cfg["indicators"][k]["label"] for k in indicators},
+        # "core": the four early-warning indicators that every other result (forecast, county types,
+        # need and access) was built and validated on; "more": the added maternal and child health measures.
+        "indicator_sets": {"core": core, "more": [k for k in indicators if k not in core]},
+        "indicator_descriptions": {k: cfg["indicators"][k]["description"] for k in indicators},
         "source": "CDC WONDER Natality, 2016-2024 expanded (NCHS). Rates based on fewer than 10 events are not shown.",
         "state_patterns": [
             {"indicator": r.indicator, "state": r.state, "flagged": int(r.flagged), "counties": int(r.counties),
@@ -193,7 +201,7 @@ def main() -> None:
         payload["benchmark_years"] = str(pd.read_csv(res / "context_benchmark_quality.csv")["years_pooled"].iloc[0])
     Path(a.out).write_text(json.dumps(payload, separators=(",", ":")))
     if a.state_race:
-        _state_race(Path(a.state_race), Path(a.out).with_name("state_race.json"))
+        _state_race([Path(f) for f in a.state_race], Path(a.out).with_name("state_race.json"))
     print(f"wrote {a.out}: {len(out_c)} counties, {Path(a.out).stat().st_size / 1024:.0f} KB")
 
 
@@ -221,10 +229,17 @@ def _nearest_peers(ctx: pd.DataFrame, ids: list[str], k: int = 5) -> dict[str, l
     return out
 
 
-def _state_race(folder: Path, out: Path) -> None:
-    """Latest pooled window by state, race group and indicator, with the change from the previous window."""
-    p = pd.read_csv(folder / "pooled_estimates.csv")
-    c = pd.read_csv(folder / "pooled_comparison.csv")
+def _state_race(folders: list[Path] | Path, out: Path) -> None:
+    """Latest pooled window by state, group and indicator, with the change from the previous window.
+
+    Groups are mother's race (no prefix), and from the second folder on, "Hispanic origin: ..." and
+    "Payer: ..." groups (scripts/fetch_wonder_more.js). Every folder must use the same windows.
+    """
+    folders = [Path(folders)] if isinstance(folders, (str, Path)) else [Path(f) for f in folders]
+    p = pd.concat([pd.read_csv(f / "pooled_estimates.csv") for f in folders], ignore_index=True)
+    c = pd.concat([pd.read_csv(f / "pooled_comparison.csv") for f in folders], ignore_index=True)
+    p = p.drop_duplicates(["state", "indicator", "subgroup", "window"], keep="first")
+    c = c.drop_duplicates(["state", "indicator", "subgroup"], keep="first")
     last = p["window_end"].max()
     p = p[p["window_end"] == last]
     c = c.set_index(["state", "indicator", "subgroup"])
@@ -248,7 +263,9 @@ def _state_race(folder: Path, out: Path) -> None:
     prev = c["previous_window"].iloc[0] if len(c) else ""
     out.write_text(json.dumps({"window": win, "previous_window": prev, "states": states,
                                "source": "CDC WONDER Natality, 2016-2024 expanded (NCHS), mother's single race (15 groups), "
-                                         "all Hispanic origins. Pooled over the years shown; years with suppressed counts are skipped."},
+                                         "all Hispanic origins" + ("; mother's Hispanic origin (all races) and source of payment for the "
+                                                                   "delivery" if len(folders) > 1 else "")
+                                         + ". Pooled over the years shown; years with suppressed counts are skipped."},
                               separators=(",", ":")))
     print(f"wrote {out}: {len(states)} states, {out.stat().st_size / 1024:.0f} KB")
 

@@ -23,6 +23,10 @@
   // the `caveat` of the indicator in src/perinatal_ews/default_config.yaml, used by the MCP server.
   const CAVEATS = {
     gestational_hypertension: 'Reporting quality: in national validation studies the birth-certificate item caught only 20–50% of cases, and quality varies by hospital. Read this result as reflecting how hypertension is recorded at least as much as how common it is.',
+    prepregnancy_obesity: 'Body mass index is computed from the reported height and pre-pregnancy weight; reported weight tends to be lower than measured weight, so this rate is more likely to be too low than too high.',
+    prepregnancy_overweight_obesity: 'Body mass index is computed from the reported height and pre-pregnancy weight; reported weight tends to be lower than measured weight, so this rate is more likely to be too low than too high.',
+    gestational_diabetes: 'Nationally, gestational diabetes on birth certificates rose from 6.0% of mothers in 2016 to 8.3% in 2021 (NCHS) and may be under-reported; each county is compared with that national change, not with a fixed past level.',
+    smoking_during_pregnancy: 'Self-reported: birth certificates miss some mothers who report smoking in the PRAMS survey, so this rate is more likely to be too low than too high.',
   };
   // {label: caveat} for the given indicator keys that have one, or null if none do.
   function caveatsFor(D, keys) {
@@ -31,6 +35,14 @@
     return Object.keys(out).length ? out : null;
   }
   function indLabel(D, k) { return (D.indicators && D.indicators[k]) || k; }
+  // A label inside a sentence: first letter lower case, acronyms kept ("Low-risk (NTSV) cesarean" -> "low-risk (NTSV) cesarean").
+  const lowerLabel = t => String(t).replace(/^[A-Z](?![A-Z])/, c => c.toLowerCase());
+  // The four early-warning indicators (core) and the added maternal and child health measures (more).
+  // Files built before the measures were added have no indicator_sets: every indicator is then core.
+  function indicatorSet(D, set) {
+    if (D.indicator_sets) return D.indicator_sets[set] || [];
+    return set === 'core' ? Object.keys(D.indicators) : [];
+  }
   function findCounty(D, q) {
     if (!q) return null;
     const s = String(q).trim().toLowerCase();
@@ -80,22 +92,22 @@
     const flags = Object.entries(c.ind).filter(([, e]) => flagged(e));
     if (flags.length) {
       parts.push(`In ${D.year}, ${c.name}, ${c.state} was flagged for ` + flags.map(([k, e]) =>
-        `${indLabel(D, k).toLowerCase()} (${e.level}: ${pct(e.rate)} against ${pct(e.expected)} expected)`).join('; ') + '.');
+        `${lowerLabel(indLabel(D, k))} (${e.level}: ${pct(e.rate)} against ${pct(e.expected)} expected)`).join('; ') + '.');
     } else {
-      parts.push(`In ${D.year}, ${c.name}, ${c.state} had no county-wide flags on the four indicators.`);
+      parts.push(`In ${D.year}, ${c.name}, ${c.state} had no county-wide flags on the ${Object.keys(c.ind).length} indicators scored.`);
     }
     const subs = [];
     for (const [k, e] of Object.entries(c.ind)) for (const [s, sd] of Object.entries(e.subgroups || {}))
-      if (sd.level === 'alert' || sd.level === 'watch') subs.push(`${indLabel(D, k).toLowerCase()} among ${s.toLowerCase()} births (${sd.level}, ${pct(sd.rate)})`);
+      if (sd.level === 'alert' || sd.level === 'watch') subs.push(`${lowerLabel(indLabel(D, k))} among ${s.toLowerCase()} births (${sd.level}, ${pct(sd.rate)})`);
     if (subs.length) parts.push(`Within payer groups: ${subs.join('; ')}.`);
     const sw = Object.keys(c.ind).filter(k => (D.state_patterns || []).some(p => p.state === c.state && p.indicator === k));
-    if (sw.length) parts.push(`Many ${c.state} counties were flagged for ${sw.map(k => indLabel(D, k).toLowerCase()).join(' and ')}, so the change may be state-wide or reflect how the state records it.`);
+    if (sw.length) parts.push(`Many ${c.state} counties were flagged for ${sw.map(k => lowerLabel(indLabel(D, k))).join(' and ')}, so the change may be state-wide or reflect how the state records it.`);
     const risky = Object.entries(c.ind).filter(([, e]) => (e.risk || 0) >= 0.3).sort((a, b) => b[1].risk - a[1].risk);
-    if (risky.length) parts.push(`The forecast gives a ${pct(risky[0][1].risk, 0)} chance of a ${D.forecast_year} flag for ${indLabel(D, risky[0][0]).toLowerCase()}.`);
+    if (risky.length) parts.push(`The forecast gives a ${pct(risky[0][1].risk, 0)} chance of a ${D.forecast_year} flag for ${lowerLabel(indLabel(D, risky[0][0]))}.`);
     const hi = Object.entries(c.ind).filter(([, e]) => e.similar && /higher/.test(e.similar.verdict));
-    if (hi.length) parts.push(`Compared with counties in similar conditions, ${hi.map(([k, e]) => `${indLabel(D, k).toLowerCase()} is higher (${pct(e.similar.rate)} vs ${pct(e.similar.expected)})`).join('; ')}.`);
+    if (hi.length) parts.push(`Compared with counties in similar conditions, ${hi.map(([k, e]) => `${lowerLabel(indLabel(D, k))} is higher (${pct(e.similar.rate)} vs ${pct(e.similar.expected)})`).join('; ')}.`);
     const pers = D.persistent ? Object.entries(c.ind).filter(([, e]) => e.persistent && e.persistent.status === 'persistent') : [];
-    if (pers.length) parts.push(`Separately from change flags, its rate was among the highest fifth of the ${D.counties.length} scored counties in ${pers.length > 1 ? 'most years' : `${pers[0][1].persistent.years_worst} of ${pers[0][1].persistent.years_ranked} years`} of ${D.persistent.window_start}–${D.persistent.window_end} for ${pers.map(([k, e]) => `${indLabel(D, k).toLowerCase()}${pers.length > 1 ? ` (${e.persistent.years_worst} of ${e.persistent.years_ranked})` : ''}`).join(', ')}; this is a persistently high level, not a recent change.`);
+    if (pers.length) parts.push(`Separately from change flags, its rate was among the highest fifth of the ${D.counties.length} scored counties in ${pers.length > 1 ? 'most years' : `${pers[0][1].persistent.years_worst} of ${pers[0][1].persistent.years_ranked} years`} of ${D.persistent.window_start}–${D.persistent.window_end} for ${pers.map(([k, e]) => `${lowerLabel(indLabel(D, k))}${pers.length > 1 ? ` (${e.persistent.years_worst} of ${e.persistent.years_ranked})` : ''}`).join(', ')}; this is a persistently high level, not a recent change.`);
     if (c.need) parts.push(`Need and access (${c.need.priority === 'high' ? 'high priority' : 'for review'}): ${c.need.reasons}.`);
     if (c.unusual) parts.push(`The machine-learning data check found this county's ${D.year} record unusual (${c.unusual}); confirm the data before acting on its flags.`);
     parts.push('These are statistical flags for local follow-up, not confirmed problems.');
@@ -145,14 +157,17 @@
 
   function stateBrief(D, st) {
     const s = stateSummary(D, st); if (!s) return '';
-    const tot = Object.values(s.by_indicator).reduce((a, b) => a + b.alerts, 0);
-    const tw = Object.values(s.by_indicator).reduce((a, b) => a + b.watch, 0);
-    const parts = [`${STATE_NAMES[st] || st}: ${plural(s.counties, 'county', 'counties')} with 100,000+ residents ${s.counties === 1 ? 'was' : 'were'} scored for ${D.year}, with ${plural(tot, 'alert', 'alerts')} and ${plural(tw, 'watch flag', 'watch flags')} across the four indicators.`];
+    // Totals are kept per set, so the long-standing four-indicator count does not change when measures are added.
+    const sum = (set, f) => indicatorSet(D, set).map(k => s.by_indicator[indLabel(D, k)]).filter(Boolean).reduce((a, b) => a + b[f], 0);
+    const tot = sum('core', 'alerts'), tw = sum('core', 'watch');
+    const more = indicatorSet(D, 'more'), mt = sum('more', 'alerts'), mw = sum('more', 'watch');
+    const parts = [`${STATE_NAMES[st] || st}: ${plural(s.counties, 'county', 'counties')} with 100,000+ residents ${s.counties === 1 ? 'was' : 'were'} scored for ${D.year}, with ${plural(tot, 'alert', 'alerts')} and ${plural(tw, 'watch flag', 'watch flags')} across the ${indicatorSet(D, 'core').length === 4 ? 'four early-warning indicators' : 'indicators'}` +
+      (more.length ? `, and ${plural(mt, 'alert', 'alerts')} and ${plural(mw, 'watch flag', 'watch flags')} across the ${plural(more.length, 'added maternal and child health measure', 'added maternal and child health measures')}.` : '.')];
     const top = Object.entries(s.by_indicator).filter(([, v]) => v.alerts + v.watch > 0).sort((a, b) => (b[1].alerts + b[1].watch) - (a[1].alerts + a[1].watch));
     if (s.counties_not_scored) parts.push(`The other ${plural(s.counties_not_scored, 'county', 'counties')} of ${s.counties_in_state} ${s.counties_not_scored === 1 ? 'has' : 'have'} fewer than 100,000 residents and ${s.counties_not_scored === 1 ? 'is' : 'are'} not reported separately by CDC WONDER, so ${s.counties_not_scored === 1 ? 'it is' : 'they are'} not covered by the county results.`);
-    if (tot + tw === 0) parts.push('No flag means no change from each county\'s own recent history was detected; it does not mean there is no concern, and a rate can stay high without being flagged.');
-    if (top.length) parts.push('Most flags: ' + top.map(([k, v]) => `${k.toLowerCase()} (${plural(v.alerts, 'alert', 'alerts')}, ${v.watch} watch)`).join('; ') + '.');
-    for (const p of s.statewide_patterns) parts.push(`State-wide pattern in ${p.indicator.toLowerCase()}: ${p.counties_flagged} of ${p.counties} counties flagged; state rate ${pct(p.state_rate_baseline)} at baseline, ${pct(p.state_rate_now)} now. Check with the state vital records office whether recording changed.`);
+    if (tot + tw + mt + mw === 0) parts.push('No flag means no change from each county\'s own recent history was detected; it does not mean there is no concern, and a rate can stay high without being flagged.');
+    if (top.length) parts.push('Most flags: ' + top.map(([k, v]) => `${lowerLabel(k)} (${plural(v.alerts, 'alert', 'alerts')}, ${v.watch} watch)`).join('; ') + '.');
+    for (const p of s.statewide_patterns) parts.push(`State-wide pattern in ${lowerLabel(p.indicator)}: ${p.counties_flagged} of ${p.counties} counties flagged; state rate ${pct(p.state_rate_baseline)} at baseline, ${pct(p.state_rate_now)} now. Check with the state vital records office whether recording changed.`);
     if (s.year_to_date_provisional) {
       const y = s.year_to_date_provisional, fl = Object.entries(y.indicators).filter(([, e]) => e.level === 'alert' || e.level === 'watch');
       parts.push(fl.length ? `Provisional data for ${y.period}: ${fl.map(([k, e]) => `${k.toLowerCase()} ${e.level} (${pct(e.rate)} vs ${pct(e.expected)} expected)`).join('; ')}.`
@@ -229,6 +244,7 @@
     data_anomalies: 'An Isolation Forest (unsupervised anomaly detection) scores every county-year record; the 2% least typical are flagged, with the features that make them unusual. It complements the rule that flags births changing by more than 30%: on synthetic data with injected errors it found about two-thirds of single-indicator errors the rule misses, with 0.5% false flags.',
     prediction_ranges: 'For the similar-county comparison, each county gets a 90% range for counties like it, from cross-conformal prediction on normalised residuals. Counties outside the range are higher or lower than similar counties. On the real data the ranges contained 90-91% of counties.',
     persistent_burden: 'Separately from change alerts, each year the scored counties are ranked by rate; a county in the highest fifth in 3 or more of the last 5 years is persistently among the highest (after Brown CC et al., Inquiry 2020). It describes the level of the rate, not a change: a county can be stable and persistently high. Only large counties are ranked against each other, and the neighbouring-county condition of the original method is dropped because public data identify only counties of 100,000+ residents.',
+    added_measures: 'Besides the four early-warning indicators (late or no prenatal care, preterm birth, low birth weight, gestational hypertension), the explorer covers added maternal and child health measures from the same birth certificates: no first-trimester prenatal care, obesity and overweight or obesity before pregnancy, gestational diabetes, smoking during pregnancy and low-risk (NTSV) cesarean. Each is a share of births with the item recorded, framed so that higher is worse, and goes through the same change detection, persistent-burden ranking and similar-county comparison. They have no next-year forecast, county types or need-and-access review, which were built and tested on the four indicators only. Body mass index and smoking are self-reported and tend to be under-reported.',
     limitations: 'County data come from CDC WONDER natality for counties with 100,000+ residents; counts of 9 or fewer are suppressed. Flags are statistical leads, not confirmed problems. Context measures describe places, not people, and are associations, not causes. The tool is not for clinical or individual decisions.',
   };
 
@@ -245,7 +261,9 @@
       input_schema: { type: 'object', properties: {
         filter: { type: 'string', enum: LIST_FILTERS },
         state: { type: 'string', description: 'Two-letter state code' },
-        indicator: { type: 'string', enum: ['late_no_prenatal_care', 'preterm_birth', 'low_birth_weight', 'gestational_hypertension'] },
+        indicator: { type: 'string', enum: ['late_no_prenatal_care', 'preterm_birth', 'low_birth_weight', 'gestational_hypertension',
+          'no_first_trimester_care', 'prepregnancy_obesity', 'prepregnancy_overweight_obesity', 'gestational_diabetes',
+          'smoking_during_pregnancy', 'ntsv_cesarean'], description: 'Indicators present in the data are listed by national_summary' },
         limit: { type: 'integer', description: 'Max rows (default 25, max 100)' } }, required: ['filter'] },
       run: (D, a) => listCounties(D, a) },
     { name: 'state_summary', description: 'Summary for one state: flags by indicator, state-wide patterns, need-and-access counties and flagged counties, plus a plain-language brief.',
@@ -279,6 +297,6 @@
     return [...new Set(out)];
   }
 
-  const api = { STATE_NAMES, COUNTIES_IN_STATE, CAVEATS, rateInterval, TOOLS, countyBrief, stateBrief, stateSummary, listCounties, nationalSummary, checkNumbers, findCounty, METHOD };
+  const api = { STATE_NAMES, COUNTIES_IN_STATE, CAVEATS, indicatorSet, lowerLabel, rateInterval, TOOLS, countyBrief, stateBrief, stateSummary, listCounties, nationalSummary, checkNumbers, findCounty, METHOD };
   if (typeof module !== 'undefined' && module.exports) module.exports = api; else root.EWS = api;
 })(typeof window !== 'undefined' ? window : globalThis);

@@ -20,13 +20,18 @@ Rules:
 - Always use the tools to get numbers. Never state a rate, count, risk or ranking that a tool did not return. If the tools do not have it, say so.
 - Give rates as percentages with one decimal, and say which year they refer to.
 - Flags are statistical signals for local follow-up, not confirmed problems; say so when you report flags.
-- When a tool result carries a reporting_caveat or reporting_caveats for an indicator you report (gestational hypertension), state that caveat in one sentence with the result.
+- When a tool result carries a reporting_caveat or reporting_caveats for an indicator you report (for example gestational hypertension, pre-pregnancy body mass index, smoking), state that caveat in one sentence with the result.
 - When many counties in a state are flagged together, mention that it may be a state-wide change or a change in how the state records the item.
 - "Persistently among the highest" (persistent_burden) is about the level of a county's rate over 2020-2024, not a change; keep it separate from alerts, and say it ranks only the large counties against each other.
 - County context describes places, not people. Never suggest that parents or any group are to blame, and do not claim causes; associations only.
 - This is population surveillance. Do not give clinical or individual medical advice; refer people to a clinician for personal questions.
 - Be concise: lead with the answer, then the key numbers, in plain language for a busy health department reader. Use short bullet lists only when comparing several counties.`;
 
+  // When the data include the added maternal and child health measures, say what they are and what they lack.
+  const moreNote = () => {
+    const more = D && D.indicator_sets ? D.indicator_sets.more : [];
+    return more.length ? `\n\nThe county results also include ${more.length} added maternal and child health measures (${more.map(k => window.EWS.lowerLabel(D.indicators[k])).join(', ')}), each framed so that a higher rate is worse, with change detection, persistent burden and the similar-county comparison. They have no next-year forecast, and the monthly state results cover only the four early-warning indicators. When asked about the total number of flags, keep the four indicators and the added measures separate.` : '';
+  };
   let D = null, history = [], busy = false;
   const $ = s => document.querySelector(s);
   const store = {
@@ -69,7 +74,7 @@ Rules:
       method: 'POST',
       headers: { 'content-type': 'application/json', 'x-api-key': key(), 'anthropic-version': '2023-06-01',
         'anthropic-dangerous-direct-browser-access': 'true' },
-      body: JSON.stringify({ model: $('#ai-model').value, max_tokens: 1500, system: SYSTEM, tools, messages }),
+      body: JSON.stringify({ model: $('#ai-model').value, max_tokens: 1500, system: SYSTEM + moreNote(), tools, messages }),
     });
     if (!r.ok) {
       let msg = `${r.status}`;

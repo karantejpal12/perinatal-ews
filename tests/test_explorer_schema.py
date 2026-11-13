@@ -42,6 +42,12 @@ def _consistency(d):
                 assert all(d["persistent"]["window_start"] <= y <= d["persistent"]["window_end"] for y in p["worst_years"])
             if "similar" in e and None not in (e["similar"]["low"], e["similar"]["high"]):
                 assert e["similar"]["low"] <= e["similar"]["high"]
+    if "indicator_sets" in d:
+        assert d["indicator_sets"]["core"] + d["indicator_sets"]["more"] == list(d["indicators"])
+        assert set(d.get("indicator_descriptions", d["indicators"])) == set(d["indicators"])
+        more = set(d["indicator_sets"]["more"])
+        # The forecast was validated only on the core indicators, so no added measure carries a risk.
+        assert not any("risk" in e for c in d["counties"] for k, e in c["ind"].items() if k in more)
     for s in d["state_patterns"]:
         assert s["flagged"] <= s["counties"]
     if "types" in d:

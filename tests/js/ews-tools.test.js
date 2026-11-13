@@ -1,4 +1,4 @@
-// Run: node --test tests/js/
+// Run: node --test tests/js/ews-tools.test.js
 const test = require('node:test');
 const assert = require('node:assert');
 const fs = require('node:fs');

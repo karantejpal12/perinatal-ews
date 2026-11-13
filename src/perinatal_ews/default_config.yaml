@@ -58,3 +58,73 @@ indicators:
       unknown_as_case:
         column: "Eclampsia"
         values: ["Yes"]
+
+  # More maternal and child health measures (requested by a state MCH epidemiologist, Nov 2026).
+  # Same method as the four above: each is a share of births from a birth-certificate item.
+  # `set: more` keeps them in their own group in the explorer. Every one is framed so that a
+  # higher rate is worse, so a flag always means "worse than expected".
+  no_first_trimester_care:
+    set: more
+    label: "No first-trimester prenatal care"
+    description: "Prenatal care did not begin in months 1-3 (began later, or no care); the first-trimester rate is 100% minus this"
+    direction: higher_is_worse
+    wonder:
+      group_column: "Month Prenatal Care Began"
+      numerator_values: ["4th month", "5th month", "6th month", "7th month", "8th month", "9th month", "10th month", "No prenatal care"]
+      exclude_values: ["Unknown or Not Stated"]
+  prepregnancy_obesity:
+    set: more
+    label: "Obesity before pregnancy"
+    description: "Pre-pregnancy body mass index 30 or more"
+    caveat: "Body mass index is computed from the reported height and pre-pregnancy weight; reported weight tends to be lower than measured weight, so this rate is more likely to be too low than too high."
+    direction: higher_is_worse
+    wonder:
+      group_column: "Mother's Pre-pregnancy BMI"
+      numerator_values: ["Obesity I 30.0-34.9", "Obesity II 35.0-39.9", "Extreme Obesity III >39.9"]
+      exclude_values: ["Unknown or Not Stated"]
+  prepregnancy_overweight_obesity:
+    set: more
+    label: "Overweight or obesity before pregnancy"
+    description: "Pre-pregnancy body mass index 25 or more"
+    caveat: "Body mass index is computed from the reported height and pre-pregnancy weight; reported weight tends to be lower than measured weight, so this rate is more likely to be too low than too high."
+    direction: higher_is_worse
+    wonder:
+      group_column: "Mother's Pre-pregnancy BMI"
+      numerator_values: ["Overweight 25.0-29.9", "Obesity I 30.0-34.9", "Obesity II 35.0-39.9", "Extreme Obesity III >39.9"]
+      exclude_values: ["Unknown or Not Stated"]
+  gestational_diabetes:
+    set: more
+    label: "Gestational diabetes"
+    description: "Diabetes diagnosed in this pregnancy"
+    caveat: "Nationally, gestational diabetes on birth certificates rose from 6.0% of mothers in 2016 to 8.3% in 2021 (NCHS) and may be under-reported; each county is compared with that national change, not with a fixed past level."
+    direction: higher_is_worse
+    wonder:
+      group_column: "Gestational Diabetes"
+      numerator_values: ["Yes"]
+      exclude_values: ["Unknown or Not Stated", "Not Reported"]
+  smoking_during_pregnancy:
+    set: more
+    label: "Smoking during pregnancy"
+    description: "Mother smoked cigarettes at any time during pregnancy"
+    caveat: "Self-reported: birth certificates miss some mothers who report smoking in the PRAMS survey, so this rate is more likely to be too low than too high."
+    direction: higher_is_worse
+    wonder:
+      group_column: "Tobacco Use"
+      numerator_values: ["Yes"]
+      exclude_values: ["Unknown or Not Stated", "Not Reported"]
+  ntsv_cesarean:
+    set: more
+    label: "Low-risk (NTSV) cesarean"
+    description: "Cesarean deliveries among first births at 37 weeks or more, single and head-first (NCHS low-risk cesarean)"
+    direction: higher_is_worse
+    wonder:
+      group_column: "Delivery Method"
+      numerator_values: ["Cesarean"]
+      exclude_values: ["Unknown or Not Stated"]
+      # The export must be limited to these births; `ingest-wonder` stops if its query header
+      # does not show them. Labels are those of the CDC WONDER request form.
+      filters:
+        "Live Birth Order": ["1"]
+        "Plurality": ["Single"]
+        "Fetal Presentation": ["Cephalic"]
+        "OE Gestational Age Recode 10": ["37 - 38 weeks", "39 weeks", "40 weeks", "41 weeks or more"]

@@ -18,7 +18,7 @@ from pathlib import Path
 import pandas as pd
 
 from . import synthetic
-from .config import load_config
+from .config import core_indicators, load_config
 from .detect import detect
 from .equity import subgroup_gaps
 from .ingest import load_tidy_csv, wonder_to_tidy
@@ -33,6 +33,9 @@ def _run(tidy: pd.DataFrame, cfg: dict, out: Path, year: int | None, truth: pd.D
     out.mkdir(parents=True, exist_ok=True)
     subgroups = sorted(set(tidy["subgroup"]) - {TOTAL_SUBGROUP})
     res = detect(tidy, cfg, target_year=year, subgroups=[TOTAL_SUBGROUP] + subgroups)
+    # Steps built and validated on the original four indicators use only those (config.core_indicators).
+    core = tidy[tidy["indicator"].isin(core_indicators(cfg))]
+    res_core = res[res["indicator"].isin(core_indicators(cfg))] if len(res) else res
     res.to_csv(out / "detections.csv", index=False)
     state_clusters(res, tidy, cfg).to_csv(out / "state_patterns.csv", index=False)
     from .persistent import persistent_burden
@@ -50,12 +53,12 @@ def _run(tidy: pd.DataFrame, cfg: dict, out: Path, year: int | None, truth: pd.D
         subgroup_gaps(tidy, cfg, year).to_csv(out / "subgroup_gaps.csv", index=False)
     data_quality(tidy, year).to_csv(out / "data_quality.csv", index=False)
     from .anomaly import record_anomalies
-    anomalies = record_anomalies(tidy)
+    anomalies = record_anomalies(core)
     if "skipped" in anomalies.attrs:
         print(anomalies.attrs["skipped"])
     anomalies.to_csv(out / "data_anomalies.csv", index=False)
     distribution_drift(tidy, cfg, year).to_csv(out / "distribution_drift.csv", index=False)
-    backtest(tidy, cfg).to_csv(out / "backtest.csv", index=False)
+    backtest(core, cfg).to_csv(out / "backtest.csv", index=False)
     if truth is not None:
         ev = evaluate_against_truth(tidy, cfg, truth, year)
         ev["summary"].to_csv(out / "evaluation_summary.csv", index=False)
@@ -68,21 +71,21 @@ def _run(tidy: pd.DataFrame, cfg: dict, out: Path, year: int | None, truth: pd.D
     fc = None
     if with_forecast:
         from .forecast import run_forecast
-        fc = run_forecast(tidy, cfg, context=ctx)
+        fc = run_forecast(core, cfg, context=ctx)
         fc.scores.to_csv(out / "forecast_scores.csv", index=False)
         for name in ("metrics", "folds", "by_size", "by_indicator", "calibration", "importance", "feature_drift"):
             getattr(fc, name).to_csv(out / f"forecast_{name}.csv", index=False)
     na = bench = typ = None
     if ctx is not None:
         from .context import benchmark, need_access
-        na = need_access(res, ctx, fc.scores if fc is not None else None,
+        na = need_access(res_core, ctx, fc.scores if fc is not None else None,
                          labels={k: v["label"] for k, v in cfg["indicators"].items()})
         na.to_csv(out / "need_access.csv", index=False)
         bench = benchmark(tidy, ctx, cfg, year)
         bench[0].to_csv(out / "context_benchmark.csv", index=False)
         bench[1].to_csv(out / "context_benchmark_quality.csv", index=False)
         from .typology import county_typology
-        typ = county_typology(tidy, ctx)
+        typ = county_typology(core, ctx)
         typ[0].to_csv(out / "county_typology.csv", index=False)
         typ[1].to_csv(out / "typology_summary.csv", index=False)
         typ[2].to_csv(out / "typology_profiles.csv", index=False)
@@ -90,7 +93,8 @@ def _run(tidy: pd.DataFrame, cfg: dict, out: Path, year: int | None, truth: pd.D
         (out / "typology_quality.json").write_text(json.dumps(typ[3], indent=2))
         if fc is not None:
             fc.metrics.to_csv(out / "forecast_metrics.csv", index=False)
-    (out / "report.html").write_text(build_report(tidy, cfg, truth=truth, target_year=year, title=title,
+    # The bulletin stays on the original four until the newer indicators have been reviewed.
+    (out / "report.html").write_text(build_report(core, cfg, truth=truth, target_year=year, title=title,
                                                   source_note=source_note, forecast=fc, need_access=na,
                                                   benchmark=bench, typology=typ,
                                                   anomalies=anomalies))

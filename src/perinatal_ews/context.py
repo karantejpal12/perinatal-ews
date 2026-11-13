@@ -120,13 +120,17 @@ def need_access(detections: pd.DataFrame, ctx: pd.DataFrame, forecast_scores: pd
     lab = lambda k: labels.get(k, k.replace("_", " ")).lower()  # noqa: E731
     det = detections.copy()
     det["flag"] = det["level"].isin(["alert", "watch"])
-    sig = det[det["flag"]].groupby("geo_id").apply(
-        lambda g: "; ".join(sorted({f"{lab(r.indicator)} ({r.level}"
-                                    + (")" if r.subgroup == TOTAL_SUBGROUP else f", {r.subgroup})")
-                                    for r in g.itertuples()})), include_groups=False)
+    if det["flag"].any():
+        sig = det[det["flag"]].groupby("geo_id").apply(
+            lambda g: "; ".join(sorted({f"{lab(r.indicator)} ({r.level}"
+                                        + (")" if r.subgroup == TOTAL_SUBGROUP else f", {r.subgroup})")
+                                        for r in g.itertuples()})), include_groups=False)
+    else:  # no flag anywhere: an empty list, not an error
+        sig = pd.Series(dtype=str)
     signals = sig.rename("perinatal_signals")
-    if forecast_scores is not None and len(forecast_scores):
-        hi = forecast_scores[forecast_scores["risk"] >= risk_threshold]
+    hi = (forecast_scores[forecast_scores["risk"] >= risk_threshold]
+          if forecast_scores is not None and len(forecast_scores) else None)
+    if hi is not None and len(hi):
         fr = hi.groupby("geo_id").apply(
             lambda g: "; ".join(f"{lab(r.indicator)} next-year risk {r.risk:.0%}" for r in g.itertuples()),
             include_groups=False).rename("forecast_signals")

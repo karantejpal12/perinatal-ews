@@ -15,7 +15,7 @@ import json
 import urllib.request
 from pathlib import Path
 
-from .config import load_config
+from .config import core_indicators, load_config
 from .pooling import STATE_NAMES
 
 PUBLISHED_URL = "https://raw.githubusercontent.com/karantejpal12/perinatal-ews/main/results/latest/latest.json"
@@ -47,7 +47,9 @@ def load_results(source: str | Path | None = None) -> dict:
 
 
 def _labels() -> dict:
-    return {k: v["label"] for k, v in load_config()["indicators"].items()}
+    """Indicators in the monthly state results: the original four (config.core_indicators)."""
+    cfg = load_config()
+    return {k: cfg["indicators"][k]["label"] for k in core_indicators(cfg)}
 
 
 def _caveats() -> dict:

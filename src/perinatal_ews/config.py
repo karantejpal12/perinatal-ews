@@ -27,3 +27,14 @@ def load_config(path: str | Path | None = None) -> dict[str, Any]:
         with open(path) as fh:
             config = _deep_merge(config, yaml.safe_load(fh) or {})
     return config
+
+
+def core_indicators(config: dict[str, Any]) -> list[str]:
+    """The original four indicators (no `set`, or `set: core`).
+
+    The next-year forecast, county types, unusual-record checks, need-and-access review
+    and backtest were built and validated on these four, so they use only these; the
+    other indicators (`set: more`) get detection, persistent burden, state patterns and
+    the similar-county comparison until they have been validated for the rest.
+    """
+    return [k for k, v in config["indicators"].items() if v.get("set", "core") == "core"]
