@@ -8,7 +8,8 @@
 //    It first finds every variable it needs on the form by its name and stops, listing what is
 //    missing, if any is not found. Set `window.PEWS_DRYRUN = true` before pasting to see the
 //    variables and categories it would use without running any query.
-// 3. It then runs about 125 queries (15-20 minutes) and downloads two CSV files in the tidy schema:
+// 3. It then runs about 125 queries, pausing between them (20-30 minutes in all), and downloads two CSV
+//    files in the tidy schema. Keep the tab open; `window.PEWS_STATUS` shows progress:
 //    - cdc_wonder_natality_county_more_2016_2024_tidy.csv: the six added indicators by county and
 //      year, for all births and for Medicaid and private-insurance births;
 //    - cdc_wonder_natality_state_groups_2016_2024.csv: every indicator by state and year, by mother's
@@ -26,6 +27,9 @@
 // criteria and stops if a limit is missing.
 
 const UNKNOWN = /unknown|not stated|not reported|^all\b|^\*all\*$/i;
+// Pause before each query, as in fetch_wonder_latest.js: CDC WONDER blocks an address for about
+// 30 minutes after too many quick requests.
+const PAUSE_MS = 2500;
 
 // Variables already used by the other fetch scripts are taken by code; the others are found on the
 // form by their title in the "Group Results By" list, so no code is guessed.
@@ -165,7 +169,10 @@ async function query(form, opts) {
   fd.set('O_change_action-Send-Export Results', 'Export Results'); fd.set('O_export-format', 'tsv');
   fd.delete('O_show_totals'); fd.set('O_show_suppressed', 'true'); fd.set('O_show_zeros', 'true');
   fd.set('action-Send', 'Send');
+  await new Promise(r => setTimeout(r, PAUSE_MS));  // CDC WONDER blocks addresses that send requests too quickly
   const t = await (await fetch(form.action, { method: 'POST', body: new URLSearchParams(fd), credentials: 'include' })).text();
+  if (/too many requests|temporarily blocked|access denied/i.test(t.slice(0, 2000)))
+    throw new Error('CDC WONDER is limiting requests from this address. Stop, wait 30 minutes, then run the script again.');
   const e = parseExport(t);
   if (opts.limits && Object.keys(opts.limits).length) checkLimits(e.footer, opts.limits);
   return e;
