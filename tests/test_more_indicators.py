@@ -52,7 +52,7 @@ NTSV_BODY = '''"Notes"\t"County"\t"County Code"\t"Year"\t"Year Code"\t"Delivery 
 NTSV_FILTERS = '''"Live Birth Order: 1"
 "Plurality: Single"
 "Fetal Presentation: Cephalic"
-"OE Gestational Age Recode 10: 37 - 38 weeks; 39 weeks; 40 weeks; 41 weeks or more"
+"OE Gestational Age Recode 10: 37 - 39 weeks; 40 weeks; 41 weeks; 42 weeks or more"
 '''
 NTSV_TAIL = '''"Group By: County; Year; Delivery Method"
 "Show Totals: Disabled"
@@ -76,7 +76,7 @@ def test_ntsv_needs_a_filtered_export(tmp_path, cfg):
         ingest.wonder_to_tidy(unfiltered, "ntsv_cesarean", cfg)
 
     wrong = tmp_path / "preterm_too.txt"
-    wrong.write_text(NTSV_BODY + NTSV_FILTERS.replace("37 - 38 weeks; ", "34 - 36 weeks; 37 - 38 weeks; ") + NTSV_TAIL)
+    wrong.write_text(NTSV_BODY + NTSV_FILTERS.replace("37 - 39 weeks; ", "36 weeks; 37 - 39 weeks; ") + NTSV_TAIL)
     with pytest.raises(ValueError, match="OE Gestational Age Recode 10"):
         ingest.wonder_to_tidy(wrong, "ntsv_cesarean", cfg)
 

@@ -80,7 +80,7 @@ indicators:
     direction: higher_is_worse
     wonder:
       group_column: "Mother's Pre-pregnancy BMI"
-      numerator_values: ["Obesity I 30.0-34.9", "Obesity II 35.0-39.9", "Extreme Obesity III >39.9"]
+      numerator_values: ["Obesity I 30.0-34.9", "Obesity II 35.0-39.9", "Extreme Obesity III > 39.9"]
       exclude_values: ["Unknown or Not Stated"]
   prepregnancy_overweight_obesity:
     set: more
@@ -90,7 +90,7 @@ indicators:
     direction: higher_is_worse
     wonder:
       group_column: "Mother's Pre-pregnancy BMI"
-      numerator_values: ["Overweight 25.0-29.9", "Obesity I 30.0-34.9", "Obesity II 35.0-39.9", "Extreme Obesity III >39.9"]
+      numerator_values: ["Overweight 25.0-29.9", "Obesity I 30.0-34.9", "Obesity II 35.0-39.9", "Extreme Obesity III > 39.9"]
       exclude_values: ["Unknown or Not Stated"]
   gestational_diabetes:
     set: more
@@ -122,9 +122,9 @@ indicators:
       numerator_values: ["Cesarean"]
       exclude_values: ["Unknown or Not Stated"]
       # The export must be limited to these births; `ingest-wonder` stops if its query header
-      # does not show them. Labels are those of the CDC WONDER request form.
+      # does not show them. Labels are those of the CDC WONDER request form (checked 2026-11-13).
       filters:
         "Live Birth Order": ["1"]
         "Plurality": ["Single"]
         "Fetal Presentation": ["Cephalic"]
-        "OE Gestational Age Recode 10": ["37 - 38 weeks", "39 weeks", "40 weeks", "41 weeks or more"]
+        "OE Gestational Age Recode 10": ["37 - 39 weeks", "40 weeks", "41 weeks", "42 weeks or more"]
