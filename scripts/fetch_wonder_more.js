@@ -31,6 +31,21 @@ const UNKNOWN = /unknown|not stated|not reported|^all\b|^\*all\*$/i;
 // 30 minutes after too many quick requests.
 const PAUSE_MS = 2500;
 
+// Chrome throttles timers in background tabs (to about one per minute after five minutes hidden),
+// which stretched each 2.5 s pause to two or three minutes. A timer in a Web Worker is not
+// throttled, so the pause stays as set while the tab is in the background.
+const pause = (() => {
+  if (typeof Worker === 'undefined' || typeof Blob === 'undefined') return ms => new Promise(r => setTimeout(r, ms));
+  try {
+    const w = new Worker(URL.createObjectURL(new Blob(['onmessage = e => setTimeout(() => postMessage(e.data.id), e.data.ms);'])));
+    const waiting = new Map(); let next = 0;
+    w.onmessage = e => { const r = waiting.get(e.data); waiting.delete(e.data); if (r) r(); };
+    return ms => new Promise(r => { const id = next++; waiting.set(id, r); w.postMessage({ id, ms }); });
+  } catch (e) {
+    return ms => new Promise(r => setTimeout(r, ms));
+  }
+})();
+
 // Variables already used by the other fetch scripts are taken by code; the others are found on the
 // form by their title in the "Group Results By" list, so no code is guessed.
 const VARS = {
@@ -169,7 +184,7 @@ async function query(form, opts) {
   fd.set('O_change_action-Send-Export Results', 'Export Results'); fd.set('O_export-format', 'tsv');
   fd.delete('O_show_totals'); fd.set('O_show_suppressed', 'true'); fd.set('O_show_zeros', 'true');
   fd.set('action-Send', 'Send');
-  await new Promise(r => setTimeout(r, PAUSE_MS));  // CDC WONDER blocks addresses that send requests too quickly
+  await pause(PAUSE_MS);  // CDC WONDER blocks addresses that send requests too quickly
   const t = await (await fetch(form.action, { method: 'POST', body: new URLSearchParams(fd), credentials: 'include' })).text();
   if (/too many requests|temporarily blocked|access denied/i.test(t.slice(0, 2000)))
     throw new Error('CDC WONDER is limiting requests from this address. Stop, wait 30 minutes, then run the script again.');

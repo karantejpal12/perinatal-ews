@@ -16,6 +16,16 @@
   const f = [...document.forms].find(x => x.elements['B_1'] && /D192/.test(x.action));
   if (!f) throw new Error('Open the CDC WONDER provisional natality request form (D192) first.');
   const P = 'D192';
+  // Chrome throttles timers in background tabs (to about one per minute after five minutes hidden);
+  // a timer in a Web Worker is not throttled, so the pause stays as set while the tab is hidden.
+  const pause = (() => {
+    try {
+      const w = new Worker(URL.createObjectURL(new Blob(['onmessage = e => setTimeout(() => postMessage(e.data.id), e.data.ms);'])));
+      const waiting = new Map(); let next = 0;
+      w.onmessage = e => { const r = waiting.get(e.data); waiting.delete(e.data); if (r) r(); };
+      return ms => new Promise(r => { const id = next++; waiting.set(id, r); w.postMessage({ id, ms }); });
+    } catch (e) { return ms => new Promise(r => setTimeout(r, ms)); }
+  })();
   async function q(groups, filters, radios) {
     const fd = new FormData(f);
     for (const k of [...fd.keys()]) if (/^(action-|tab-|finder-action-)/.test(k)) fd.delete(k);
@@ -24,7 +34,7 @@
     for (const [k, vals] of Object.entries(filters || {})) { fd.delete(k); for (const v of vals) fd.append(k, v); }
     fd.set('O_change_action-Send-Export Results', 'Export Results'); fd.set('O_export-format', 'tsv');
     fd.delete('O_show_totals'); fd.set('O_show_suppressed', 'true'); fd.set('O_show_zeros', 'true'); fd.set('action-Send', 'Send');
-    await new Promise(r => setTimeout(r, 2500));  // CDC WONDER blocks addresses that send requests too quickly
+    await pause(2500);  // CDC WONDER blocks addresses that send requests too quickly
     const t = await (await fetch(f.action, { method: 'POST', body: new URLSearchParams(fd), credentials: 'include' })).text();
     if (/Too many requests/i.test(t)) throw new Error('CDC WONDER has temporarily blocked requests from this address (too many requests). Wait 30 minutes and run the script again.');
     if (!t.startsWith('"Notes"')) throw new Error('Unexpected response from WONDER: ' + t.slice(0, 200));
