@@ -7,7 +7,7 @@ Every evaluation of perinatal-ews in one place: how often detection flags counti
 | [Alert rates on historical data](#alert-rates-on-historical-data) | Whether alert rates stay low and steady, and whether alerts last | US counties, 2021–2024 | `results/2024/backtest.csv` |
 | [Detection on synthetic data](#detection-on-synthetic-data) | Sensitivity and false-alert rate against known injected changes | Synthetic demo, seed 7 | `perinatal-ews demo` |
 | [Next-year forecast](#next-year-forecast) | Ranking, accuracy and calibration, forward in time | US counties, outcome years 2023 and 2024 | `results/2024/forecast_*.csv` |
-| [Full-year outlook](#full-year-outlook) | Whether January–August predicts the full year for each state | US states, 2021–2025 | `results/latest/outlook_backtest.json` |
+| [Full-year outlook](#full-year-outlook) | Whether January–September predicts the full year for each state | US states, 2021–2025 | `results/latest/outlook_backtest.json` |
 | [Held-out detection](#held-out-validation-of-detection) | Coverage of detection's predictive intervals | US counties, 2020–2024 | Under review |
 
 ## Alert rates on historical data
@@ -81,22 +81,22 @@ The forecast's ranking is close to the logistic baseline and better calibrated t
 
 ## Full-year outlook
 
-Each monthly update projects every state's full-year rate and the chance that the full year will be flagged. The backtest (`scripts/validate_outlook.py`) reruns the outlook for 2021–2025 using only January–August of each year and compares it with the full year's result.
+Each monthly update projects every state's full-year rate and the chance that the full year will be flagged. The backtest (`scripts/validate_outlook.py`) reruns the outlook for 2021–2025 using only January–September of each year and compares it with the full year's result.
 
 | | |
 |---|---|
 | State-indicator-years | 1,020 |
 | Full years flagged (alert or watch) | 73 (7.2%) |
-| AUROC | 0.971 |
-| AUPRC | 0.821 |
-| Brier score | 0.029 |
-| Precision, top 10% | 59% |
-| Recall, top 10% | 82% |
-| Sensitivity at a 50% chance | 75% |
-| Precision at a 50% chance | 70% |
-| 80% range contained the full-year rate | 84.5% |
+| AUROC | 0.983 |
+| AUPRC | 0.899 |
+| Brier score | 0.021 |
+| Precision, top 10% | 64% |
+| Recall, top 10% | 89% |
+| Sensitivity at a 50% chance | 82% |
+| Precision at a 50% chance | 78% |
+| 80% range contained the full-year rate | 83.4% |
 
-For comparison, the year-so-far flag alone (flagged on January–August) found 68.5% of full-year flags with 73.5% precision (Brier 0.040). Every month's published outlook is saved in `results/history/` and will be scored once its year is complete.
+For comparison, the year-so-far flag alone (flagged on January–September) found 78.1% of full-year flags with 83.8% precision (Brier 0.026). Every month's published outlook is saved in `results/history/` and will be scored once its year is complete.
 
 ## Held-out validation of detection
 

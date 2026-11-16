@@ -8,25 +8,31 @@
   ],
   "state_indicators": 1020,
   "full_year_flags": 73,
-  "interval80_coverage": 0.845,
+  "interval80_coverage": 0.834,
   "outlook": {
     "n": 1020,
     "positives": 73,
     "prevalence": 0.0716,
-    "auroc": 0.9713,
-    "auprc": 0.8209,
-    "brier": 0.0286,
-    "precision_top10pct": 0.5882,
-    "recall_top10pct": 0.8219
+    "auroc": 0.9829,
+    "auprc": 0.899,
+    "brier": 0.0209,
+    "precision_top10pct": 0.6373,
+    "recall_top10pct": 0.8904
   },
   "outlook_at_50pct": {
-    "sensitivity": 0.753,
-    "precision": 0.696
+    "sensitivity": 0.822,
+    "precision": 0.779
   },
   "year_so_far_flag": {
-    "sensitivity": 0.685,
-    "precision": 0.735
+    "sensitivity": 0.781,
+    "precision": 0.838
   },
-  "brier_year_so_far_flag": 0.0402,
-  "months_known": 8
+  "brier_year_so_far_flag": 0.0265,
+  "variances": "other backtest years (leave one year out)",
+  "year_so_far_z_score": {
+    "n": 1020,
+    "auroc": 0.9735,
+    "auprc": 0.8127
+  },
+  "months_known": 9
 }

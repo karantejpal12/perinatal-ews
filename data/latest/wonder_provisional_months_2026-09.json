@@ -1,0 +1,130 @@
+{
+ "fetched_at": "2026-11-16",
+ "provisional_years": [
+  2025,
+  2026
+ ],
+ "ytd_through_month_fetched": 9,
+ "monthly_births": [
+  {
+   "year": 2025,
+   "month": 1,
+   "births": 303685
+  },
+  {
+   "year": 2025,
+   "month": 2,
+   "births": 275165
+  },
+  {
+   "year": 2025,
+   "month": 3,
+   "births": 297563
+  },
+  {
+   "year": 2025,
+   "month": 4,
+   "births": 289429
+  },
+  {
+   "year": 2025,
+   "month": 5,
+   "births": 303809
+  },
+  {
+   "year": 2025,
+   "month": 6,
+   "births": 298225
+  },
+  {
+   "year": 2025,
+   "month": 7,
+   "births": 321548
+  },
+  {
+   "year": 2025,
+   "month": 8,
+   "births": 319273
+  },
+  {
+   "year": 2025,
+   "month": 9,
+   "births": 309818
+  },
+  {
+   "year": 2025,
+   "month": 10,
+   "births": 305667
+  },
+  {
+   "year": 2025,
+   "month": 11,
+   "births": 280102
+  },
+  {
+   "year": 2025,
+   "month": 12,
+   "births": 302123
+  },
+  {
+   "year": 2026,
+   "month": 1,
+   "births": 295121
+  },
+  {
+   "year": 2026,
+   "month": 2,
+   "births": 271815
+  },
+  {
+   "year": 2026,
+   "month": 3,
+   "births": 296674
+  },
+  {
+   "year": 2026,
+   "month": 4,
+   "births": 288186
+  },
+  {
+   "year": 2026,
+   "month": 5,
+   "births": 296261
+  },
+  {
+   "year": 2026,
+   "month": 6,
+   "births": 298168
+  },
+  {
+   "year": 2026,
+   "month": 7,
+   "births": 317150
+  },
+  {
+   "year": 2026,
+   "month": 8,
+   "births": 313678
+  },
+  {
+   "year": 2026,
+   "month": 9,
+   "births": 299631
+  },
+  {
+   "year": 2026,
+   "month": 10,
+   "births": 0
+  },
+  {
+   "year": 2026,
+   "month": 11,
+   "births": 0
+  },
+  {
+   "year": 2026,
+   "month": 12,
+   "births": 0
+  }
+ ]
+}
