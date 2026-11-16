@@ -152,6 +152,8 @@ def main(argv: list[str] | None = None) -> None:
     pl.add_argument("--min-events", type=int, default=20, help="events needed for a reliable estimate (NCHS: 20)")
     pl.add_argument("--combine", default=None,
                     help="YAML file mapping combined-group labels to lists of subgroups (default: federal-style combinations)")
+    pl.add_argument("--config", default=None,
+                    help="config YAML; indicators with 'model: count' (per population) get Poisson intervals")
 
     rf = sub.add_parser("reference",
                         help="compare each county with its own lowest-risk mothers (PPOR internal reference group)")
@@ -223,9 +225,15 @@ def _pooled(args) -> None:
         tidy = to_state(tidy)
     unavailable = [int(y) for y in args.unavailable_years.split(",") if y.strip()]
     combine = yaml.safe_load(Path(args.combine).read_text()) if args.combine else None
+    from .config import load_config
+    from .detect import indicator_model
     from .pooling import small_numbers_analysis
+
+    cfg = load_config(args.config)
+    count = [k for k, spec in cfg["indicators"].items() if indicator_model(spec) == "count"]
     p, c = small_numbers_analysis(tidy, window=args.window, unavailable_years=unavailable,
-                                  fill_window=args.fill_window, combine=combine, min_events=args.min_events)
+                                  fill_window=args.fill_window, combine=combine, min_events=args.min_events,
+                                  count_indicators=count)
     out = Path(args.out)
     out.mkdir(parents=True, exist_ok=True)
     p.to_csv(out / "pooled_estimates.csv", index=False)

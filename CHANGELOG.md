@@ -4,6 +4,7 @@ All notable changes to perinatal-ews. Each release is archived on Zenodo (concep
 
 ## Unreleased
 
+- Pooled estimates (`perinatal-ews pooled`): indicators that are counts per population (`model: count`, passed with `--config`) get exact Poisson (gamma) confidence intervals instead of Wilson intervals, and their pooled windows are compared with the Poisson variance of the rate ratio; shares of births, and every published result, are unchanged. See [small numbers](docs/small_numbers.md).
 - Monthly update: provisional data through September 2026 (January–September). The full-year outlook backtest now uses January–September of each year; [validation](docs/validation.md) updated to match.
 - Fetch scripts: the pause between CDC WONDER queries now uses a Web Worker timer, because Chrome throttles timers in background tabs to about one per minute and stretched each 2.5-second pause to two or three minutes. A full `fetch_wonder_more.js` run in a background tab drops from over an hour to about 15 minutes.
 - Detection: an indicator can set `model: count` to be scored as a count per population (Poisson) rather than a share of births, the first step towards the teen birth rate (births per female aged 15–19); described in the [methodology](docs/methodology.md#detection-for-target-year-t) and tested on synthetic counts. Shares of births stay binomial by default, so published numbers are unchanged.

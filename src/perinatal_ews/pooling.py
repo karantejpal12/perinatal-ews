@@ -19,13 +19,19 @@ related racial and ethnic groups. This module does the same, transparently:
 - `small_numbers_analysis` runs all of the above.
 - `compare_windows` compares the latest pooled window with the one before it
   (rate ratio with a 95% confidence interval), only where both are reliable.
+
+Indicators are shares of births by default (Wilson interval; rate-ratio
+variance with the binomial terms). Indicators listed in `count_indicators`
+(``model: count`` in the config, for example teen births per female aged
+15-19) are counts per population: exact Poisson (gamma) intervals and a
+rate-ratio variance of 1/a + 1/b.
 """
 from __future__ import annotations
 
 import numpy as np
 import pandas as pd
 
-from .indicators import wilson_interval
+from .indicators import poisson_rate_interval, wilson_interval
 from .schema import TOTAL_SUBGROUP
 
 STATE_NAMES = {
@@ -99,8 +105,11 @@ def _windows(years: list[int], end_years: list[int], window: int, unavailable: s
 
 def pooled_estimates(tidy: pd.DataFrame, window: int = 3, unavailable_years: list[int] | None = None,
                      fill_window: bool = False, max_span: int = 6, min_years: int | None = None,
-                     min_events: int = 20) -> pd.DataFrame:
-    """Pooled rate per place, group, indicator and window. Suppressed or missing years are skipped and listed."""
+                     min_events: int = 20, count_indicators=None) -> pd.DataFrame:
+    """Pooled rate per place, group, indicator and window. Suppressed or missing years are skipped and listed.
+
+    Indicators in `count_indicators` get exact Poisson (gamma) intervals instead of Wilson intervals.
+    """
     unavailable = set(int(y) for y in (unavailable_years or []))
     min_years = min_years or max(1, window - 1)
     years = sorted(int(y) for y in tidy["year"].unique())
@@ -128,6 +137,10 @@ def pooled_estimates(tidy: pd.DataFrame, window: int = 3, unavailable_years: lis
     out.loc[~ok, ["numerator", "denominator"]] = np.nan
     out["rate"] = out["numerator"] / out["denominator"]
     out["ci_low"], out["ci_high"] = wilson_interval(out["numerator"], out["denominator"])
+    count = out["indicator"].isin(set(count_indicators or []))
+    if count.any():
+        lo, hi = poisson_rate_interval(out.loc[count, "numerator"], out.loc[count, "denominator"])
+        out.loc[count, "ci_low"], out.loc[count, "ci_high"] = lo, hi
     out["status"] = np.select(
         [~ok, out["numerator"] < 10, out["numerator"] < min_events],
         [f"too few years with data (<{min_years})", "suppressed (<10 events)", f"unreliable (<{min_events} events)"],
@@ -195,17 +208,23 @@ def combine_small_groups(pooled: pd.DataFrame, combine: dict | None = None, min_
 
 
 def small_numbers_analysis(tidy: pd.DataFrame, window: int = 3, unavailable_years: list[int] | None = None,
-                           fill_window: bool = False, combine: dict | None = None, min_events: int = 20):
+                           fill_window: bool = False, combine: dict | None = None, min_events: int = 20,
+                           count_indicators=None):
     """Combine groups year by year, pool years, choose what to report and compare windows."""
     t = add_combined_groups(tidy, combine)
     p = pooled_estimates(t, window=window, unavailable_years=unavailable_years, fill_window=fill_window,
-                         min_events=min_events)
+                         min_events=min_events, count_indicators=count_indicators)
     p = choose_reported(p, combine)
-    return p, compare_windows(p, window=window)
+    return p, compare_windows(p, window=window, count_indicators=count_indicators)
 
 
-def compare_windows(pooled: pd.DataFrame, window: int = 3) -> pd.DataFrame:
-    """Latest pooled window vs the previous, non-overlapping window (rate ratio, 95% CI)."""
+def compare_windows(pooled: pd.DataFrame, window: int = 3, count_indicators=None) -> pd.DataFrame:
+    """Latest pooled window vs the previous, non-overlapping window (rate ratio, 95% CI).
+
+    For indicators in `count_indicators` (counts per population) the log rate ratio's variance is
+    1/a + 1/b, without the binomial -1/n terms.
+    """
+    count_indicators = set(count_indicators or [])
     rows = []
     for key, g in pooled.groupby(["geo_id", "geo_name", "state", "indicator", "subgroup"]):
         g = g.set_index("window_end")
@@ -219,7 +238,10 @@ def compare_windows(pooled: pd.DataFrame, window: int = 3) -> pd.DataFrame:
         verdict = "not compared (an estimate is not reliable)"
         if ok:
             rr = a["rate"] / b["rate"]
-            se = np.sqrt(1 / a["numerator"] - 1 / a["denominator"] + 1 / b["numerator"] - 1 / b["denominator"])
+            if key[3] in count_indicators:
+                se = np.sqrt(1 / a["numerator"] + 1 / b["numerator"])
+            else:
+                se = np.sqrt(1 / a["numerator"] - 1 / a["denominator"] + 1 / b["numerator"] - 1 / b["denominator"])
             lo, hi = rr * np.exp(-1.96 * se), rr * np.exp(1.96 * se)
             verdict = "higher" if lo > 1 else "lower" if hi < 1 else "no clear change"
         rows.append(dict(zip(["geo_id", "geo_name", "state", "indicator", "subgroup"], key),

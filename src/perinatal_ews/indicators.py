@@ -22,6 +22,23 @@ def wilson_interval(k, n, level: float = 0.95):
     return lo, hi
 
 
+def poisson_rate_interval(k, n, level: float = 0.95):
+    """Exact (Garwood) interval for a rate of k events per n population, from the gamma distribution.
+
+    For indicators that are counts per population (``model: count``), where the
+    rate can exceed 1 and the binomial Wilson interval does not apply. With no
+    events the lower limit is 0. Works on arrays; NaN where n == 0 or k is missing.
+    """
+    k = np.asarray(k, dtype=float)
+    n = np.asarray(n, dtype=float)
+    a = 1 - level
+    with np.errstate(invalid="ignore", divide="ignore"):
+        lo = np.where(k > 0, stats.gamma.ppf(a / 2, np.where(k > 0, k, 1)), 0.0) / n
+        hi = stats.gamma.ppf(1 - a / 2, k + 1) / n
+    bad = ~(n > 0) | np.isnan(k)
+    return np.where(bad, np.nan, lo), np.where(bad, np.nan, hi)
+
+
 def compute_rates(tidy: pd.DataFrame, config: dict) -> pd.DataFrame:
     """Add rate, 95% CI and reliability columns to a tidy table."""
     det = config["detection"]
