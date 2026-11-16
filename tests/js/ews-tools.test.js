@@ -88,22 +88,31 @@ test('state summary reports counties not covered, and a state with no flags says
   assert.equal(s.counties_in_state, 10);
   assert.equal(s.counties_not_scored, 10 - s.counties);
   assert.match(s.plain_language_brief, /not reported separately by CDC WONDER/);
-  assert.match(s.plain_language_brief, /does not mean there is no concern/);
+  // A state with no flag on any indicator says that no flag is not the same as no concern.
+  const flagged = new Set(D.counties.filter(c => Object.values(c.ind).some(e => e.level === 'alert' || e.level === 'watch')).map(c => c.state));
+  const quiet = [...new Set(D.counties.map(c => c.state))].find(st => !flagged.has(st));
+  if (quiet) assert.match(tool('state_summary').run(D, { state: quiet }).plain_language_brief, /does not mean there is no concern/);
+  else {
+    const t = { ...D, counties: D.counties.filter(c => c.state === 'NH').map(c => ({ ...c, ind: Object.fromEntries(Object.entries(c.ind).map(([k, e]) => [k, { ...e, level: 'stable' }])) })) };
+    assert.match(tool('state_summary').run(t, { state: 'NH' }).plain_language_brief, /does not mean there is no concern/);
+  }
   for (const st of new Set(D.counties.map(c => c.state))) {
     assert.ok(EWS.COUNTIES_IN_STATE[st] >= D.counties.filter(c => c.state === st).length, st);
   }
   assert.equal(Object.values(EWS.COUNTIES_IN_STATE).reduce((a, b) => a + b, 0), 3143);
 });
 
-test('gestational hypertension results carry the reporting-quality caveat, other indicators do not', () => {
+test('each indicator carries its own reporting caveat, and the four without one carry none', () => {
   const gh = D.indicators.gestational_hypertension, cav = EWS.CAVEATS.gestational_hypertension;
   assert.match(cav, /20–50%/);
   const r = tool('get_county').run(D, { fips: '25013' });
   assert.equal(r.indicators[gh].reporting_caveat, cav);
-  for (const [lab, e] of Object.entries(r.indicators)) if (lab !== gh) assert.equal(e.reporting_caveat, undefined, lab);
+  const keyOf = Object.fromEntries(Object.entries(D.indicators).map(([k, l]) => [l, k]));
+  for (const [lab, e] of Object.entries(r.indicators)) assert.equal(e.reporting_caveat, EWS.CAVEATS[keyOf[lab]], lab);
+  const all = Object.fromEntries(Object.keys(D.indicators).filter(k => EWS.CAVEATS[k]).map(k => [D.indicators[k], EWS.CAVEATS[k]]));
   const s = tool('state_summary').run(D, { state: 'GA' });
-  assert.deepEqual(s.reporting_caveats, { [gh]: cav });
-  assert.deepEqual(tool('national_summary').run(D, {}).reporting_caveats, { [gh]: cav });
+  assert.deepEqual(s.reporting_caveats, all);
+  assert.deepEqual(tool('national_summary').run(D, {}).reporting_caveats, all);
   const withGh = tool('list_counties').run(D, { filter: 'flagged', indicator: 'gestational_hypertension', limit: 100 });
   assert.ok(withGh.total_matching > 0);
   assert.deepEqual(withGh.reporting_caveats, { [gh]: cav });

@@ -1,1 +1,23 @@
 indicator,geo_id,geo_name,issue,detail
+smoking_during_pregnancy,06025,Imperial County,suppressed or missing count,numerator not available
+smoking_during_pregnancy,06031,Kings County,suppressed or missing count,numerator not available
+smoking_during_pregnancy,06039,Madera County,suppressed or missing count,numerator not available
+smoking_during_pregnancy,06047,Merced County,suppressed or missing count,numerator not available
+smoking_during_pregnancy,06053,Monterey County,suppressed or missing count,numerator not available
+smoking_during_pregnancy,06055,Napa County,suppressed or missing count,numerator not available
+smoking_during_pregnancy,06081,San Mateo County,suppressed or missing count,numerator not available
+smoking_during_pregnancy,06095,Solano County,suppressed or missing count,numerator not available
+smoking_during_pregnancy,06107,Tulare County,suppressed or missing count,numerator not available
+smoking_during_pregnancy,12021,Collier County,suppressed or missing count,numerator not available
+smoking_during_pregnancy,13113,Fayette County,suppressed or missing count,numerator not available
+smoking_during_pregnancy,13117,Forsyth County,suppressed or missing count,numerator not available
+smoking_during_pregnancy,17093,Kendall County,suppressed or missing count,numerator not available
+smoking_during_pregnancy,36087,Rockland County,suppressed or missing count,numerator not available
+smoking_during_pregnancy,47187,Williamson County,suppressed or missing count,numerator not available
+smoking_during_pregnancy,48061,Cameron County,suppressed or missing count,numerator not available
+smoking_during_pregnancy,48209,Hays County,suppressed or missing count,numerator not available
+smoking_during_pregnancy,48479,Webb County,suppressed or missing count,numerator not available
+smoking_during_pregnancy,51059,Fairfax County,suppressed or missing count,numerator not available
+smoking_during_pregnancy,51107,Loudoun County,suppressed or missing count,numerator not available
+smoking_during_pregnancy,51510,Alexandria city,suppressed or missing count,numerator not available
+ntsv_cesarean,22019,Calcasieu Parish,denominator jump,-30% births vs 2023

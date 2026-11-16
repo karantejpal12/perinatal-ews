@@ -278,7 +278,7 @@ details.more[open] summary { margin-bottom: 10px; }
         <option value="flags">Most flags first</option><option value="risk">Highest 2025 risk</option>
         <option value="need">Need and access first</option><option value="name">Name</option></select></label>
       <label for="st-only">Show<select id="st-only"><option value="">All counties</option><option value="flag">Only flagged counties</option></select></label>
-      <label for="st-set" id="st-set-wrap" hidden>Indicators<select id="st-set"><option value="core">Early-warning indicators</option><option value="more">Added maternal and child health measures</option></select></label>
+      <label for="st-set" id="st-set-wrap" hidden>Indicators<select id="st-set"><option value="core">Early-warning indicators</option><option value="more">Added maternal and child health measures (new, not yet validated)</option></select></label>
     </div></div>
     <div id="state-body" class="stack"></div>
   </section>
@@ -471,7 +471,7 @@ details.more[open] summary { margin-bottom: 10px; }
     const more = sets(D, 'more');
     const add = (box, k) => box.append(el('option', { value: k, text: D.indicators[k] }));
     if (!more.length) { for (const k of Object.keys(D.indicators)) add(sel, k); return; }
-    for (const [set, label] of [['core', 'Early-warning indicators'], ['more', 'Added maternal and child health measures']]) {
+    for (const [set, label] of [['core', 'Early-warning indicators'], ['more', 'Added maternal and child health measures (new, not yet validated)']]) {
       const g = el('optgroup', { label }); for (const k of sets(D, set)) add(g, k); sel.append(g);
     }
   }
@@ -607,7 +607,7 @@ details.more[open] summary { margin-bottom: 10px; }
       if (moreSet.has(k) && D.indicator_descriptions) card.querySelector('.card-top').after(el('p', { class: 'note', style: 'margin:0', text: D.indicator_descriptions[k] + '.' }));
       (moreSet.has(k) ? moreCards : cards).append(card);
     }
-    const moreBlock = moreCards.childNodes.length ? [el('h3', { style: 'margin:8px 0 0', text: 'Added maternal and child health measures' }),
+    const moreBlock = moreCards.childNodes.length ? [el('h3', { style: 'margin:8px 0 0', text: 'Added maternal and child health measures (new, not yet validated)' }), el('p', { class: 'flag-note caveat', style: 'margin:0', text: 'New in this release and not yet validated: these measures use the same method as the four early-warning indicators, but their flags have not been checked against independent data. Some reflect changes in how hospitals record an item rather than real change in a county; check with the state vital records office before acting on a flag.' }),
       el('p', { class: 'note', style: 'margin:0', text: 'Same birth certificates and the same change and persistence checks as above, each framed so that a higher rate is worse. There is no next-year forecast for these yet: it has only been tested on the four indicators above.' }),
       moreCards] : [];
     const extra = [], top = [];
@@ -984,7 +984,7 @@ details.more[open] summary { margin-bottom: 10px; }
     block.append(stats);
     const moreKeys = window.EWS.indicatorSet(D, 'more');
     if (moreKeys.length) { const ms = el('div', { class: 'st-stats' }); for (const k of moreKeys) tile(ms, k);
-      block.append(el('h3', { style: 'margin:4px 0 0', text: 'Added maternal and child health measures' }), ms); }
+      block.append(el('h3', { style: 'margin:4px 0 0', text: 'Added maternal and child health measures (new, not yet validated)' }), el('p', { class: 'flag-note caveat', style: 'margin:0', text: 'New in this release and not yet validated: these measures use the same method as the four early-warning indicators, but their flags have not been checked against independent data. Some reflect changes in how hospitals record an item rather than real change in a county; check with the state vital records office before acting on a flag.' }), ms); }
     block.append(...caveatNotes(Object.keys(D.indicators)));
     for (const p of S.statewide_patterns)
       block.append(el('div', { class: 'flag-note', text: `State-wide pattern: ${p.indicator}, ${p.counties_flagged} of ${p.counties} counties flagged; state rate ${pct(p.state_rate_baseline)} at baseline, ${pct(p.state_rate_now)} in ${D.year}. Check with the state vital records office whether recording changed before reading this as local.` }));
