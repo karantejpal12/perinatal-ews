@@ -16,6 +16,7 @@ from __future__ import annotations
 
 import csv
 import io
+from collections.abc import Iterable
 from pathlib import Path
 
 import pandas as pd
@@ -248,5 +249,6 @@ def add_unknown_as_case(tidy: pd.DataFrame, extra: pd.DataFrame) -> pd.DataFrame
     return out
 
 
-def load_tidy_csv(path: str | Path) -> pd.DataFrame:
-    return validate(pd.read_csv(path, dtype={"geo_id": str}))
+def load_tidy_csv(path: str | Path, count_indicators: Iterable[str] = ()) -> pd.DataFrame:
+    """Read and validate a tidy CSV; `count_indicators` (``model: count``) may have rates above 1."""
+    return validate(pd.read_csv(path, dtype={"geo_id": str}), count_indicators=count_indicators)

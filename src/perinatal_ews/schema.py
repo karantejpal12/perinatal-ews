@@ -11,10 +11,18 @@ One row = one indicator, for one geography, one year and one subgroup.
     numerator    births with the outcome
     denominator  births with a known value for the outcome
 
+For indicators that are counts per population (``model: count`` in the
+config, for example teen births per female aged 15-19), the numerator counts
+events and the denominator is the population; the numerator may then exceed
+the denominator (a rate above 1), so pass those indicators to `validate` as
+`count_indicators`.
+
 Optional: `unknown`, births with the item unknown or not stated (written by
 `ingest.wonder_to_tidy`; not part of the denominator unless asked).
 """
 from __future__ import annotations
+
+from collections.abc import Iterable
 
 import pandas as pd
 
@@ -28,8 +36,12 @@ class SchemaError(ValueError):
     pass
 
 
-def validate(df: pd.DataFrame) -> pd.DataFrame:
-    """Check and normalise a tidy table. Returns a cleaned copy."""
+def validate(df: pd.DataFrame, count_indicators: Iterable[str] = ()) -> pd.DataFrame:
+    """Check and normalise a tidy table. Returns a cleaned copy.
+
+    A numerator above the denominator is an error for shares of births, but is
+    allowed for the indicators in `count_indicators` (counts per population).
+    """
     missing = [c for c in REQUIRED_COLUMNS if c not in df.columns]
     if missing:
         raise SchemaError(f"missing required columns: {missing}")
@@ -44,9 +56,11 @@ def validate(df: pd.DataFrame) -> pd.DataFrame:
     for col in ("numerator", "denominator"):
         out[col] = pd.to_numeric(out[col], errors="coerce")
 
-    bad = out["numerator"] > out["denominator"]
+    bad = (out["numerator"] > out["denominator"]) & ~out["indicator"].isin(list(count_indicators))
     if bad.any():
-        raise SchemaError(f"{int(bad.sum())} rows have numerator > denominator")
+        raise SchemaError(f"{int(bad.sum())} rows have numerator > denominator "
+                          f"(indicators: {', '.join(sorted(map(str, out.loc[bad, 'indicator'].unique())))}); "
+                          f"only indicators with 'model: count' in the config may have rates above 1")
     if (out["denominator"] < 0).any() or (out["numerator"] < 0).any():
         raise SchemaError("negative counts found")
 

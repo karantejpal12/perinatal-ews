@@ -94,10 +94,13 @@ def _run(tidy: pd.DataFrame, cfg: dict, out: Path, year: int | None, truth: pd.D
         if fc is not None:
             fc.metrics.to_csv(out / "forecast_metrics.csv", index=False)
     # The bulletin stays on the original four until the newer indicators have been reviewed.
-    (out / "report.html").write_text(build_report(core, cfg, truth=truth, target_year=year, title=title,
-                                                  source_note=source_note, forecast=fc, need_access=na,
-                                                  benchmark=bench, typology=typ,
-                                                  anomalies=anomalies))
+    if core.empty:
+        print("No bulletin (report.html): it covers only the original four indicators, and none is in the input.")
+    else:
+        (out / "report.html").write_text(build_report(core, cfg, truth=truth, target_year=year, title=title,
+                                                      source_note=source_note, forecast=fc, need_access=na,
+                                                      benchmark=bench, typology=typ,
+                                                      anomalies=anomalies))
     total = res[res["subgroup"] == TOTAL_SUBGROUP]
     print(f"Scored {total['geo_id'].nunique()} areas: "
           f"{int((total['level'] == 'alert').sum())} alerts, {int((total['level'] == 'watch').sum())} watch. "
@@ -208,11 +211,17 @@ def main(argv: list[str] | None = None) -> None:
         mcp_main(args.results)
     elif args.cmd == "run":
         cfg = load_config(args.config)
-        tidy = pd.concat([load_tidy_csv(f) for f in args.input], ignore_index=True)
+        tidy = pd.concat([load_tidy_csv(f, _count_indicators(cfg)) for f in args.input], ignore_index=True)
         if args.level == "state" and tidy["geo_id"].astype(str).str.len().eq(5).any():
             from .pooling import to_state
             tidy = to_state(tidy)
         _run(tidy, cfg, Path(args.out), args.year, None, args.title, args.source_note, args.forecast, args.context)
+
+
+def _count_indicators(cfg: dict) -> list[str]:
+    """Indicators that are counts per population (``model: count``)."""
+    from .detect import indicator_model
+    return [k for k, spec in cfg["indicators"].items() if indicator_model(spec) == "count"]
 
 
 def _pooled(args) -> None:
@@ -220,17 +229,15 @@ def _pooled(args) -> None:
 
     from .pooling import to_state
 
-    tidy = pd.concat([load_tidy_csv(f) for f in args.input], ignore_index=True)
+    cfg = load_config(args.config)
+    count = _count_indicators(cfg)
+    tidy = pd.concat([load_tidy_csv(f, count) for f in args.input], ignore_index=True)
     if args.level == "state":
         tidy = to_state(tidy)
     unavailable = [int(y) for y in args.unavailable_years.split(",") if y.strip()]
     combine = yaml.safe_load(Path(args.combine).read_text()) if args.combine else None
-    from .config import load_config
-    from .detect import indicator_model
     from .pooling import small_numbers_analysis
 
-    cfg = load_config(args.config)
-    count = [k for k, spec in cfg["indicators"].items() if indicator_model(spec) == "count"]
     p, c = small_numbers_analysis(tidy, window=args.window, unavailable_years=unavailable,
                                   fill_window=args.fill_window, combine=combine, min_events=args.min_events,
                                   count_indicators=count)
