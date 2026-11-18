@@ -199,3 +199,37 @@ test('list_counties: combinations that match nothing return no rows, and unknown
   assert.match(lc.run(D, { filter: 'worst' }).error, /persistent_burden/);
   assert.equal(lc.run(D, { filter: 'flagged', limit: 1000 }).showing, 100);
 });
+
+test('count indicators (per population) use exact Poisson intervals and are shown per 1,000', () => {
+  // scipy: gamma.ppf(0.025, 100) / 1000, gamma.ppf(0.975, 101) / 1000 (as tests/test_count_pooling.py)
+  const a = EWS.poissonInterval(0.1, 1000);
+  assert.equal(a.events, 100);
+  assert.ok(Math.abs(a.lo - 0.081364) < 1e-6 && Math.abs(a.hi - 0.121627) < 1e-6);
+  const b = EWS.poissonInterval(0.012, 1000);  // gamma.ppf(0.025, 12), gamma.ppf(0.975, 13)
+  assert.equal(b.unstable, true);
+  assert.ok(Math.abs(b.lo - 0.0062006) < 1e-6 && Math.abs(b.hi - 0.0209616) < 1e-6);
+  const c = EWS.poissonInterval(1.4, 30000);  // rates above 1 are not capped
+  assert.ok(c.lo > 1 && c.hi > c.lo && Math.abs(c.hi - 1.4134541) < 1e-6);
+  const z = EWS.poissonInterval(0, 500);
+  assert.equal(z.lo, 0);
+  assert.ok(Math.abs(z.hi - 0.0073778) < 1e-6);
+  assert.equal(EWS.poissonInterval(null, 1000), null);
+  assert.equal(EWS.poissonInterval(0.01, 0), null);
+
+  const T = { ...D, count_indicators: ['teen_birth_rate'] };
+  assert.equal(EWS.isCountIndicator(T, 'teen_birth_rate'), true);
+  assert.equal(EWS.isCountIndicator(T, 'preterm_birth'), false);
+  assert.equal(EWS.formatRate(T, 'teen_birth_rate', 0.0135), '13.5 per 1,000');
+  assert.equal(EWS.formatRate(T, 'preterm_birth', 0.105), '10.5%');
+  assert.equal(EWS.denominatorWord(T, 'teen_birth_rate'), 'population');
+  assert.deepEqual(EWS.indicatorInterval(T, 'teen_birth_rate', 0.1, 1000), a);
+  assert.deepEqual(EWS.indicatorInterval(T, 'preterm_birth', 0.0587, 3391), EWS.rateInterval(0.0587, 3391));
+  // The published file has no count indicators: every rate stays a percentage of births.
+  for (const k of Object.keys(D.indicators)) assert.equal(EWS.isCountIndicator(D, k), false, k);
+});
+
+test('intervals are written once with their unit', () => {
+  const T = { ...D, count_indicators: ['teen_birth_rate'] };
+  assert.equal(EWS.formatRange(T, 'teen_birth_rate', 0.0895, 0.1078), '89.5–107.8 per 1,000');
+  assert.equal(EWS.formatRange(T, 'preterm_birth', 0.09, 0.107), '9.0%–10.7%');
+});

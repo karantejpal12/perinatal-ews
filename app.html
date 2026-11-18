@@ -426,10 +426,11 @@ details.more[open] summary { margin-bottom: 10px; }
   /* ---------- explore ---------- */
   let D = null, byId = new Map(), patterns = new Set();
 
-  function trendChart(years, trend, expected, label, ns) {
+  function trendChart(years, trend, expected, label, ns, k) {
     const W = 340, H = 150, L = 38, R = 12, T = 12, B = 24;
-    // 95% Wilson interval for each year's rate, from the births behind it.
-    const cis = trend.map((v, i) => (v != null && ns && ns[i]) ? window.EWS.rateInterval(v, ns[i]) : null);
+    const count = window.EWS.isCountIndicator(D, k), fmt = (x, d) => window.EWS.formatRate(D, k, x, d);
+    // 95% interval for each year's rate, from the births (or population) behind it: Wilson for shares of births, exact Poisson for counts per population.
+    const cis = trend.map((v, i) => (v != null && ns && ns[i]) ? window.EWS.indicatorInterval(D, k, v, ns[i]) : null);
     const vals = trend.filter(v => v != null).concat(expected != null ? [expected] : [])
       .concat(cis.filter(Boolean).flatMap(c => [c.lo, c.hi]));
     if (!vals.length) return el('p', { class: 'note', text: 'Too few events to show a trend.' });
@@ -440,7 +441,7 @@ details.more[open] summary { margin-bottom: 10px; }
     for (let k = 0; k <= 3; k++) {
       const v = lo + (hi - lo) * k / 3, yy = y(v);
       s.append(sv('line', { class: 'grid', x1: L, x2: W - R, y1: yy, y2: yy }));
-      const t = sv('text', { x: L - 6, y: yy + 4, 'text-anchor': 'end' }); t.textContent = (100 * v).toFixed(v < 0.1 || hi - lo < 0.06 ? 1 : 0) + '%'; s.append(t);
+      const t = sv('text', { x: L - 6, y: yy + 4, 'text-anchor': 'end' }); t.textContent = count ? (1000 * v).toFixed(1000 * (hi - lo) < 6 ? 1 : 0) : (100 * v).toFixed(v < 0.1 || hi - lo < 0.06 ? 1 : 0) + '%'; s.append(t);
     }
     years.forEach((yr, i) => { if (i % 2 === 0 || i === years.length - 1) { const t = sv('text', { x: x(i), y: H - 6, 'text-anchor': 'middle' }); t.textContent = "'" + String(yr).slice(2); s.append(t); } });
     let dpath = '', started = false;
@@ -448,7 +449,7 @@ details.more[open] summary { margin-bottom: 10px; }
     s.append(sv('path', { class: 'line', d: dpath }));
     if (expected != null) {
       const c = sv('circle', { class: 'exp', cx: x(years.length - 1), cy: y(expected), r: 5 });
-      const tt = sv('title'); tt.textContent = `Expected ${D.year}: ${pct(expected)}`; c.append(tt); s.append(c);
+      const tt = sv('title'); tt.textContent = `Expected ${D.year}: ${fmt(expected)}`; c.append(tt); s.append(c);
     }
     cis.forEach((c, i) => { if (c) s.append(sv('line', { class: 'ci-bar', x1: x(i), x2: x(i), y1: y(c.lo), y2: y(c.hi) })); });
     trend.forEach((v, i) => {
@@ -457,7 +458,7 @@ details.more[open] summary { margin-bottom: 10px; }
       const d = sv('circle', { class: 'dot', cx: x(i), cy: y(v), r: last ? 4.5 : 3 });
       s.append(d);
       const h = sv('circle', { class: 'hit', cx: x(i), cy: y(v), r: 10 });
-      const tt = sv('title'); tt.textContent = `${years[i]}: ${pct(v)}` + (cis[i] ? ` (95% CI ${pct(cis[i].lo)}–${pct(cis[i].hi)}; ${ns[i].toLocaleString()} births)` : ''); h.append(tt); s.append(h);
+      const tt = sv('title'); tt.textContent = `${years[i]}: ${fmt(v)}` + (cis[i] ? ` (95% CI ${window.EWS.formatRange(D, k, cis[i].lo, cis[i].hi)}; ${ns[i].toLocaleString()} ${window.EWS.denominatorWord(D, k)})` : ''); h.append(tt); s.append(h);
     });
     return s;
   }
@@ -485,12 +486,13 @@ details.more[open] summary { margin-bottom: 10px; }
     CAL = lines.map(l => Object.fromEntries(l.split(',').map((v, i) => [h[i], Number(v)])));
   }).catch(() => {});
 
-  function howCalculated(e, ci) {
-    const y = D.year, n = D.counties.length;
+  function howCalculated(e, ci, k) {
+    const y = D.year, n = D.counties.length, count = window.EWS.isCountIndicator(D, k);
     const box = el('details', { class: 'calc' }, el('summary', { text: 'How this was calculated' }));
-    box.append(el('p', { text: `Expected rate (${pct(e.expected)}): this county's own rate in ${y - 4}–${y - 2}, pooled over three years (${y - 1} is skipped so that a change that began last year is not treated as normal), pulled toward the rate of all ${n} counties in proportion to how small the county is, then scaled by the change across all ${n} counties since then.` }));
+    if (count) box.append(el('p', { text: 'Rate per 1,000 population: events in the year divided by the population at risk, times 1,000 (a count per population, not a share of births).' }));
+    box.append(el('p', { text: `Expected rate (${window.EWS.formatRate(D, k, e.expected)}): this county's own rate in ${y - 4}–${y - 2}, pooled over three years (${y - 1} is skipped so that a change that began last year is not treated as normal), pulled toward the rate of all ${n} counties in proportion to how small the county is, then scaled by the change across all ${n} counties since then.` }));
     box.append(el('p', { text: 'Status: an alert needs the gap between observed and expected to be larger than chance after allowing for testing every county (Benjamini–Hochberg q ≤ 0.05), a rate at least 1.10 times expected, and at least 20 events. A watch flag needs z ≥ 2, a rate at least 1.05 times expected and at least 10 events. Stable means no change from the county\'s own history was detected; it does not mean the rate is low, and a rate that has been high for years is stable. The trend chart and the comparison with similar counties show the level.' }));
-    if (ci) box.append(el('p', { text: `Uncertainty: the 95% confidence interval (Wilson) shows the range expected from chance alone with ${e.births.toLocaleString()} births. Rates on fewer than 20 events are marked unstable (NCHS standard), and rates on fewer than 10 events are not shown.` }));
+    if (ci) box.append(el('p', { text: `Uncertainty: the 95% confidence interval (${count ? 'exact Poisson' : 'Wilson'}) shows the range expected from chance alone with ${e.births.toLocaleString()} ${count ? 'population' : 'births'}. Rates on fewer than 20 events are marked unstable (NCHS standard), and rates on fewer than 10 events are not shown.` }));
     if (e.risk != null) {
       const m = (D.forecast_metrics || []).find(r => r.selected);
       let t = `${D.forecast_year} risk (${pct(e.risk, 0)}): a gradient-boosted tree model's estimate of the chance that this result is flagged in ${D.forecast_year}, from recent rates, trends, detection scores, county size, payer mix and state-wide changes. It was trained only on earlier years`;
@@ -546,9 +548,9 @@ details.more[open] summary { margin-bottom: 10px; }
     for (const [k, label] of Object.entries(D.indicators)) {
       tb.append(el('tr', {}, el('td', { text: label }), ...cs.map(c => {
         const e = c.ind[k]; if (!e) return el('td', { text: '–' });
-        const ci = window.EWS.rateInterval(e.rate, e.births);
-        const td = el('td', {}, el('b', { text: pct(e.rate) }), ' ', pill(e.level));
-        td.append(el('small', { text: (ci ? `95% CI ${pct(ci.lo)}–${pct(ci.hi)}` : '') + (e.expected != null ? ` · expected ${pct(e.expected)}` : '') }));
+        const ci = window.EWS.indicatorInterval(D, k, e.rate, e.births), fmt = x => window.EWS.formatRate(D, k, x);
+        const td = el('td', {}, el('b', { text: fmt(e.rate) }), ' ', pill(e.level));
+        td.append(el('small', { text: (ci ? `95% CI ${window.EWS.formatRange(D, k, ci.lo, ci.hi)}` : '') + (e.expected != null ? ` · expected ${fmt(e.expected)}` : '') }));
         if (e.persistent && e.persistent.status === 'persistent') td.append(el('small', { text: `Highest fifth in ${e.persistent.years_worst} of ${e.persistent.years_ranked} years` }));
         if (ci && ci.unstable) td.append(el('small', { text: `Unstable: ${ci.events} events` }));
         return td;
@@ -579,16 +581,16 @@ details.more[open] summary { margin-bottom: 10px; }
       const e = c.ind[k]; if (!e) continue;
       const card = el('article', { class: 'card' });
       card.append(el('div', { class: 'card-top' }, el('h3', { text: label }), pill(e.level)));
-      const ci = window.EWS.rateInterval(e.rate, e.births);
-      const rateBox = el('div', {}, el('b', { text: pct(e.rate) }), el('span', { text: `${D.year} rate` }));
-      if (ci) rateBox.append(el('span', { class: 'ci', text: `95% CI ${pct(ci.lo)}–${pct(ci.hi)}` }));
+      const ci = window.EWS.indicatorInterval(D, k, e.rate, e.births), fmt = x => window.EWS.formatRate(D, k, x);
+      const rateBox = el('div', {}, el('b', { text: fmt(e.rate) }), el('span', { text: `${D.year} rate` }));
+      if (ci) rateBox.append(el('span', { class: 'ci', text: `95% CI ${window.EWS.formatRange(D, k, ci.lo, ci.hi)}` }));
       if (ci && ci.unstable) rateBox.append(el('span', { class: 'unstable', title: 'NCHS: rates based on fewer than 20 events are unstable', text: `Unstable: ${ci.events} events` }));
       card.append(el('div', { class: 'nums' }, rateBox,
-        el('div', {}, el('b', { text: pct(e.expected) }), el('span', { text: 'Expected' })),
+        el('div', {}, el('b', { text: fmt(e.expected) }), el('span', { text: 'Expected' })),
         el('div', {}, el('b', { text: e.rr == null ? '–' : e.rr.toFixed(2) + '×' }), el('span', { text: 'Observed ÷ expected' }))));
-      const ch = el('div', { class: 'chart' }); ch.append(trendChart(D.years, e.trend, e.expected, label, e.trend_n)); card.append(ch);
+      const ch = el('div', { class: 'chart' }); ch.append(trendChart(D.years, e.trend, e.expected, label, e.trend_n, k)); card.append(ch);
       const subs = el('div', { class: 'subs' });
-      for (const [s, sd] of Object.entries(e.subgroups || {})) subs.append(el('span', {}, el('b', { text: s + ': ' }), pct(sd.rate), ' · ', LABEL[sd.level] || sd.level));
+      for (const [s, sd] of Object.entries(e.subgroups || {})) subs.append(el('span', {}, el('b', { text: s + ': ' }), fmt(sd.rate), ' · ', LABEL[sd.level] || sd.level));
       if (subs.childNodes.length) card.append(subs);
       if (e.risk != null) {
         const r = el('div', { class: 'risk' }, el('span', { text: `${D.forecast_year} risk of being flagged` }));
@@ -600,10 +602,10 @@ details.more[open] summary { margin-bottom: 10px; }
       if (e.sustained) card.append(el('p', { class: 'note', text: 'Also elevated the year before.' }));
       const pn = persistentNote(e); if (pn) card.append(pn);
       if (e.factors) card.append(el('p', { class: 'why', text: `Main forecast factors (approximate): ${e.factors}` }));
-      card.append(howCalculated(e, ci));
+      card.append(howCalculated(e, ci, k));
       if (e.similar && e.similar.expected != null) card.append(el('p', { class: 'why', text:
         `Compared with counties with similar health, social and access conditions (${D.benchmark_years || 'recent years'}): ` +
-        `${pct(e.similar.rate)} vs ${pct(e.similar.expected)}` + (e.similar.low != null ? ` (90% range ${pct(e.similar.low)}–${pct(e.similar.high)})` : '') + `, ${e.similar.verdict}.` }));
+        `${fmt(e.similar.rate)} vs ${fmt(e.similar.expected)}` + (e.similar.low != null ? ` (90% range ${window.EWS.formatRange(D, k, e.similar.low, e.similar.high)})` : '') + `, ${e.similar.verdict}.` }));
       if (moreSet.has(k) && D.indicator_descriptions) card.querySelector('.card-top').after(el('p', { class: 'note', style: 'margin:0', text: D.indicator_descriptions[k] + '.' }));
       (moreSet.has(k) ? moreCards : cards).append(card);
     }

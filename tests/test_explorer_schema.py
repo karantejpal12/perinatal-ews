@@ -14,8 +14,8 @@ SCHEMA = json.loads((ROOT / "docs" / "explorer.schema.json").read_text())
 PUBLISHED = ROOT / "results" / "2024" / "explorer.json"
 
 
-def _errors(doc):
-    v = jsonschema.Draft202012Validator(SCHEMA, format_checker=jsonschema.FormatChecker())
+def _errors(doc, schema=SCHEMA):
+    v = jsonschema.Draft202012Validator(schema, format_checker=jsonschema.FormatChecker())
     return sorted(f"{'/'.join(map(str, e.absolute_path))}: {e.message}" for e in v.iter_errors(doc))
 
 
@@ -42,6 +42,7 @@ def _consistency(d):
                 assert all(d["persistent"]["window_start"] <= y <= d["persistent"]["window_end"] for y in p["worst_years"])
             if "similar" in e and None not in (e["similar"]["low"], e["similar"]["high"]):
                 assert e["similar"]["low"] <= e["similar"]["high"]
+    assert set(d.get("count_indicators", [])) <= set(d["indicators"])
     if "indicator_sets" in d:
         assert d["indicator_sets"]["core"] + d["indicator_sets"]["more"] == list(d["indicators"])
         assert set(d.get("indicator_descriptions", d["indicators"])) == set(d["indicators"])
@@ -128,3 +129,55 @@ def test_file_written_by_the_build_matches_schema(tmp_path):
         _consistency(d)
     d = json.loads((tmp_path / "with.json").read_text())
     assert all("ctx" in c and "peers" in c for c in d["counties"])
+
+
+def test_count_indicator_is_marked_for_display_per_population(tmp_path):
+    """An indicator with `model: count` (teen births per female aged 15-19) is listed in count_indicators,
+    so the explorer shows it per 1,000 population; county births leave its population out."""
+    import numpy as np
+    import pandas as pd
+    import yaml
+    from perinatal_ews import config as cfgmod
+    from perinatal_ews import synthetic
+    from perinatal_ews.cli import main
+
+    tidy, _ = synthetic.generate(seed=7)
+    tidy = tidy[tidy["geo_id"].isin(tidy["geo_id"].drop_duplicates().head(60))].copy()
+    names = sorted(tidy["state"].unique())
+    tidy["state"] = tidy["state"].map({s: "Z" + chr(65 + i) for i, s in enumerate(names)})
+    rng = np.random.default_rng(3)
+    counties = tidy.drop_duplicates("geo_id")[["geo_id", "geo_name", "state"]]
+    pop = {g: float(rng.integers(3_000, 40_000)) for g in counties["geo_id"]}
+    teen = pd.DataFrame([dict(indicator="teen_birth_rate", subgroup="All", geo_id=c.geo_id, geo_name=c.geo_name,
+                              state=c.state, year=y, numerator=float(rng.poisson(0.015 * pop[c.geo_id])),
+                              denominator=pop[c.geo_id])
+                         for c in counties.itertuples() for y in sorted(tidy["year"].unique())])
+    pd.concat([tidy, teen], ignore_index=True).to_csv(tmp_path / "tidy.csv", index=False)
+    cfg = cfgmod.load_config()
+    cfg["indicators"]["teen_birth_rate"] = {"label": "Teen birth rate", "direction": "higher_is_worse",
+                                            "model": "count", "set": "more",
+                                            "description": "Births to mothers aged 15-19 per female aged 15-19"}
+    (tmp_path / "cfg.yaml").write_text(yaml.safe_dump(cfg))
+    main(["run", "--input", str(tmp_path / "tidy.csv"), "--out", str(tmp_path / "res"),
+          "--config", str(tmp_path / "cfg.yaml")])
+    subprocess.run([sys.executable, str(ROOT / "scripts" / "build_explorer_data.py"), "--tidy", str(tmp_path / "tidy.csv"),
+                    "--results", str(tmp_path / "res"), "--config", str(tmp_path / "cfg.yaml"),
+                    "--out", str(tmp_path / "e.json")], check=True, capture_output=True)
+    d = json.loads((tmp_path / "e.json").read_text())
+    assert d["count_indicators"] == ["teen_birth_rate"]
+    # The schema lists the published indicators; allow the synthetic one, and nothing else changes.
+    schema = copy.deepcopy(SCHEMA)
+    schema["$defs"]["indicator"]["enum"].append("teen_birth_rate")
+    assert _errors(d, schema) == []
+    _consistency(d)
+    scored = [c for c in d["counties"] if "teen_birth_rate" in c["ind"]]
+    assert scored
+    for c in scored:
+        e = c["ind"]["teen_birth_rate"]
+        assert e["births"] == pop[c["id"]]
+        assert e["rate"] is None or 0.005 < e["rate"] < 0.05
+
+
+def test_published_explorer_has_no_count_indicators(published):
+    """Every published indicator is a share of births, so the explorer keeps showing percentages."""
+    assert "count_indicators" not in published

@@ -22,6 +22,8 @@
     "indicator_descriptions": {"type": "object", "propertyNames": {"$ref": "#/$defs/indicator"},
                                "additionalProperties": {"type": "string", "minLength": 1},
                                "description": "Indicator key to its definition (from the config)."},
+    "count_indicators": {"type": "array", "items": {"$ref": "#/$defs/indicator"}, "uniqueItems": true, "minItems": 1,
+                         "description": "Indicators that are counts per population (model: count in the config, for example teen births per female aged 15-19): their rates, expected rates and trend are events per person (the explorer shows them per 1,000 population) and their births and trend_n are the population. Absent when every indicator is a share of births."},
     "source": {"type": "string", "minLength": 1},
     "state_patterns": {
       "type": "array",

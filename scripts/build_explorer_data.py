@@ -19,6 +19,7 @@ from pathlib import Path
 import pandas as pd
 
 from perinatal_ews.config import core_indicators, load_config
+from perinatal_ews.detect import indicator_model
 
 
 def _r(x, nd=4):
@@ -68,6 +69,8 @@ def main() -> None:
     scored = set(det["indicator"])
     indicators = [k for k in cfg["indicators"] if k in scored]
     core = [k for k in core_indicators(cfg) if k in scored]
+    # Counts per population (`model: count`, e.g. teen births): shown per 1,000 population, not as a % of births.
+    count_inds = [k for k in indicators if indicator_model(cfg["indicators"][k]) == "count"]
     tot = det[det["subgroup"] == "All"].set_index(["geo_id", "indicator"])
     sub = det[det["subgroup"] != "All"].set_index(["geo_id", "indicator", "subgroup"])
     risk = fc.set_index(["geo_id", "indicator"])["risk"] if fc is not None else None
@@ -137,7 +140,8 @@ def main() -> None:
         if ctx is not None and c.geo_id in ctx.index:
             row = ctx.loc[c.geo_id]
             rec["ctx"] = {k: (_r(row[k], 1) if pd.notna(row[k]) else None) for k in CTX_FIELDS if k in ctx.columns}
-            births = max((e.get("births") or 0) for e in ind.values()) if ind else 0
+            # births: the largest births denominator; a count indicator's denominator is a population.
+            births = max(((e.get("births") or 0) for k, e in ind.items() if k not in count_inds), default=0)
             rec["births"] = births or None
         if c.geo_id in peers:
             rec["peers"] = peers[c.geo_id]
@@ -161,6 +165,7 @@ def main() -> None:
         # need and access) was built and validated on; "more": the added maternal and child health measures.
         "indicator_sets": {"core": core, "more": [k for k in indicators if k not in core]},
         "indicator_descriptions": {k: cfg["indicators"][k]["description"] for k in indicators},
+        **({"count_indicators": count_inds} if count_inds else {}),
         "source": "CDC WONDER Natality, 2016-2024 expanded (NCHS). Rates based on fewer than 10 events are not shown.",
         "state_patterns": [
             {"indicator": r.indicator, "state": r.state, "flagged": int(r.flagged), "counties": int(r.counties),

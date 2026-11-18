@@ -130,6 +130,72 @@
     return { events: k, lo: Math.max(0, centre - half), hi: Math.min(1, centre + half), unstable: k < 20 };
   }
 
+  /* Indicators that are counts per population (`model: count` in the config, for example teen births
+     per female aged 15-19) rather than shares of births. Files built before such indicators existed
+     have no count_indicators: every indicator is then a share of births. */
+  function isCountIndicator(D, k) { return !!(D && D.count_indicators && D.count_indicators.includes(k)); }
+  // A rate as shown to readers: per 1,000 population for count indicators, otherwise a percentage of births.
+  function formatRate(D, k, x, d = 1) {
+    if (x == null) return pct(x, d);
+    return isCountIndicator(D, k) ? `${(1000 * x).toFixed(d)} per 1,000` : pct(x, d);
+  }
+  // An interval as shown to readers: "89.5–107.8 per 1,000" or "9.0%–10.7%".
+  function formatRange(D, k, lo, hi, d = 1) {
+    if (lo == null || hi == null) return pct(null);
+    return isCountIndicator(D, k) ? `${(1000 * lo).toFixed(d)}–${(1000 * hi).toFixed(d)} per 1,000` : `${pct(lo, d)}–${pct(hi, d)}`;
+  }
+  // What the denominator of an indicator counts, for "n births" / "n population" wording.
+  function denominatorWord(D, k) { return isCountIndicator(D, k) ? 'population' : 'births'; }
+
+  // Natural log of the gamma function (Lanczos, g = 7), and the regularized lower incomplete gamma P(a, x).
+  const LANCZOS = [0.99999999999980993, 676.5203681218851, -1259.1392167224028, 771.32342877765313, -176.61502916214059,
+    12.507343278686905, -0.13857109526572012, 9.9843695780195716e-6, 1.5056327351493116e-7];
+  function logGamma(x) {
+    if (x < 0.5) return Math.log(Math.PI / Math.sin(Math.PI * x)) - logGamma(1 - x);
+    x -= 1; let a = LANCZOS[0]; const t = x + 7.5;
+    for (let i = 1; i < 9; i++) a += LANCZOS[i] / (x + i);
+    return 0.5 * Math.log(2 * Math.PI) + (x + 0.5) * Math.log(t) - t + Math.log(a);
+  }
+  function gammaP(a, x) {
+    if (x <= 0) return 0;
+    const lead = -x + a * Math.log(x) - logGamma(a);
+    if (x < a + 1) {  // series
+      let sum = 1 / a, term = sum;
+      for (let n = 1; n < 10000; n++) { term *= x / (a + n); sum += term; if (Math.abs(term) < Math.abs(sum) * 1e-15) break; }
+      return sum * Math.exp(lead);
+    }
+    // continued fraction for Q(a, x) (modified Lentz)
+    let b = x + 1 - a, c = 1e300, d = 1 / b, h = d;
+    for (let i = 1; i < 10000; i++) {
+      const an = -i * (i - a); b += 2;
+      d = an * d + b; if (Math.abs(d) < 1e-300) d = 1e-300;
+      c = b + an / c; if (Math.abs(c) < 1e-300) c = 1e-300;
+      d = 1 / d; const del = d * c; h *= del; if (Math.abs(del - 1) < 1e-15) break;
+    }
+    return 1 - Math.exp(lead) * h;
+  }
+  // Quantile of the gamma(shape, 1) distribution, by bisection on P.
+  function gammaQuantile(p, shape) {
+    let lo = 0, hi = shape + 20 * Math.sqrt(shape) + 20;
+    for (let i = 0; i < 200; i++) { const mid = (lo + hi) / 2; if (gammaP(shape, mid) < p) lo = mid; else hi = mid; }
+    return (lo + hi) / 2;
+  }
+
+  /* 95% exact Poisson (gamma) interval for a rate per population, as in perinatal_ews.pooling for
+     indicators with `model: count`: events k, lower limit gamma(k).ppf(0.025) / population and upper
+     limit gamma(k + 1).ppf(0.975) / population. Rates can exceed 1, so nothing is capped. */
+  function poissonInterval(rate, population, alpha = 0.05) {
+    if (rate == null || !population) return null;
+    const k = Math.round(rate * population);
+    const lo = k === 0 ? 0 : gammaQuantile(alpha / 2, k) / population;
+    const hi = gammaQuantile(1 - alpha / 2, k + 1) / population;
+    return { events: k, lo, hi, unstable: k < 20 };
+  }
+  // The interval that fits the indicator: exact Poisson for counts per population, Wilson for shares of births.
+  function indicatorInterval(D, k, rate, n) {
+    return isCountIndicator(D, k) ? poissonInterval(rate, n) : rateInterval(rate, n);
+  }
+
   function stateSummary(D, st) {
     const cs = D.counties.filter(c => c.state === st);
     if (!cs.length) return null;
@@ -297,6 +363,6 @@
     return [...new Set(out)];
   }
 
-  const api = { STATE_NAMES, COUNTIES_IN_STATE, CAVEATS, indicatorSet, lowerLabel, rateInterval, TOOLS, countyBrief, stateBrief, stateSummary, listCounties, nationalSummary, checkNumbers, findCounty, METHOD };
+  const api = { STATE_NAMES, COUNTIES_IN_STATE, CAVEATS, indicatorSet, lowerLabel, rateInterval, poissonInterval, indicatorInterval, isCountIndicator, formatRate, formatRange, denominatorWord, TOOLS, countyBrief, stateBrief, stateSummary, listCounties, nationalSummary, checkNumbers, findCounty, METHOD };
   if (typeof module !== 'undefined' && module.exports) module.exports = api; else root.EWS = api;
 })(typeof window !== 'undefined' ? window : globalThis);
