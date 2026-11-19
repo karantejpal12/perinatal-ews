@@ -233,3 +233,18 @@ test('intervals are written once with their unit', () => {
   assert.equal(EWS.formatRange(T, 'teen_birth_rate', 0.0895, 0.1078), '89.5–107.8 per 1,000');
   assert.equal(EWS.formatRange(T, 'preterm_birth', 0.09, 0.107), '9.0%–10.7%');
 });
+
+test('alert list, map tooltips and state-wide patterns keep percentages for the published file', () => {
+  // The explorer formats these with formatRate (missing values are written '–' in app.html before it is called);
+  // with no count indicators every value must match the old percentages.
+  const pct = x => (100 * x).toFixed(1) + '%';
+  for (const c of D.counties) for (const [k, e] of Object.entries(c.ind)) {
+    if (e.rate != null) assert.equal(EWS.formatRate(D, k, e.rate), pct(e.rate), `${c.id} ${k}`);
+    if (e.similar && e.similar.expected != null) assert.equal(EWS.formatRate(D, k, e.similar.expected), pct(e.similar.expected));
+  }
+  for (const p of D.state_patterns || []) assert.equal(EWS.formatRate(D, p.indicator, p.rate_now), pct(p.rate_now));
+  // A state-wide pattern whose indicator is not found falls back to a percentage rather than failing.
+  const T = { ...D, count_indicators: ['teen_birth_rate'] };
+  assert.equal(EWS.formatRate(T, undefined, 0.3467), '34.7%');
+  assert.equal(EWS.formatRate(T, 'teen_birth_rate', 0.0219), '21.9 per 1,000');
+});

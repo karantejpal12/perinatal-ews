@@ -395,6 +395,8 @@ details.more[open] summary { margin-bottom: 10px; }
     return n;
   };
   const pct = (x, d = 1) => (x == null ? '–' : (100 * x).toFixed(d) + '%');
+  // A rate in its indicator's unit (per 1,000 population for counts, otherwise % of births), '–' when missing, for tables and tooltips.
+  const rateText = (k, x) => (x == null ? '–' : window.EWS.formatRate(D, k, x));
   const NS = 'http://www.w3.org/2000/svg';
   const sv = (tag, attrs = {}) => { const n = document.createElementNS(NS, tag); for (const [k, v] of Object.entries(attrs)) n.setAttribute(k, v); return n; };
   const ICON = {
@@ -697,7 +699,7 @@ details.more[open] summary { margin-bottom: 10px; }
       const tr = el('tr', { class: 'row', tabindex: '0', onclick: () => { openCounty(r.c.id); window.scrollTo({ top: 0, behavior: 'smooth' }); },
         onkeydown: ev => { if (ev.key === 'Enter') { openCounty(r.c.id); window.scrollTo({ top: 0 }); } } },
         el('td', {}, pill(r.e.level)), el('td', { text: `${r.c.name}, ${r.c.state}` }), el('td', { text: D.indicators[r.k] }),
-        el('td', { class: 'num', text: pct(r.e.rate) }), el('td', { class: 'num', text: pct(r.e.expected) }),
+        el('td', { class: 'num', text: rateText(r.k, r.e.rate) }), el('td', { class: 'num', text: rateText(r.k, r.e.expected) }),
         el('td', { class: 'num', text: r.e.rr == null ? '–' : r.e.rr.toFixed(2) }), el('td', { class: 'num', text: r.e.risk == null ? '–' : pct(r.e.risk, 0) }));
       body.append(tr);
     }
@@ -720,7 +722,7 @@ details.more[open] summary { margin-bottom: 10px; }
     if (metric === 'similar') {
       if (!e || !e.similar) return null;
       const v = /higher/.test(e.similar.verdict) ? 'higher' : /lower/.test(e.similar.verdict) ? 'lower' : 'inline';
-      return { color: PAL[v], text: `${pct(e.similar.rate)} vs ${pct(e.similar.expected)} in similar counties (${e.similar.verdict})` };
+      return { color: PAL[v], text: `${rateText(ind, e.similar.rate)} vs ${rateText(ind, e.similar.expected)} in similar counties (${e.similar.verdict})` };
     }
     if (metric === 'persistent') {
       const p = e && e.persistent; if (!p || !D.persistent) return null;
@@ -988,8 +990,10 @@ details.more[open] summary { margin-bottom: 10px; }
     if (moreKeys.length) { const ms = el('div', { class: 'st-stats' }); for (const k of moreKeys) tile(ms, k);
       block.append(el('h3', { style: 'margin:4px 0 0', text: 'Added maternal and child health measures (new, not yet validated)' }), el('p', { class: 'flag-note caveat', style: 'margin:0', text: 'New in this release and not yet validated: these measures use the same method as the four early-warning indicators, but their flags have not been checked against independent data. Some reflect changes in how hospitals record an item rather than real change in a county; check with the state vital records office before acting on a flag.' }), ms); }
     block.append(...caveatNotes(Object.keys(D.indicators)));
-    for (const p of S.statewide_patterns)
-      block.append(el('div', { class: 'flag-note', text: `State-wide pattern: ${p.indicator}, ${p.counties_flagged} of ${p.counties} counties flagged; state rate ${pct(p.state_rate_baseline)} at baseline, ${pct(p.state_rate_now)} in ${D.year}. Check with the state vital records office whether recording changed before reading this as local.` }));
+    for (const p of S.statewide_patterns) {
+      const pk = Object.keys(D.indicators).find(k => D.indicators[k] === p.indicator), fmt = x => rateText(pk, x);
+      block.append(el('div', { class: 'flag-note', text: `State-wide pattern: ${p.indicator}, ${p.counties_flagged} of ${p.counties} counties flagged; state rate ${fmt(p.state_rate_baseline)} at baseline, ${fmt(p.state_rate_now)} in ${D.year}. Check with the state vital records office whether recording changed before reading this as local.` }));
+    }
     let cs = D.counties.filter(c => c.state === st);
     const nflags = c => Object.values(c.ind).filter(e => e.level === 'alert' || e.level === 'watch').length * 10 + Object.values(c.ind).filter(e => e.level === 'alert').length;
     const maxRisk = c => Math.max(0, ...Object.values(c.ind).map(e => e.risk || 0));
