@@ -36,6 +36,8 @@
       "type": "object", "additionalProperties": {"type": "string"},
       "properties": {"provisional": {"type": "string"}, "final": {"type": "string"}}
     },
+    "count_indicators": {"type": "array", "items": {"$ref": "#/$defs/indicator"}, "uniqueItems": true, "minItems": 1,
+                         "description": "Indicators that are counts per population (model: count, for example teen births per female aged 15-19) rather than shares of births: their rates, intervals and outlook are per person and shown per 1,000 population, and their 'births' is the population. Absent when there are none."},
     "states_data": {
       "type": "object",
       "description": "Results by two-letter state code.",

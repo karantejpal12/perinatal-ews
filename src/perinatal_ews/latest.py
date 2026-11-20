@@ -24,6 +24,11 @@ Method
 - By mother's race, the current year so far is compared with the same months
   of the three previous years combined (rate ratio, 95% CI), reporting small
   groups through combined groups as in pooling.py.
+- Indicators that are counts per population (``model: count`` in the config,
+  for example teen births per female aged 15-19) get exact Poisson (gamma)
+  intervals and a Poisson rate-ratio variance in the comparison by race, and
+  are listed in ``count_indicators`` in the metadata so the explorer shows
+  them per 1,000 population. Files without such indicators are unchanged.
 """
 from __future__ import annotations
 
@@ -35,7 +40,7 @@ from pathlib import Path
 import numpy as np
 import pandas as pd
 
-from .detect import detect
+from .detect import detect, indicator_model
 from .pooling import STATE_NAMES, add_combined_groups, choose_reported
 from .schema import TOTAL_SUBGROUP, validate
 
@@ -93,9 +98,17 @@ def _states(df: pd.DataFrame) -> pd.DataFrame:
     return d
 
 
+def count_indicators(config: dict) -> list[str]:
+    """Indicators in the config that are counts per population (``model: count``)."""
+    return [k for k, spec in config.get("indicators", {}).items() if indicator_model(spec) == "count"]
+
+
 def build_tidy(provisional: pd.DataFrame, baseline: pd.DataFrame, m: int, kind: str = "ytd",
-               subgroup: str = TOTAL_SUBGROUP) -> tuple[pd.DataFrame, list[int]]:
-    """State tidy table for January-m (kind='ytd') or full years (kind='full')."""
+               subgroup: str = TOTAL_SUBGROUP, count_indicators=()) -> tuple[pd.DataFrame, list[int]]:
+    """State tidy table for January-m (kind='ytd') or full years (kind='full').
+
+    `count_indicators` (counts per population) may have rates above 1.
+    """
     p = _states(provisional)
     p = p[(p["series"] == f"prov_{kind}") & (p["subgroup"] == subgroup)]
     b = _states(baseline)
@@ -103,13 +116,17 @@ def build_tidy(provisional: pd.DataFrame, baseline: pd.DataFrame, m: int, kind: 
     b = b[~b["year"].isin(p["year"].unique())]
     cols = ["geo_id", "geo_name", "state", "year", "indicator", "subgroup", "numerator", "denominator"]
     t = pd.concat([b[cols], p[cols]], ignore_index=True)
-    return validate(t), sorted(int(y) for y in b["year"].unique())
+    return validate(t, count_indicators=count_indicators), sorted(int(y) for y in b["year"].unique())
 
 
 def compare_to_recent(provisional: pd.DataFrame, year: int, reference_years: list[int], min_events: int = 20,
-                      combine: dict | None = None) -> pd.DataFrame:
-    """Current year so far vs the same months of reference years combined, by state, group and indicator."""
-    from .indicators import wilson_interval
+                      combine: dict | None = None, count_indicators=()) -> pd.DataFrame:
+    """Current year so far vs the same months of reference years combined, by state, group and indicator.
+
+    Indicators in `count_indicators` (counts per population) get exact Poisson intervals, and their
+    rate ratio's log variance is 1/events + 1/reference events (no binomial terms).
+    """
+    from .indicators import poisson_rate_interval, wilson_interval
 
     p = _states(provisional)
     p = p[p["series"] == "prov_ytd"]
@@ -125,13 +142,18 @@ def compare_to_recent(provisional: pd.DataFrame, year: int, reference_years: lis
     c = cur.merge(rg, on=["geo_id", "geo_name", "state", "indicator", "subgroup"], how="left")
     c["rate"] = c["numerator"] / c["denominator"]
     c["ci_low"], c["ci_high"] = wilson_interval(c["numerator"], c["denominator"])
+    count = c["indicator"].isin(list(count_indicators)).to_numpy()
+    if count.any():
+        lo, hi = poisson_rate_interval(c.loc[count, "numerator"], c.loc[count, "denominator"])
+        c.loc[count, "ci_low"], c.loc[count, "ci_high"] = lo, hi
     c["ref_rate"] = c["ref_num"] / c["ref_den"]
     c["status"] = np.where(c["numerator"].isna(), "suppressed or missing",
                            np.where(c["numerator"] < min_events, f"unreliable (<{min_events} events)", "reliable"))
     ok = (c["status"] == "reliable") & (c["ref_num"] >= min_events)
     c["rate_ratio"] = np.where(ok, c["rate"] / c["ref_rate"], np.nan)
     with np.errstate(divide="ignore", invalid="ignore"):
-        se = np.sqrt(1 / c["numerator"] - 1 / c["denominator"] + 1 / c["ref_num"] - 1 / c["ref_den"])
+        binom = 1 / c["numerator"] - 1 / c["denominator"] + 1 / c["ref_num"] - 1 / c["ref_den"]
+        se = np.sqrt(np.where(count, 1 / c["numerator"] + 1 / c["ref_num"], binom))
     c["rr_low"] = np.where(ok, c["rate_ratio"] * np.exp(-1.96 * se), np.nan)
     c["rr_high"] = np.where(ok, c["rate_ratio"] * np.exp(1.96 * se), np.nan)
     c["change"] = np.where(~ok, "not compared", np.where(c["rr_low"] > 1, "higher",
@@ -148,7 +170,8 @@ def run_latest(provisional: pd.DataFrame, baseline: pd.DataFrame, meta: dict, co
     out.mkdir(parents=True, exist_ok=True)
     m, year = int(meta["ytd_through_month"]), int(meta["ytd_year"])
 
-    ytd, final_years = build_tidy(provisional, baseline, m, "ytd")
+    counts = count_indicators(config)
+    ytd, final_years = build_tidy(provisional, baseline, m, "ytd", count_indicators=counts)
     prov_years = [int(y) for y in meta.get("provisional_years", [])]
     det_ytd = detect(ytd, config, target_year=year)
     det_ytd.to_csv(out / "state_detections_ytd.csv", index=False)
@@ -157,13 +180,13 @@ def run_latest(provisional: pd.DataFrame, baseline: pd.DataFrame, meta: dict, co
     full_years = [y for y in prov_years if y < year]
     if full_years:
         fy = max(full_years)
-        full, _ = build_tidy(provisional, baseline, m, "full")
+        full, _ = build_tidy(provisional, baseline, m, "full", count_indicators=counts)
         full = full[full["year"] <= fy]
         det_full = detect(full, config, target_year=fy)
         det_full.to_csv(out / f"state_detections_{fy}_provisional.csv", index=False)
         result["full"], result["full_year"] = det_full, fy
 
-    race = compare_to_recent(provisional, year, [year - 3, year - 2, year - 1])
+    race = compare_to_recent(provisional, year, [year - 3, year - 2, year - 1], count_indicators=counts)
     race = race[race["subgroup"] != TOTAL_SUBGROUP]
     race.to_csv(out / "state_race_ytd.csv", index=False)
     result["race"] = race
@@ -185,6 +208,9 @@ def run_latest(provisional: pd.DataFrame, baseline: pd.DataFrame, meta: dict, co
         "counts": {"alerts": int((tot["level"] == "alert").sum()), "watch": int((tot["level"] == "watch").sum())},
         "sources": meta.get("sources", {}),
     }
+    shown_counts = [k for k in counts if k in set(ytd["indicator"])]
+    if shown_counts:                      # absent otherwise, so files without such indicators are unchanged
+        latest["count_indicators"] = shown_counts
     (out / "latest_meta.json").write_text(json.dumps(latest, indent=2, default=str))
     result["meta"] = latest
     return result

@@ -21,7 +21,7 @@ from pathlib import Path
 import pandas as pd
 
 from perinatal_ews.config import load_config
-from perinatal_ews.latest import build_tidy, choose_months, explorer_payload, run_latest
+from perinatal_ews.latest import build_tidy, choose_months, count_indicators, explorer_payload, run_latest
 from perinatal_ews.outlook import outlook_with_backtest, score_archived
 
 
@@ -53,7 +53,7 @@ def main() -> None:
     # Full-year outlook for the current year, validated on the five most recent complete years.
     year, m_ = res["meta"]["ytd_year"], res["meta"]["ytd_through_month"]
     ytd = res["ytd_tidy"]
-    full, _ = build_tidy(prov, base, m_, "full")
+    full, _ = build_tidy(prov, base, m_, "full", count_indicators=count_indicators(cfg))
     full = full[full["year"] < year]
     bt_years = sorted(int(y) for y in full["year"].unique())[-5:]
     # With data through December nothing remains to project, so there is no backtest to run or show.

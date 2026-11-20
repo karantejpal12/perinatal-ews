@@ -397,6 +397,9 @@ details.more[open] summary { margin-bottom: 10px; }
   const pct = (x, d = 1) => (x == null ? '–' : (100 * x).toFixed(d) + '%');
   // A rate in its indicator's unit (per 1,000 population for counts, otherwise % of births), '–' when missing, for tables and tooltips.
   const rateText = (k, x) => (x == null ? '–' : window.EWS.formatRate(D, k, x));
+  // The same for the year-so-far state results (latest.json), which list their own count_indicators.
+  const latestRate = (k, x) => (x == null ? '–' : window.EWS.formatRate(LATEST, k, x));
+  const latestRange = (k, lo, hi) => window.EWS.formatRange(LATEST, k, lo, hi);
   const NS = 'http://www.w3.org/2000/svg';
   const sv = (tag, attrs = {}) => { const n = document.createElementNS(NS, tag); for (const [k, v] of Object.entries(attrs)) n.setAttribute(k, v); return n; };
   const ICON = {
@@ -773,8 +776,8 @@ details.more[open] summary { margin-bottom: 10px; }
       const color = !e ? 'var(--surface-2)' : outlookMode ? (e.outlook ? seq(e.outlook.p_flag) : 'var(--surface-2)') : (PAL[e.level] || 'var(--surface-2)');
       this.style.fill = stateMode ? color : '';
       const nm = ab ? (window.EWS.STATE_NAMES[ab] || ab) : '';
-      this.__tip = !e ? nm : outlookMode ? (e.outlook ? `${nm} · full ${y} projected ${pct(e.outlook.proj)} (80% range ${pct(e.outlook.lo)}–${pct(e.outlook.hi)}); chance of a flag ${pct(e.outlook.p_flag, 0)}` : nm)
-        : `${nm} · ${LATEST.ytd_label}: ${pct(e.rate)} vs ${pct(e.expected)} expected (${LABEL[e.level] || e.level})`;
+      this.__tip = !e ? nm : outlookMode ? (e.outlook ? `${nm} · full ${y} projected ${latestRate(ind, e.outlook.proj)} (80% range ${latestRange(ind, e.outlook.lo, e.outlook.hi)}); chance of a flag ${pct(e.outlook.p_flag, 0)}` : nm)
+        : `${nm} · ${LATEST.ytd_label}: ${latestRate(ind, e.rate)} vs ${latestRate(ind, e.expected)} expected (${LABEL[e.level] || e.level})`;
     });
     if (stateMode) {
       if (metric === 'state_outlook') { const box = $('#map-legend'); box.textContent = ''; [0, 0.25, 0.5, 0.75, 1].forEach(v => { const i = el('i'); i.style.background = seq(v); box.append(el('span', {}, i, pct(v, 0))); }); }
@@ -917,8 +920,9 @@ details.more[open] summary { margin-bottom: 10px; }
         const name = el('td', { text: r.g }); if (MEMBER.has(r.g)) name.style.paddingLeft = '26px'; if (/combined/.test(r.g)) name.style.fontWeight = '600';
         const ch = !ok ? (r.report === 'insufficient data' ? 'Insufficient data' : `Too few births; see ${r.report}`)
           : r.change === 'higher' ? `Higher (×${r.rr.toFixed(2)})` : r.change === 'lower' ? `Lower (×${r.rr.toFixed(2)})` : r.change === 'no clear change' ? 'No clear change' : 'Not compared';
-        rb.append(el('tr', {}, name, el('td', { class: 'num', text: ok ? `${pct(r.rate)} (${pct(r.lo)}–${pct(r.hi)})` : '–' }),
-          el('td', { class: 'num', text: ok && r.ref != null ? pct(r.ref) : '–' }), el('td', { text: ch })));
+        const k = sel.value;
+        rb.append(el('tr', {}, name, el('td', { class: 'num', text: ok ? `${latestRate(k, r.rate)} (${latestRange(k, r.lo, r.hi)})` : '–' }),
+          el('td', { class: 'num', text: ok && r.ref != null ? latestRate(k, r.ref) : '–' }), el('td', { text: ch })));
       }
       const y = LATEST.ytd_year;
       tbox.append(el('div', { class: 'table-wrap' }, el('table', {}, el('thead', {}, el('tr', {}, el('th', { text: "Mother's race" }),
@@ -932,7 +936,7 @@ details.more[open] summary { margin-bottom: 10px; }
   function howCalculatedState() {
     const y = LATEST.ytd_year, fy = LATEST.full_year_provisional, n = Object.keys(LATEST.states_data).length;
     const box = el('details', { class: 'calc' }, el('summary', { text: 'How this was calculated' }));
-    box.append(el('p', { text: `Rate so far: births in ${LATEST.ytd_label} with the outcome, divided by births with the item reported (CDC provisional data; births with the item unknown are left out). Expected: the state's own rate for the same months of ${y - 4}–${y - 2}, pooled over three years (${y - 1} is skipped so that a change that began last year is not treated as normal), pulled toward the rate of all ${n === 51 ? '50 states and DC' : n + ' areas'} in proportion to how small the state is, then scaled by the change across all of them since then.` }));
+    box.append(el('p', { text: `Rate so far: births in ${LATEST.ytd_label} with the outcome, divided by births with the item reported (CDC provisional data; births with the item unknown are left out)${(LATEST.count_indicators || []).length ? `; for ${LATEST.count_indicators.map(k => D.indicators[k] || k).join(', ')}, events divided by the population at risk, shown per 1,000 population` : ''}. Expected: the state's own rate for the same months of ${y - 4}–${y - 2}, pooled over three years (${y - 1} is skipped so that a change that began last year is not treated as normal), pulled toward the rate of all ${n === 51 ? '50 states and DC' : n + ' areas'} in proportion to how small the state is, then scaled by the change across all of them since then.` }));
     box.append(el('p', { text: 'Status uses the same rules as the county results: an alert needs the gap between observed and expected to be larger than chance after allowing for testing every state (Benjamini–Hochberg q ≤ 0.05), a rate at least 1.10 times expected and at least 20 events; a watch flag needs z ≥ 2, a rate at least 1.05 times expected and at least 10 events. Stable means no change from the state\'s own history was detected; it does not mean the rate is low.' }));
     box.append(el('p', { text: `Full-year projection: for each state and indicator, how the rest of the year usually differs from the first months is learned from the last five complete years (each state's own pattern, pulled toward the all-state pattern when its history is noisy). The rest of ${y} is then simulated many times with the uncertainty seen when this was tried on past years, and each simulated full year is passed through the same detection rules. The 80% range holds the middle 80% of simulated full-year rates, and the chance the full year is flagged is the share of simulations ending in an alert or a watch.` }));
     if (fy) box.append(el('p', { text: `${fy} (whole year): the last complete year in the provisional data, scored with the same rules against ${fy - 4}–${fy - 2}.` }));
@@ -948,8 +952,8 @@ details.more[open] summary { margin-bottom: 10px; }
       const e = L.ind[k]; if (!e) continue;
       const o = e.outlook;
       tb.append(el('tr', {}, el('td', { text: label }), el('td', {}, pill(e.level)),
-        el('td', { class: 'num', text: pct(e.rate) }), el('td', { class: 'num', text: pct(e.expected) }),
-        el('td', { class: 'num', text: o ? `${pct(o.proj)} (${pct(o.lo)}–${pct(o.hi)})` : '–' }),
+        el('td', { class: 'num', text: latestRate(k, e.rate) }), el('td', { class: 'num', text: latestRate(k, e.expected) }),
+        el('td', { class: 'num', text: o ? `${latestRate(k, o.proj)} (${latestRange(k, o.lo, o.hi)})` : '–' }),
         el('td', { class: 'num', text: o ? pct(o.p_flag, 0) : '–' }),
         el('td', {}, e.full_year_level ? pill(e.full_year_level) : '–')));
     }
