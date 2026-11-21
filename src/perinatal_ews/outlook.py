@@ -21,6 +21,15 @@ Method
    detection method, so the probability means "chance that the full year
    will be flagged by perinatal-ews", using exactly the same rules as before.
 
+Indicators that are counts per population (``model: count`` in the config,
+such as the teen birth rate) can have rates above 1, so for them the log rate
+takes the place of the log-odds throughout (seasonal step, projection and
+error variances) and the remaining months are simulated with Poisson noise.
+Their denominators must be person-time that accrues through the year (for a
+population, the population times the share of the year covered), so that the
+remaining months have a denominator of their own; rows whose remaining
+denominator is not positive are left out, as for shares of births.
+
 ``backtest`` repeats this for past years using only what was known at month
 *m* of each year, and compares the result with how the full year actually
 turned out. Every monthly update stores its outlook, so the forecast can be
@@ -31,7 +40,7 @@ from __future__ import annotations
 import numpy as np
 import pandas as pd
 
-from .detect import detect
+from .detect import detect, indicator_model
 from sklearn.metrics import average_precision_score, roc_auc_score
 
 from .forecast import _metrics
@@ -50,8 +59,31 @@ def _expit(x):
     return 1 / (1 + np.exp(-x))
 
 
-def remaining_table(ytd: pd.DataFrame, full: pd.DataFrame) -> pd.DataFrame:
-    """January-to-m and remaining-months counts for every state, indicator and complete year."""
+def _count_indicators(config: dict) -> set[str]:
+    """Indicators scored as counts per population (``model: count``)."""
+    return {k for k, spec in config.get("indicators", {}).items() if indicator_model(spec) == "count"}
+
+
+def _link(n, d, count):
+    """Log-odds for shares of births, log rate for counts per population (`count` is a boolean mask)."""
+    n = np.asarray(n, float)
+    d = np.asarray(d, float)
+    with np.errstate(divide="ignore", invalid="ignore"):
+        return np.where(count, np.log((n + 0.5) / d), _logit(n, d))
+
+
+def _link_var(n, d, count):
+    """Sampling variance of `_link`: 1/(n+½) + 1/(d-n+½) for shares, 1/(n+½) for counts."""
+    n = np.asarray(n, float)
+    d = np.asarray(d, float)
+    return np.where(count, 1 / (n + 0.5), 1 / (n + 0.5) + 1 / (d - n + 0.5))
+
+
+def remaining_table(ytd: pd.DataFrame, full: pd.DataFrame, count_indicators=()) -> pd.DataFrame:
+    """January-to-m and remaining-months counts for every state, indicator and complete year.
+
+    Indicators in `count_indicators` (counts per population) use the log rate instead of the log-odds.
+    """
     a = ytd[ytd["subgroup"] == TOTAL_SUBGROUP][KEY + ["numerator", "denominator"]]
     b = full[full["subgroup"] == TOTAL_SUBGROUP][KEY + ["numerator", "denominator"]]
     t = a.merge(b, on=KEY, suffixes=("_ytd", "_full"))
@@ -60,12 +92,13 @@ def remaining_table(ytd: pd.DataFrame, full: pd.DataFrame) -> pd.DataFrame:
     ok = t[["numerator_ytd", "denominator_ytd", "num_rem", "den_rem"]].notna().all(axis=1) & (t["den_rem"] > 0) \
         & (t["num_rem"] >= 0)
     t = t[ok].copy()
-    t["lr_ytd"] = _logit(t["numerator_ytd"], t["denominator_ytd"])
-    t["lr_rem"] = _logit(t["num_rem"], t["den_rem"])
+    count = t["indicator"].isin(list(count_indicators)).to_numpy()
+    t["lr_ytd"] = _link(t["numerator_ytd"], t["denominator_ytd"], count)
+    t["lr_rem"] = _link(t["num_rem"], t["den_rem"], count)
     t["d"] = t["lr_rem"] - t["lr_ytd"]
     t["births_ratio"] = t["den_rem"] / t["denominator_ytd"]
-    t["var_d"] = (1 / (t["numerator_ytd"] + 0.5) + 1 / (t["denominator_ytd"] - t["numerator_ytd"] + 0.5)
-                  + 1 / (t["num_rem"] + 0.5) + 1 / (t["den_rem"] - t["num_rem"] + 0.5))
+    t["var_d"] = (_link_var(t["numerator_ytd"], t["denominator_ytd"], count)
+                  + _link_var(t["num_rem"], t["den_rem"], count))
     return t
 
 
@@ -88,26 +121,27 @@ def seasonal_step(rem: pd.DataFrame, year: int, history: int = 5) -> pd.DataFram
     return pd.concat(rows, ignore_index=True)
 
 
-def _deterministic(rem_or_ytd: pd.DataFrame, step: pd.DataFrame) -> pd.DataFrame:
+def _deterministic(rem_or_ytd: pd.DataFrame, step: pd.DataFrame, count_indicators=()) -> pd.DataFrame:
     """Point projection of the remaining months for each state and indicator."""
     t = rem_or_ytd.merge(step[["geo_id", "indicator", "d_hat", "br"]], on=["geo_id", "indicator"], how="inner")
-    t["lr_ytd"] = _logit(t["numerator_ytd"], t["denominator_ytd"])
+    t["lr_ytd"] = _link(t["numerator_ytd"], t["denominator_ytd"], t["indicator"].isin(list(count_indicators)))
     t["lr_rem_hat"] = t["lr_ytd"] + t["d_hat"]
     t["den_rem_hat"] = np.round(t["denominator_ytd"] * t["br"])
     return t
 
 
-def error_components(rem: pd.DataFrame, years: list[int], history: int = 5) -> pd.DataFrame:
+def error_components(rem: pd.DataFrame, years: list[int], history: int = 5,
+                     count_indicators=()) -> pd.DataFrame:
     """Projection errors for past years: national (shared within a year) and state components, by indicator."""
     out = []
     for y in years:
         step = seasonal_step(rem, y, history)
         cur = rem[rem["year"] == y]
-        p = _deterministic(cur, step)
+        p = _deterministic(cur, step, count_indicators)
         p["err"] = p["lr_rem"] - p["lr_rem_hat"]
         out.append(p[["geo_id", "indicator", "year", "err", "num_rem", "den_rem"]])
     e = pd.concat(out, ignore_index=True)
-    e["samp_var"] = 1 / (e["num_rem"] + 0.5) + 1 / (e["den_rem"] - e["num_rem"] + 0.5)
+    e["samp_var"] = _link_var(e["num_rem"], e["den_rem"], e["indicator"].isin(list(count_indicators)))
     return e
 
 
@@ -125,11 +159,16 @@ def variance_from_errors(err: pd.DataFrame) -> dict:
 
 def simulate(ytd_now: pd.DataFrame, full_past: pd.DataFrame, step: pd.DataFrame, variances: dict, config: dict,
              year: int, n_draws: int = 300, seed: int = 0) -> pd.DataFrame:
-    """Simulate the full year `year` and run detection on each draw."""
+    """Simulate the full year `year` and run detection on each draw.
+
+    Remaining-month events are binomial for shares of births and Poisson for counts per population.
+    """
     rng = np.random.default_rng(seed)
+    counts = _count_indicators(config)
     cur = ytd_now[(ytd_now["year"] == year) & (ytd_now["subgroup"] == TOTAL_SUBGROUP)]
     cur = cur.rename(columns={"numerator": "numerator_ytd", "denominator": "denominator_ytd"})
-    p = _deterministic(cur.dropna(subset=["numerator_ytd", "denominator_ytd"]), step).reset_index(drop=True)
+    p = _deterministic(cur.dropna(subset=["numerator_ytd", "denominator_ytd"]), step, counts).reset_index(drop=True)
+    is_count = p["indicator"].isin(list(counts)).to_numpy()
     past = full_past[(full_past["year"] < year) & (full_past["subgroup"] == TOTAL_SUBGROUP)]
     inds = sorted(p["indicator"].unique())
     flag = np.zeros(len(p))
@@ -140,7 +179,13 @@ def simulate(ytd_now: pd.DataFrame, full_past: pd.DataFrame, step: pd.DataFrame,
         nat = {k: rng.normal(0, np.sqrt(variances.get(k, {}).get("var_national", 0.0))) for k in inds}
         sd_state = p["indicator"].map(lambda k: np.sqrt(variances.get(k, {}).get("var_state", 0.0))).to_numpy()
         lr = p["lr_rem_hat"].to_numpy() + p["indicator"].map(nat).to_numpy() + rng.normal(0, 1, len(p)) * sd_state
-        rem_num = rng.binomial(p["den_rem_hat"].astype(int).to_numpy(), _expit(lr))
+        den_rem = p["den_rem_hat"].to_numpy()
+        if is_count.any():
+            rem_num = np.empty(len(p))
+            rem_num[~is_count] = rng.binomial(den_rem[~is_count].astype(int), _expit(lr[~is_count]))
+            rem_num[is_count] = rng.poisson(den_rem[is_count] * np.exp(lr[is_count]))
+        else:                                     # shares of births only: the same draws as before
+            rem_num = rng.binomial(den_rem.astype(int), _expit(lr))
         num = p["numerator_ytd"].to_numpy() + rem_num
         den = p["denominator_ytd"].to_numpy() + p["den_rem_hat"].to_numpy()
         rates[i] = num / den
@@ -195,8 +240,9 @@ def outlook(ytd: pd.DataFrame, full: pd.DataFrame, config: dict, year: int, back
     """
     if _year_is_complete(ytd, full):
         return _complete_year(ytd, full, config, year)
-    rem = remaining_table(ytd, full)
-    variances = variance_from_errors(error_components(rem, backtest_years, history))
+    counts = _count_indicators(config)
+    rem = remaining_table(ytd, full, counts)
+    variances = variance_from_errors(error_components(rem, backtest_years, history, counts))
     step = seasonal_step(rem, year, history)
     return simulate(ytd, full, step, variances, config, year, n_draws, seed)
 
@@ -214,13 +260,14 @@ def backtest(ytd: pd.DataFrame, full: pd.DataFrame, config: dict, years: list[in
     Baselines: "the full year will be flagged if the year so far is flagged" (a yes/no rule), and the
     year-so-far detection z-score in the harmful direction used as a ranking score.
     """
-    rem = remaining_table(ytd, full)
+    counts = _count_indicators(config)
+    rem = remaining_table(ytd, full, counts)
     if forward_only:
         first = int(rem["year"].min()) + 2
         err_years = sorted(y for y in rem["year"].unique() if first <= y < max(years))
-        err = error_components(rem, err_years, history)
+        err = error_components(rem, err_years, history, counts)
     else:
-        err = error_components(rem, years, history)
+        err = error_components(rem, years, history, counts)
     rows = []
     for t in years:
         if forward_only:
