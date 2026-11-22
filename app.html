@@ -885,6 +885,8 @@ details.more[open] summary { margin-bottom: 10px; }
       const order = g => { const i = RACE_ORDER.indexOf(g); return i >= 0 ? i : RACE_ORDER.length; };
       const rows = (data[sel.value] || []).filter(r => dim[2](r.g)).sort((a, b) => order(a.g) - order(b.g) || a.g.localeCompare(b.g));
       if (!rows.length) { tableBox.append(el('p', { class: 'note', text: `No ${dim[1].toLowerCase()} results for this indicator in this state.` })); return; }
+      // Counts per population (state_race.json's count_indicators): per 1,000 population, with the population.
+      const k = sel.value, count = window.EWS.isCountIndicator(SR, k);
       const tb = el('tbody');
       for (const r of rows) {
         const ok = r.status === 'reliable';
@@ -893,12 +895,13 @@ details.more[open] summary { margin-bottom: 10px; }
         const ch = !ok ? '–' : r.change === 'higher' ? `Higher (×${r.rr.toFixed(2)})` : r.change === 'lower' ? `Lower (×${r.rr.toFixed(2)})`
           : r.change === 'no clear change' ? 'No clear change' : 'Not compared (earlier estimate too small)';
         const name = el('td', { text: r.g.replace(/^(Hispanic origin|Payer): /, '') }); if (MEMBER.has(r.g)) name.style.paddingLeft = '26px'; if (r.combined || r.g === 'All') name.style.fontWeight = '600';
-        tb.append(el('tr', {}, name, el('td', { class: 'num', text: ok ? `${pct(r.rate)} (${pct(r.lo)}–${pct(r.hi)})` : '–' }),
+        tb.append(el('tr', {}, name, el('td', { class: 'num', text: ok ? `${window.EWS.formatRate(SR, k, r.rate)} (${window.EWS.formatRange(SR, k, r.lo, r.hi)})` : '–' }),
           el('td', { class: 'num', text: ok && r.births ? r.births.toLocaleString() : '–' }), el('td', { text: statusText }), el('td', { text: ch })));
       }
       tableBox.append(el('div', { class: 'table-wrap' }, el('table', {}, el('thead', {}, el('tr', {},
-        el('th', { text: dim[1] }), el('th', { class: 'num', text: `Rate ${SR.window} (95% CI)` }), el('th', { class: 'num', text: 'Births' }),
+        el('th', { text: dim[1] }), el('th', { class: 'num', text: `Rate ${SR.window} (95% CI)` }), el('th', { class: 'num', text: count ? 'Population' : 'Births' }),
         el('th', { text: 'Estimate' }), el('th', { text: `vs ${SR.previous_window}` }))), tb)));
+      if (count) tableBox.append(el('p', { class: 'note', text: `${D.indicators[k] || k} is a count per population, not a share of births: events divided by the population at risk over the years pooled, shown per 1,000 population with exact Poisson intervals.` }));
     };
     sel.addEventListener('change', draw); dimSel.addEventListener('change', draw);
     box.append(el('p', { text: 'Following how state teams work: results are at state level, three years are pooled, and a group with too few events is reported through a combined group (labelled) or shown as insufficient data, never as an unreliable rate. Years with suppressed counts are skipped and listed.' }),

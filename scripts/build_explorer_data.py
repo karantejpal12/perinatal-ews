@@ -206,7 +206,8 @@ def main() -> None:
         payload["benchmark_years"] = str(pd.read_csv(res / "context_benchmark_quality.csv")["years_pooled"].iloc[0])
     Path(a.out).write_text(json.dumps(payload, separators=(",", ":")))
     if a.state_race:
-        _state_race([Path(f) for f in a.state_race], Path(a.out).with_name("state_race.json"))
+        _state_race([Path(f) for f in a.state_race], Path(a.out).with_name("state_race.json"),
+                    [k for k, spec in cfg["indicators"].items() if indicator_model(spec) == "count"])
     print(f"wrote {a.out}: {len(out_c)} counties, {Path(a.out).stat().st_size / 1024:.0f} KB")
 
 
@@ -234,11 +235,14 @@ def _nearest_peers(ctx: pd.DataFrame, ids: list[str], k: int = 5) -> dict[str, l
     return out
 
 
-def _state_race(folders: list[Path] | Path, out: Path) -> None:
+def _state_race(folders: list[Path] | Path, out: Path, count_indicators=()) -> None:
     """Latest pooled window by state, group and indicator, with the change from the previous window.
 
     Groups are mother's race (no prefix), and from the second folder on, "Hispanic origin: ..." and
     "Payer: ..." groups (scripts/fetch_wonder_more.js). Every folder must use the same windows.
+    Indicators in `count_indicators` (``model: count``, counts per population) that appear in the
+    results are listed under ``count_indicators`` so the explorer shows them per 1,000 population;
+    the key is absent when there are none, so files without such indicators are unchanged.
     """
     folders = [Path(folders)] if isinstance(folders, (str, Path)) else [Path(f) for f in folders]
     p = pd.concat([pd.read_csv(f / "pooled_estimates.csv") for f in folders], ignore_index=True)
@@ -266,7 +270,10 @@ def _state_race(folders: list[Path] | Path, out: Path) -> None:
         states.setdefault(r.state, {}).setdefault(r.indicator, []).append(rec)
     win = p["window"].iloc[0]
     prev = c["previous_window"].iloc[0] if len(c) else ""
+    present = set(p["indicator"])
+    counts = [k for k in dict.fromkeys(count_indicators) if k in present]
     out.write_text(json.dumps({"window": win, "previous_window": prev, "states": states,
+                               **({"count_indicators": counts} if counts else {}),
                                "source": "CDC WONDER Natality, 2016-2024 expanded (NCHS), mother's single race (15 groups), "
                                          "all Hispanic origins" + ("; mother's Hispanic origin (all races) and source of payment for the "
                                                                    "delivery" if len(folders) > 1 else "")

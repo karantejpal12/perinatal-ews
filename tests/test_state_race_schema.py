@@ -26,6 +26,8 @@ def _consistency(d):
     assert start <= end
     if d["previous_window"]:
         assert int(d["previous_window"].split("-")[1]) < start
+    count = set(d.get("count_indicators", []))
+    assert count <= {ind for inds in d["states"].values() for ind in inds}
     for st, inds in d["states"].items():
         for ind, rows in inds.items():
             by = {r["g"]: r for r in rows}
@@ -36,7 +38,7 @@ def _consistency(d):
                 assert years == sorted(set(years)) and all(start <= y <= end for y in years)
                 if r["status"] == "reliable":
                     assert len(years) >= 2 and r["report"] == r["g"]
-                    assert r["n"] <= r["births"]
+                    assert ind in count or r["n"] <= r["births"]   # counts per population may exceed it
                     assert r["lo"] <= r["rate"] <= r["hi"]
                     assert abs(r["rate"] - r["n"] / r["births"]) <= 5e-5 + 1e-9   # rates are rounded to 4 decimals
                 else:
@@ -164,3 +166,64 @@ def test_file_written_by_the_build_matches_schema(tmp_path):
     assert {r["change"] for r in rows} >= {"higher", "no clear change", "not compared (an estimate is not reliable)"}
     assert any(r["report"] not in (r["g"], "insufficient data") for r in rows)
     assert any(r["report"] == "insufficient data" for r in rows)
+
+
+def test_published_state_race_has_no_count_indicators(published):
+    """The published indicators are all shares of births, so the file carries no count_indicators."""
+    assert "count_indicators" not in published
+
+
+def test_count_indicator_is_marked_for_display_per_population(tmp_path):
+    """An indicator with `model: count` (teen births per female aged 15-19) is listed in count_indicators,
+    so the state table shows it per 1,000 population, with exact Poisson intervals and the population as its
+    'births'; the four indicators' rows are the same as without it."""
+    import yaml
+    from perinatal_ews import config as cfgmod
+    from perinatal_ews.cli import main
+    from perinatal_ews.indicators import poisson_rate_interval
+
+    spec = importlib.util.spec_from_file_location("build_explorer_data", ROOT / "scripts" / "build_explorer_data.py")
+    build = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(build)
+
+    tidy = _synthetic_state_race()
+    tidy.to_csv(tmp_path / "plain.csv", index=False)
+    main(["pooled", "--input", str(tmp_path / "plain.csv"), "--window", "3", "--out", str(tmp_path / "plain")])
+    build._state_race(tmp_path / "plain", tmp_path / "plain.json", ["teen_birth_rate"])
+    plain = json.loads((tmp_path / "plain.json").read_text())
+    assert "count_indicators" not in plain   # listed only when the results include it
+
+    # Teen births: about 15 per 1,000 females aged 15-19, with a population (not births) as denominator.
+    rng = np.random.default_rng(11)
+    teen = tidy[tidy["indicator"] == "preterm_birth"].copy()
+    teen["indicator"] = "teen_birth_rate"
+    teen["denominator"] = (teen["denominator"] * 1.7).round()
+    teen["numerator"] = rng.poisson(0.015 * teen["denominator"]).astype(float)
+    teen.loc[teen["numerator"] < 3, "numerator"] = np.nan
+    all_rows = teen[teen["subgroup"] != "All"].groupby(["state", "year"])[["numerator", "denominator"]].sum(min_count=1)
+    teen = teen.set_index(["state", "year"])
+    is_all = teen["subgroup"] == "All"
+    teen.loc[is_all, ["numerator", "denominator"]] = all_rows.reindex(teen.index[is_all]).to_numpy()
+    pd.concat([tidy, teen.reset_index()], ignore_index=True).to_csv(tmp_path / "teen.csv", index=False)
+    cfg = cfgmod.load_config()
+    cfg["indicators"]["teen_birth_rate"] = {"label": "Teen birth rate", "direction": "higher_is_worse",
+                                            "model": "count", "set": "more"}
+    (tmp_path / "cfg.yaml").write_text(yaml.safe_dump(cfg))
+    main(["pooled", "--input", str(tmp_path / "teen.csv"), "--window", "3", "--out", str(tmp_path / "teen"),
+          "--config", str(tmp_path / "cfg.yaml")])
+    build._state_race(tmp_path / "teen", tmp_path / "teen.json", ["teen_birth_rate"])
+    d = json.loads((tmp_path / "teen.json").read_text())
+    assert d["count_indicators"] == ["teen_birth_rate"]
+    schema = copy.deepcopy(SCHEMA)
+    schema["$defs"]["indicator"]["enum"].append("teen_birth_rate")
+    v = jsonschema.Draft202012Validator(schema, format_checker=jsonschema.FormatChecker())
+    assert [e.message for e in v.iter_errors(d)] == []
+    _consistency(d)
+    for st, inds in plain["states"].items():
+        assert {k: d["states"][st][k] for k in inds} == inds
+    rows = [r for s in d["states"].values() for r in s["teen_birth_rate"] if r["status"] == "reliable"]
+    assert rows
+    for r in rows:
+        assert 0.005 < r["rate"] < 0.03 and r["births"] > r["n"]
+        lo, hi = poisson_rate_interval(r["n"], r["births"])
+        assert abs(r["lo"] - float(lo)) <= 5e-5 + 1e-9 and abs(r["hi"] - float(hi)) <= 5e-5 + 1e-9
