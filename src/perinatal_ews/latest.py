@@ -29,6 +29,9 @@ Method
   intervals and a Poisson rate-ratio variance in the comparison by race, and
   are listed in ``count_indicators`` in the metadata so the explorer shows
   them per 1,000 population. Files without such indicators are unchanged.
+  Their downloads carry an annual population; for January to *m* it is
+  scaled to person-time (population x m / 12), so year-so-far rates are per
+  year and the full-year outlook has a population for the remaining months.
 """
 from __future__ import annotations
 
@@ -103,11 +106,31 @@ def count_indicators(config: dict) -> list[str]:
     return [k for k, spec in config.get("indicators", {}).items() if indicator_model(spec) == "count"]
 
 
+def person_time(t: pd.DataFrame, m: int, count_indicators=()) -> pd.DataFrame:
+    """Year-so-far denominators of counts per population as person-time: population times m / 12.
+
+    Downloads give count indicators an annual population (for example females aged 15-19) in both the
+    year-so-far and full-year files. Scaling it to the months covered gives January-m rates per year,
+    comparable with full-year rates, and leaves the remaining months a population of their own, which
+    the full-year outlook needs. Shares of births are returned unchanged.
+    """
+    if not 1 <= int(m) <= 12:
+        raise ValueError(f"months covered must be 1-12, got {m}")
+    count = t["indicator"].isin(list(count_indicators))
+    if not count.any():
+        return t
+    t = t.copy()
+    t["denominator"] = pd.to_numeric(t["denominator"], errors="coerce").astype(float)
+    t.loc[count, "denominator"] = t.loc[count, "denominator"] * int(m) / 12
+    return t
+
+
 def build_tidy(provisional: pd.DataFrame, baseline: pd.DataFrame, m: int, kind: str = "ytd",
                subgroup: str = TOTAL_SUBGROUP, count_indicators=()) -> tuple[pd.DataFrame, list[int]]:
     """State tidy table for January-m (kind='ytd') or full years (kind='full').
 
-    `count_indicators` (counts per population) may have rates above 1.
+    `count_indicators` (counts per population) may have rates above 1; for kind='ytd' their annual
+    populations are scaled to person-time for January-m (see `person_time`).
     """
     p = _states(provisional)
     p = p[(p["series"] == f"prov_{kind}") & (p["subgroup"] == subgroup)]
@@ -116,22 +139,27 @@ def build_tidy(provisional: pd.DataFrame, baseline: pd.DataFrame, m: int, kind: 
     b = b[~b["year"].isin(p["year"].unique())]
     cols = ["geo_id", "geo_name", "state", "year", "indicator", "subgroup", "numerator", "denominator"]
     t = pd.concat([b[cols], p[cols]], ignore_index=True)
+    if kind == "ytd":
+        t = person_time(t, m, count_indicators)
     return validate(t, count_indicators=count_indicators), sorted(int(y) for y in b["year"].unique())
 
 
 def compare_to_recent(provisional: pd.DataFrame, year: int, reference_years: list[int], min_events: int = 20,
-                      combine: dict | None = None, count_indicators=()) -> pd.DataFrame:
+                      combine: dict | None = None, count_indicators=(), months: int | None = None) -> pd.DataFrame:
     """Current year so far vs the same months of reference years combined, by state, group and indicator.
 
     Indicators in `count_indicators` (counts per population) get exact Poisson intervals, and their
-    rate ratio's log variance is 1/events + 1/reference events (no binomial terms).
+    rate ratio's log variance is 1/events + 1/reference events (no binomial terms). With `months`
+    (January to that month), their annual populations are scaled to person-time as in `build_tidy`,
+    so rates are per year; rate ratios do not depend on it.
     """
     from .indicators import poisson_rate_interval, wilson_interval
 
     p = _states(provisional)
     p = p[p["series"] == "prov_ytd"]
     cols = ["geo_id", "geo_name", "state", "year", "indicator", "subgroup", "numerator", "denominator"]
-    t = add_combined_groups(p[cols], combine)
+    t = p[cols] if months is None else person_time(p[cols], months, count_indicators)
+    t = add_combined_groups(t, combine)
     cur = t[t["year"] == year]
     ref = t[t["year"].isin(reference_years)]
     rg = ref.groupby(["geo_id", "geo_name", "state", "indicator", "subgroup"]).agg(
@@ -186,7 +214,8 @@ def run_latest(provisional: pd.DataFrame, baseline: pd.DataFrame, meta: dict, co
         det_full.to_csv(out / f"state_detections_{fy}_provisional.csv", index=False)
         result["full"], result["full_year"] = det_full, fy
 
-    race = compare_to_recent(provisional, year, [year - 3, year - 2, year - 1], count_indicators=counts)
+    race = compare_to_recent(provisional, year, [year - 3, year - 2, year - 1], count_indicators=counts,
+                             months=m)
     race = race[race["subgroup"] != TOTAL_SUBGROUP]
     race.to_csv(out / "state_race_ytd.csv", index=False)
     result["race"] = race

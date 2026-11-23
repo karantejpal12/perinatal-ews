@@ -27,8 +27,9 @@ takes the place of the log-odds throughout (seasonal step, projection and
 error variances) and the remaining months are simulated with Poisson noise.
 Their denominators must be person-time that accrues through the year (for a
 population, the population times the share of the year covered), so that the
-remaining months have a denominator of their own; rows whose remaining
-denominator is not positive are left out, as for shares of births.
+remaining months have a denominator of their own; ``latest.build_tidy`` scales
+downloads' annual populations this way. Rows whose remaining denominator is
+not positive are left out, as for shares of births.
 
 ``backtest`` repeats this for past years using only what was known at month
 *m* of each year, and compares the result with how the full year actually

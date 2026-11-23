@@ -81,7 +81,9 @@ def test_file_written_by_the_monthly_update_matches_schema(tmp_path):
 
 def _teen_feed(prov, base, seed=5):
     """Add a count indicator (teen births per female aged 15-19) to the synthetic state feed: the same
-    states, years and race groups, with Poisson counts over a population rather than births."""
+    states, years and race groups, with Poisson counts over a population rather than births. As in a real
+    download, the population is annual in every file, whatever the months covered; events accrue with
+    the months."""
     import numpy as np
     import pandas as pd
 
@@ -90,13 +92,13 @@ def _teen_feed(prov, base, seed=5):
     rate = 0.015
     b = base[base["indicator"] == "preterm_birth"].copy()
     b["indicator"] = "teen_birth_rate"
-    b["denominator"] = b["state_fips"].map(pop) * b["through_month"] / 12
-    b["numerator"] = rng.poisson(rate * b["denominator"]).astype(float)
+    b["denominator"] = b["state_fips"].map(pop)
+    b["numerator"] = rng.poisson(rate * b["denominator"] * b["through_month"] / 12).astype(float)
     p = prov[prov["indicator"] == "preterm_birth"].copy()
     p["indicator"] = "teen_birth_rate"
     share = {"All": 1.0, "White": 0.6, "Filipino": 0.004, "Hawaiian": 0.003}
-    p["denominator"] = p["state_fips"].map(pop) * p["subgroup"].map(share) * np.where(p["series"] == "prov_ytd", 8 / 12, 1.0)
-    p["numerator"] = rng.poisson(rate * p["denominator"]).astype(float)
+    p["denominator"] = p["state_fips"].map(pop) * p["subgroup"].map(share)
+    p["numerator"] = rng.poisson(rate * p["denominator"] * np.where(p["series"] == "prov_ytd", 8 / 12, 1.0)).astype(float)
     return pd.concat([prov, p], ignore_index=True), pd.concat([base, b], ignore_index=True)
 
 
@@ -145,7 +147,9 @@ def test_count_indicator_in_latest_is_marked_and_uses_poisson_intervals(tmp_path
     se = np.sqrt(1 / race["numerator"] + 1 / race["ref_num"])
     assert np.allclose(race["rr_low"], race["rate_ratio"] * np.exp(-1.96 * se))
     assert ((race["ci_low"] < race["rate"]) & (race["rate"] < race["ci_high"])).all()
-    # About 1.5% of the population, with the population (not births) behind each state's rate.
+    # About 1.5% of the population a year (January-August scaled to person-time), with the population
+    # (not births) behind each state's rate: eight months of an annual population.
+    assert 0.013 < race["rate"].median() < 0.017
     for st, s in p["states_data"].items():
         e = s["ind"]["teen_birth_rate"]
         assert 0.01 < e["rate"] < 0.02 and e["births"] > 10_000
