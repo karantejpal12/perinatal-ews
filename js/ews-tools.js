@@ -69,13 +69,15 @@
   function countyRecord(D, c) {
     const ind = {};
     for (const [k, e] of Object.entries(c.ind)) {
+      const r = v => toolRate(D, k, v);
       ind[indLabel(D, k)] = {
-        status_2024: e.level, rate: e.rate, expected_rate: e.expected, observed_vs_expected: e.rr,
-        births: e.births, excess_cases: e.excess, elevated_previous_year: e.sustained,
-        subgroups: e.subgroups, next_year_risk_of_flag: e.risk ?? null, forecast_main_factors: e.factors || null,
-        compared_with_similar_counties: e.similar || null,
+        status_2024: e.level, rate: r(e.rate), expected_rate: r(e.expected), observed_vs_expected: e.rr,
+        ...denominatorField(D, k, e.births), excess_cases: e.excess, elevated_previous_year: e.sustained,
+        subgroups: e.subgroups && isCountIndicator(D, k) ? Object.fromEntries(Object.entries(e.subgroups).map(([g, sd]) => [g, scaleRates(D, k, sd, ['rate', 'expected'])])) : e.subgroups,
+        next_year_risk_of_flag: e.risk ?? null, forecast_main_factors: e.factors || null,
+        compared_with_similar_counties: scaleRates(D, k, e.similar, ['rate', 'expected', 'low', 'high']) || null,
         statewide_pattern: (D.state_patterns || []).some(p => p.state === c.state && p.indicator === k),
-        rates_by_year: Object.fromEntries(D.years.map((y, i) => [y, e.trend[i]])),
+        rates_by_year: Object.fromEntries(D.years.map((y, i) => [y, r(e.trend[i])])),
       };
       if (CAVEATS[k]) ind[indLabel(D, k)].reporting_caveat = CAVEATS[k];
       if (e.persistent && D.persistent) ind[indLabel(D, k)].persistent_burden = persistentRecord(D, e.persistent);
@@ -92,20 +94,20 @@
     const flags = Object.entries(c.ind).filter(([, e]) => flagged(e));
     if (flags.length) {
       parts.push(`In ${D.year}, ${c.name}, ${c.state} was flagged for ` + flags.map(([k, e]) =>
-        `${lowerLabel(indLabel(D, k))} (${e.level}: ${pct(e.rate)} against ${pct(e.expected)} expected)`).join('; ') + '.');
+        `${lowerLabel(indLabel(D, k))} (${e.level}: ${formatRate(D, k, e.rate)} against ${formatRate(D, k, e.expected)} expected)`).join('; ') + '.');
     } else {
       parts.push(`In ${D.year}, ${c.name}, ${c.state} had no county-wide flags on the ${Object.keys(c.ind).length} indicators scored.`);
     }
     const subs = [];
     for (const [k, e] of Object.entries(c.ind)) for (const [s, sd] of Object.entries(e.subgroups || {}))
-      if (sd.level === 'alert' || sd.level === 'watch') subs.push(`${lowerLabel(indLabel(D, k))} among ${s.toLowerCase()} births (${sd.level}, ${pct(sd.rate)})`);
+      if (sd.level === 'alert' || sd.level === 'watch') subs.push(`${lowerLabel(indLabel(D, k))} among ${s.toLowerCase()} births (${sd.level}, ${formatRate(D, k, sd.rate)})`);
     if (subs.length) parts.push(`Within payer groups: ${subs.join('; ')}.`);
     const sw = Object.keys(c.ind).filter(k => (D.state_patterns || []).some(p => p.state === c.state && p.indicator === k));
     if (sw.length) parts.push(`Many ${c.state} counties were flagged for ${sw.map(k => lowerLabel(indLabel(D, k))).join(' and ')}, so the change may be state-wide or reflect how the state records it.`);
     const risky = Object.entries(c.ind).filter(([, e]) => (e.risk || 0) >= 0.3).sort((a, b) => b[1].risk - a[1].risk);
     if (risky.length) parts.push(`The forecast gives a ${pct(risky[0][1].risk, 0)} chance of a ${D.forecast_year} flag for ${lowerLabel(indLabel(D, risky[0][0]))}.`);
     const hi = Object.entries(c.ind).filter(([, e]) => e.similar && /higher/.test(e.similar.verdict));
-    if (hi.length) parts.push(`Compared with counties in similar conditions, ${hi.map(([k, e]) => `${lowerLabel(indLabel(D, k))} is higher (${pct(e.similar.rate)} vs ${pct(e.similar.expected)})`).join('; ')}.`);
+    if (hi.length) parts.push(`Compared with counties in similar conditions, ${hi.map(([k, e]) => `${lowerLabel(indLabel(D, k))} is higher (${formatRate(D, k, e.similar.rate)} vs ${formatRate(D, k, e.similar.expected)})`).join('; ')}.`);
     const pers = D.persistent ? Object.entries(c.ind).filter(([, e]) => e.persistent && e.persistent.status === 'persistent') : [];
     if (pers.length) parts.push(`Separately from change flags, its rate was among the highest fifth of the ${D.counties.length} scored counties in ${pers.length > 1 ? 'most years' : `${pers[0][1].persistent.years_worst} of ${pers[0][1].persistent.years_ranked} years`} of ${D.persistent.window_start}–${D.persistent.window_end} for ${pers.map(([k, e]) => `${lowerLabel(indLabel(D, k))}${pers.length > 1 ? ` (${e.persistent.years_worst} of ${e.persistent.years_ranked})` : ''}`).join(', ')}; this is a persistently high level, not a recent change.`);
     if (c.need) parts.push(`Need and access (${c.need.priority === 'high' ? 'high priority' : 'for review'}): ${c.need.reasons}.`);
@@ -146,6 +148,18 @@
   }
   // What the denominator of an indicator counts, for "n births" / "n population" wording.
   function denominatorWord(D, k) { return isCountIndicator(D, k) ? 'population' : 'births'; }
+  /* Rates in tool results (for the AI assistant): count indicators per 1,000 population, so the assistant
+     quotes the figures readers see in the explorer; shares of births stay proportions (0.093 = 9.3%), as before. */
+  const COUNT_RATE_UNIT = 'per 1,000 population (the denominator is the population, not births)';
+  function toolRate(D, k, x) { return x == null || !isCountIndicator(D, k) ? x : Math.round(x * 1e6) / 1e3; }
+  function scaleRates(D, k, o, fields) {
+    if (!o || !isCountIndicator(D, k)) return o;
+    const r = { ...o };
+    for (const f of fields) if (f in r) r[f] = toolRate(D, k, r[f]);
+    return { ...r, rate_unit: COUNT_RATE_UNIT };
+  }
+  // { births: n } for shares of births; { population: n, rate_unit } for count indicators.
+  function denominatorField(D, k, n) { return isCountIndicator(D, k) ? { population: n, rate_unit: COUNT_RATE_UNIT } : { births: n }; }
 
   // Natural log of the gamma function (Lanczos, g = 7), and the regularized lower incomplete gamma P(a, x).
   const LANCZOS = [0.99999999999980993, 676.5203681218851, -1259.1392167224028, 771.32342877765313, -176.61502916214059,
@@ -196,6 +210,13 @@
     return isCountIndicator(D, k) ? poissonInterval(rate, n) : rateInterval(rate, n);
   }
 
+  // A year-so-far state result (latest.json) for tool results: count indicators per 1,000 population.
+  function latestRecord(L, k, e) {
+    if (!isCountIndicator(L, k)) return e;
+    const { births, ...rest } = scaleRates(L, k, e, ['rate', 'expected', 'full_year_rate']);
+    return { ...rest, population: births, ...(e.outlook ? { outlook: scaleRates(L, k, e.outlook, ['proj', 'lo', 'hi']) } : {}) };
+  }
+
   function stateSummary(D, st) {
     const cs = D.counties.filter(c => c.state === st);
     if (!cs.length) return null;
@@ -211,10 +232,11 @@
       state: st, data_year: D.year, counties: cs.length, counties_in_state: COUNTIES_IN_STATE[st] ?? null,
       counties_not_scored: COUNTIES_IN_STATE[st] != null ? Math.max(0, COUNTIES_IN_STATE[st] - cs.length) : null, by_indicator: by,
       statewide_patterns: (D.state_patterns || []).filter(p => p.state === st).map(p => ({ indicator: indLabel(D, p.indicator),
-        counties_flagged: p.flagged, counties: p.counties, state_rate_baseline: p.rate_before, state_rate_now: p.rate_now })),
+        counties_flagged: p.flagged, counties: p.counties, state_rate_baseline: toolRate(D, p.indicator, p.rate_before), state_rate_now: toolRate(D, p.indicator, p.rate_now),
+        ...(isCountIndicator(D, p.indicator) ? { rate_unit: COUNT_RATE_UNIT } : {}) })),
       need_and_access: cs.filter(c => c.need).map(c => ({ county: c.name, fips: c.id, priority: c.need.priority, reasons: c.need.reasons })),
       year_to_date_provisional: D.latest && D.latest.states_data[st] ? { period: D.latest.ytd_label, latest_month_available: D.latest.latest_month_available,
-        retrieved: D.latest.updated, indicators: Object.fromEntries(Object.entries(D.latest.states_data[st].ind).map(([k, e]) => [indLabel(D, k), e])) } : null,
+        retrieved: D.latest.updated, indicators: Object.fromEntries(Object.entries(D.latest.states_data[st].ind).map(([k, e]) => [indLabel(D, k), latestRecord(D.latest, k, e)])) } : null,
       flagged_counties: cs.filter(c => Object.values(c.ind).some(flagged)).map(c => ({ county: c.name, fips: c.id,
         flags: Object.entries(c.ind).filter(([, e]) => flagged(e)).map(([k, e]) => `${indLabel(D, k)} (${e.level})`) })),
       reporting_caveats: caveatsFor(D, Object.keys(D.indicators)),
@@ -233,10 +255,10 @@
     if (s.counties_not_scored) parts.push(`The other ${plural(s.counties_not_scored, 'county', 'counties')} of ${s.counties_in_state} ${s.counties_not_scored === 1 ? 'has' : 'have'} fewer than 100,000 residents and ${s.counties_not_scored === 1 ? 'is' : 'are'} not reported separately by CDC WONDER, so ${s.counties_not_scored === 1 ? 'it is' : 'they are'} not covered by the county results.`);
     if (tot + tw + mt + mw === 0) parts.push('No flag means no change from each county\'s own recent history was detected; it does not mean there is no concern, and a rate can stay high without being flagged.');
     if (top.length) parts.push('Most flags: ' + top.map(([k, v]) => `${lowerLabel(k)} (${plural(v.alerts, 'alert', 'alerts')}, ${v.watch} watch)`).join('; ') + '.');
-    for (const p of s.statewide_patterns) parts.push(`State-wide pattern in ${lowerLabel(p.indicator)}: ${p.counties_flagged} of ${p.counties} counties flagged; state rate ${pct(p.state_rate_baseline)} at baseline, ${pct(p.state_rate_now)} now. Check with the state vital records office whether recording changed.`);
+    for (const p of (D.state_patterns || []).filter(q => q.state === st)) parts.push(`State-wide pattern in ${lowerLabel(indLabel(D, p.indicator))}: ${p.flagged} of ${p.counties} counties flagged; state rate ${formatRate(D, p.indicator, p.rate_before)} at baseline, ${formatRate(D, p.indicator, p.rate_now)} now. Check with the state vital records office whether recording changed.`);
     if (s.year_to_date_provisional) {
-      const y = s.year_to_date_provisional, fl = Object.entries(y.indicators).filter(([, e]) => e.level === 'alert' || e.level === 'watch');
-      parts.push(fl.length ? `Provisional data for ${y.period}: ${fl.map(([k, e]) => `${k.toLowerCase()} ${e.level} (${pct(e.rate)} vs ${pct(e.expected)} expected)`).join('; ')}.`
+      const y = s.year_to_date_provisional, L = D.latest, fl = Object.entries(L.states_data[st].ind).filter(([, e]) => e.level === 'alert' || e.level === 'watch');
+      parts.push(fl.length ? `Provisional data for ${y.period}: ${fl.map(([k, e]) => `${indLabel(D, k).toLowerCase()} ${e.level} (${formatRate(L, k, e.rate)} vs ${formatRate(L, k, e.expected)} expected)`).join('; ')}.`
         : `Provisional data for ${y.period} show no state-wide flags.`);
     }
     if (s.need_and_access.length) parts.push(`${s.need_and_access.length} ${s.need_and_access.length === 1 ? 'county is' : 'counties are'} on the need-and-access review list${s.need_and_access.some(n => n.priority === 'high') ? ', including high-priority ' + s.need_and_access.filter(n => n.priority === 'high').map(n => n.county).join(', ') : ''}.`);
@@ -265,7 +287,7 @@
           : f === 'higher_than_similar' ? !!(e.similar && /higher/.test(e.similar.verdict))
           : f === 'unusual_data' ? !!c.unusual
           : f === 'persistent_burden' ? !!(e.persistent && e.persistent.status === 'persistent') : false;
-        if (ok) rows.push({ county: c.name, state: c.state, fips: c.id, indicator: indLabel(D, k), status: e.level,
+        if (ok) rows.push({ key: k, county: c.name, state: c.state, fips: c.id, indicator: indLabel(D, k), status: e.level,
           rate: e.rate, expected_rate: e.expected, observed_vs_expected: e.rr, next_year_risk: e.risk ?? null,
           similar_counties_rate: e.similar ? e.similar.expected : null, need_priority: c.need ? c.need.priority : null,
           years_in_highest_fifth: e.persistent ? e.persistent.years_worst : null });
@@ -275,7 +297,10 @@
     rows.sort((x, y) => f === 'persistent_burden' ? (y.years_in_highest_fifth - x.years_in_highest_fifth) || ((y.rate || 0) - (x.rate || 0))
       : f.includes('risk') ? (y.next_year_risk || 0) - (x.next_year_risk || 0)
       : (key[x.status] - key[y.status]) || ((y.observed_vs_expected || 0) - (x.observed_vs_expected || 0)));
-    const shown = rows.slice(0, lim);
+    // Sorted on the stored rates; count indicators are then given per 1,000 population.
+    const shown = rows.slice(0, lim).map(r => r.key && isCountIndicator(D, r.key)
+      ? (({ key, ...x }) => scaleRates(D, key, x, ['rate', 'expected_rate', 'similar_counties_rate']))(r)
+      : (({ key, ...x }) => x)(r));
     const out = { total_matching: rows.length, showing: shown.length, rows: shown };
     if (st && !D.counties.some(c => c.state === st)) out.note = `No county in ${STATE_NAMES[st]} is scored: only counties with 100,000+ residents are identified in the public data.`;
     const cav = caveatsFor(D, Object.keys(D.indicators).filter(k => shown.some(r => r.indicator === indLabel(D, k))));
@@ -342,7 +367,8 @@
       run: (D, a) => ({ topic: a.topic, text: METHOD[a.topic] || 'Unknown topic.' }) },
   ];
 
-  /* Numbers in an answer that do not appear in any tool result (after rounding). Years and small integers are ignored. */
+  /* Numbers in an answer that do not appear in any tool result (after rounding). Years, small integers and
+     the unit of a rate ("per 1,000") are ignored. */
   function checkNumbers(answer, toolResults) {
     const known = new Set();
     const add = v => {
@@ -357,6 +383,7 @@
       const raw = m[1].replace(/,$/, ''); const n = Number(raw.replace(/,/g, ''));
       if (!isFinite(n)) continue;
       if (!m[2] && Number.isInteger(n) && (n <= 12 || (n >= 1990 && n <= 2035))) continue;
+      if (!m[2] && /\bper\s+$/i.test(answer.slice(0, m.index))) continue;  // the unit of "13.5 per 1,000", not a figure
       const ok = known.has(n);  // known holds every value rounded to 0-3 decimals, as a percentage and as-is
       if (!ok) out.push(m[0].trim());
     }

@@ -248,3 +248,60 @@ test('alert list, map tooltips and state-wide patterns keep percentages for the 
   assert.equal(EWS.formatRate(T, undefined, 0.3467), '34.7%');
   assert.equal(EWS.formatRate(T, 'teen_birth_rate', 0.0219), '21.9 per 1,000');
 });
+
+test('assistant tools and briefs give count indicators per 1,000 population and keep shares of births unchanged', () => {
+  // Synthetic: a copy of the published file with a teen birth rate (per female aged 15-19) added to two GA counties.
+  const T = JSON.parse(JSON.stringify(D));
+  T.count_indicators = ['teen_birth_rate'];
+  T.indicators.teen_birth_rate = 'Teen birth rate';
+  const ga = T.counties.filter(c => c.state === 'GA').slice(0, 2);
+  ga[0].ind.teen_birth_rate = { trend: T.years.map(() => 0.0152), level: 'alert', rate: 0.0219, expected: 0.0161, rr: 1.36, births: 41250,
+    excess: 239, sustained: false, subgroups: {}, similar: { rate: 0.0201, expected: 0.0148, low: 0.009, high: 0.0189, verdict: 'higher than similar counties' } };
+  ga[1].ind.teen_birth_rate = { trend: T.years.map(() => 0.0105), level: 'stable', rate: 0.0108, expected: 0.0111, rr: 0.97, births: 28800, excess: -9, sustained: false };
+  T.state_patterns = [...(T.state_patterns || []), { indicator: 'teen_birth_rate', state: 'GA', flagged: 2, counties: 2, rate_before: 0.0154, rate_now: 0.0187 }];
+  T.latest = { ytd_label: 'January–June 2026', latest_month_available: '2026-06', updated: '2026-11-01', count_indicators: ['teen_birth_rate'],
+    states_data: { GA: { ind: { preterm_birth: { level: 'watch', rate: 0.1162, expected: 0.1101, rr: 1.055, births: 61000 },
+      teen_birth_rate: { level: 'alert', rate: 0.0193, expected: 0.0164, rr: 1.18, births: 165000, full_year_rate: 0.0171,
+        outlook: { proj: 0.0189, lo: 0.0181, hi: 0.0197, p_flag: 0.9, p_alert: 0.7 } } } } } };
+
+  const r = tool('get_county').run(T, { fips: ga[0].id });
+  const e = r.indicators['Teen birth rate'];
+  assert.equal(e.rate, 21.9); assert.equal(e.expected_rate, 16.1);
+  assert.equal(e.population, 41250); assert.equal(e.births, undefined);
+  assert.match(e.rate_unit, /per 1,000 population/);
+  assert.equal(e.compared_with_similar_counties.expected, 14.8);
+  assert.equal(e.rates_by_year[T.years[0]], 15.2);
+  assert.match(r.plain_language_brief, /teen birth rate \(alert: 21\.9 per 1,000 against 16\.1 per 1,000 expected\)/);
+  assert.match(r.plain_language_brief, /is higher \(20\.1 per 1,000 vs 14\.8 per 1,000\)/);
+  assert.deepEqual(EWS.checkNumbers(r.plain_language_brief, [r]), []);
+  // Shares of births in the same county are unchanged: proportions, with births as the denominator.
+  const pb = r.indicators[T.indicators.preterm_birth], orig = ga[0].ind.preterm_birth;
+  assert.equal(pb.rate, orig.rate); assert.equal(pb.births, orig.births); assert.equal(pb.rate_unit, undefined);
+
+  const lc = tool('list_counties').run(T, { filter: 'alert', indicator: 'teen_birth_rate' });
+  assert.equal(lc.rows[0].rate, 21.9); assert.equal(lc.rows[0].expected_rate, 16.1); assert.match(lc.rows[0].rate_unit, /population/);
+  assert.equal(lc.rows[0].key, undefined);
+
+  const s = tool('state_summary').run(T, { state: 'GA' });
+  const p = s.statewide_patterns.find(q => q.indicator === 'Teen birth rate');
+  assert.equal(p.state_rate_now, 18.7); assert.match(p.rate_unit, /per 1,000/);
+  const y = s.year_to_date_provisional.indicators;
+  assert.equal(y['Teen birth rate'].rate, 19.3); assert.equal(y['Teen birth rate'].population, 165000);
+  assert.equal(y['Teen birth rate'].outlook.hi, 19.7); assert.equal(y['Teen birth rate'].outlook.p_flag, 0.9);
+  assert.equal(y[T.indicators.preterm_birth].rate, 0.1162);
+  assert.match(s.plain_language_brief, /state rate 15\.4 per 1,000 at baseline, 18\.7 per 1,000 now/);
+  assert.match(s.plain_language_brief, /teen birth rate alert \(19\.3 per 1,000 vs 16\.4 per 1,000 expected\)/);
+  assert.match(s.plain_language_brief, /preterm birth watch \(11\.6% vs 11\.0% expected\)/);
+  assert.deepEqual(EWS.checkNumbers(s.plain_language_brief, [s]), []);
+
+  // The figure check accepts rates per 1,000 that are in the results, and still catches invented ones.
+  assert.deepEqual(EWS.checkNumbers(`The teen birth rate was 21.9 per 1,000 against 16.1 per 1,000 expected.`, [r]), []);
+  assert.deepEqual(EWS.checkNumbers(`The teen birth rate was 24.6 per 1,000.`, [r]), ['24.6']);
+});
+
+test('assistant tool results for the published file have no count-indicator fields', () => {
+  for (const c of D.counties.slice(0, 50)) for (const e of Object.values(tool('get_county').run(D, { fips: c.id }).indicators)) {
+    assert.equal(e.rate_unit, undefined); assert.equal(e.population, undefined);
+  }
+  for (const row of tool('list_counties').run(D, { filter: 'flagged', limit: 100 }).rows) assert.equal(row.key, undefined);
+});
