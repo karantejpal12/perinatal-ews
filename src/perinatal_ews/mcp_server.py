@@ -16,7 +16,9 @@ INSTRUCTIONS = (
     "provisional natality data. Take every rate, count, ratio and probability from a tool result and cite the "
     "period and retrieval date. A flag is a statistical signal for follow-up, not proof of a real change or its "
     "cause; changes can come from how births are recorded. When a result carries a reporting_caveat (gestational "
-    "hypertension), state it in one sentence with the result. Do not give clinical or individual advice. If the "
+    "hypertension), state it in one sentence with the result. Rates ending in _pct are percentages of births; "
+    "rates ending in _per_1000 (with a rate_unit) are per 1,000 population, so report them as such, never as "
+    "percentages. Do not give clinical or individual advice. If the "
     "tools do not have the answer, say so."
 )
 

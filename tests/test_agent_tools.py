@@ -1,5 +1,6 @@
 """Tests for the read-only assistant tools and the MCP server, on the published results."""
 import asyncio
+import copy
 import json
 from pathlib import Path
 
@@ -91,3 +92,45 @@ def test_gestational_hypertension_carries_reporting_caveat(res):
         assert gh["reporting_caveats"] == {"Gestational hypertension": caveat}
     pre = T.list_state_flags(res, "preterm_birth")
     assert "reporting_caveats" not in pre
+
+
+def _with_count_indicator(res):
+    """The published results plus a synthetic count indicator (teen births per population) in one state."""
+    r = copy.deepcopy(res)
+    st = next(iter(r["states_data"]))
+    r["count_indicators"] = ["teen_birth_rate"]
+    r["states_data"][st]["ind"]["teen_birth_rate"] = {
+        "level": "alert", "rate": 0.01523, "expected": 0.0121, "rr": 1.259, "births": 412000,
+        "full_year_level": "stable", "full_year_rate": 0.0118,
+        "outlook": {"proj": 0.0149, "lo": 0.0141, "hi": 0.0157, "p_flag": 0.81, "p_alert": 0.55}}
+    r["states_data"][st]["race"]["teen_birth_rate"] = [
+        {"g": "Black", "rate": 0.0241, "lo": 0.0222, "hi": 0.0261, "ref": 0.0188, "rr": 1.282, "change": "higher",
+         "status": "reliable", "report": "Black"}]
+    return r, st
+
+
+def test_count_indicators_per_1000_population(res):
+    r, st = _with_count_indicator(res)
+    unit = T.COUNT_RATE_UNIT
+    # Listed with the four, found by key or label.
+    assert T.data_status(r)["indicators"]["teen_birth_rate"] == "Teen birth rate"
+    flags = T.list_state_flags(r, "Teen birth rate")
+    assert flags["count"] == 1
+    row = flags["flags"][0]
+    assert row["rate_per_1000"] == 15.23 and row["expected_per_1000"] == 12.1 and row["population"] == 412000
+    assert row["rate_unit"] == unit and not {"rate_pct", "expected_pct", "births"} & row.keys()
+    got = T.get_state(r, st)["indicators"]
+    tb = got["Teen birth rate"]
+    assert tb["rate_per_1000"] == 15.23 and tb["population"] == 412000 and tb["rate_unit"] == unit
+    assert tb[f"full_year_{r['full_year_provisional']}"]["rate_per_1000"] == 11.8
+    assert tb["outlook_full_year"]["projected_rate_per_1000"] == 14.9
+    assert tb["outlook_full_year"]["range80_per_1000"] == [14.1, 15.7]
+    assert "rate_pct" not in tb["outlook_full_year"] and "projected_rate_pct" not in tb["outlook_full_year"]
+    ex = T.explain_state_flag(r, st, "teen_birth_rate")
+    assert ex["rate_per_1000"] == 15.23 and ex["population"] == 412000 and ex["rate_unit"] == unit
+    assert ex["by_mothers_race"] == [{"group": "Black", "rate_per_1000": 24.1, "earlier_years_per_1000": 18.8,
+                                      "ratio": 1.282, "change": "higher"}]
+    # Shares of births in the same file are unchanged.
+    assert got["Preterm birth"] == T.get_state(res, st)["indicators"]["Preterm birth"]
+    assert T.explain_state_flag(r, st, "preterm_birth") == T.explain_state_flag(res, st, "preterm_birth")
+    assert "rate_unit" not in got["Preterm birth"]

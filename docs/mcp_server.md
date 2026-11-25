@@ -45,6 +45,7 @@ By default the server reads the repository copy of `results/latest/latest.json` 
 - **Numbers come from the data.** Every rate, count, ratio and probability is copied from the published results; the server computes no new estimates. Each answer includes the period, retrieval date and source, and the server instructs the assistant to cite them and to say when the data do not have an answer.
 - **No small counts, nothing about individuals.** The published results suppress counts of 9 or fewer, and results by mother's race are returned only where they are based on at least 20 events.
 - **Reporting-quality caveat.** Gestational hypertension results carry a `reporting_caveat` (the birth-certificate item caught only 20–50% of cases in national validation studies), and the assistant is asked to state it with the result; see the [methodology](methodology.md), Limitations.
+- **Units.** Shares of births are percentages (`rate_pct`, with `births`). Indicators that are counts per population (listed in `count_indicators` in the results file, such as a teen birth rate) are given per 1,000 population (`rate_per_1000`, with `population` and a `rate_unit`), as in the explorer, and the assistant is asked to report them that way.
 - **Errors, not guesses.** An unknown state or indicator returns an error listing the valid choices.
 - **Framing.** Flags are described as statistical signals for follow-up that can reflect recording changes; the assistant is asked not to give clinical or individual advice.
 

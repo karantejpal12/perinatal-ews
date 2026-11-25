@@ -8,6 +8,11 @@ assistant they already use.
 
 Every figure returned comes from the published file; nothing is recomputed or estimated here. Each
 answer carries the period, retrieval date and source so the assistant can cite them.
+
+Shares of births are given as percentages (``rate_pct``, with ``births`` as the denominator). Indicators
+listed in the file's ``count_indicators`` (``model: count``, counts per population such as the teen birth
+rate) are given per 1,000 population (``rate_per_1000``, with ``population`` and a ``rate_unit``), as the
+explorer shows them.
 """
 from __future__ import annotations
 
@@ -46,10 +51,23 @@ def load_results(source: str | Path | None = None) -> dict:
     return json.loads(Path(s).read_text())
 
 
-def _labels() -> dict:
-    """Indicators in the monthly state results: the original four (config.core_indicators)."""
+COUNT_RATE_UNIT = "per 1,000 population (the denominator is the population, not births)"
+
+
+def _count_keys(results: dict | None) -> list[str]:
+    """Indicators the results file lists as counts per population (absent in files without any)."""
+    return list((results or {}).get("count_indicators") or [])
+
+
+def _labels(results: dict | None = None) -> dict:
+    """Indicators in the monthly state results: the original four (config.core_indicators), plus any
+    count indicators the results file lists."""
     cfg = load_config()
-    return {k: cfg["indicators"][k]["label"] for k in core_indicators(cfg)}
+    labels = {k: cfg["indicators"][k]["label"] for k in core_indicators(cfg)}
+    for k in _count_keys(results):
+        spec = cfg["indicators"].get(k) or {}
+        labels.setdefault(k, spec.get("label") or k.replace("_", " ").capitalize())
+    return labels
 
 
 def _caveats() -> dict:
@@ -64,8 +82,8 @@ def _caveats_for(keys) -> dict | None:
     return out or None
 
 
-def _indicator(name: str) -> str:
-    labels = _labels()
+def _indicator(name: str, results: dict | None = None) -> str:
+    labels = _labels(results)
     key = name.strip().lower().replace(" ", "_").replace("-", "_")
     if key in labels:
         return key
@@ -89,6 +107,34 @@ def _pct(x):
     return None if x is None else round(100 * x, 2)
 
 
+def _per1000(x):
+    return None if x is None else round(1000 * x, 3)
+
+
+def _scale(results: dict, key: str):
+    """(field suffix, converter, denominator name) for an indicator: 'pct' for shares of births,
+    'per_1000' for counts per population."""
+    if key in _count_keys(results):
+        return "per_1000", _per1000, "population"
+    return "pct", _pct, "births"
+
+
+def _rates(results: dict, key: str, e: dict) -> dict:
+    """Rate, expected rate and denominator of a year-so-far result, in the indicator's unit."""
+    sfx, f, den = _scale(results, key)
+    out = {f"rate_{sfx}": f(e["rate"]), f"expected_{sfx}": f(e["expected"]), "ratio_to_expected": e["rr"],
+           den: e["births"]}
+    if den == "population":
+        out["rate_unit"] = COUNT_RATE_UNIT
+    return out
+
+
+def _outlook(results: dict, key: str, o: dict) -> dict:
+    sfx, f, _ = _scale(results, key)
+    return {f"projected_rate_{sfx}": f(o.get("proj")), f"range80_{sfx}": [f(o.get("lo")), f(o.get("hi"))],
+            "chance_flagged": o.get("p_flag"), "chance_alert": o.get("p_alert")}
+
+
 def _source(results: dict) -> dict:
     return {"period": results["ytd_label"], "data_retrieved": results["updated"],
             "provisional_data": True, "sources": results["sources"]}
@@ -102,7 +148,7 @@ def data_status(results: dict) -> dict:
             "excluded (births below 97% of expected, so the month is likely incomplete)",
             "states": results["states"], "flags": results["counts"],
             "full_year_compared": results["full_year_provisional"], "final_years_used_as_history": results["final_years"],
-            "indicators": _labels()}
+            "indicators": _labels(results)}
 
 
 def list_state_flags(results: dict, indicator: str | None = None, level: str = "flagged") -> dict:
@@ -110,16 +156,15 @@ def list_state_flags(results: dict, indicator: str | None = None, level: str = "
     if level not in ("flagged", "alert", "watch"):
         raise ToolError("level must be 'flagged', 'alert' or 'watch'")
     want = FLAGGED if level == "flagged" else (level,)
-    ind = _indicator(indicator) if indicator else None
-    labels = _labels()
+    ind = _indicator(indicator, results) if indicator else None
+    labels = _labels(results)
     rows = []
     for st, v in results["states_data"].items():
         for k, e in v["ind"].items():
             if (ind is None or k == ind) and e["level"] in want:
                 o = e.get("outlook") or {}
                 rows.append({"state": st, "state_name": STATE_NAMES.get(st, st), "indicator": labels.get(k, k),
-                             "level": e["level"], "rate_pct": _pct(e["rate"]), "expected_pct": _pct(e["expected"]),
-                             "ratio_to_expected": e["rr"], "births": e["births"],
+                             "level": e["level"], **_rates(results, k, e),
                              "chance_full_year_flagged": o.get("p_flag")})
     rows.sort(key=lambda r: (r["level"] != "alert", -(r["ratio_to_expected"] or 0)))
     out = {**_source(results), "count": len(rows), "flags": rows,
@@ -134,17 +179,16 @@ def list_state_flags(results: dict, indicator: str | None = None, level: str = "
 def get_state(results: dict, state: str) -> dict:
     """All indicators for one state this year so far, with last full year and the full-year outlook."""
     st = _state(results, state)
-    labels, caveats = _labels(), _caveats()
+    labels, caveats = _labels(results), _caveats()
     out = {}
     for k, e in results["states_data"][st]["ind"].items():
         o = e.get("outlook") or {}
+        sfx, f, _ = _scale(results, k)
         out[labels.get(k, k)] = {
-            "level": e["level"], "rate_pct": _pct(e["rate"]), "expected_pct": _pct(e["expected"]),
-            "ratio_to_expected": e["rr"], "births": e["births"],
+            "level": e["level"], **_rates(results, k, e),
             f"full_year_{results['full_year_provisional']}": {"level": e.get("full_year_level"),
-                                                              "rate_pct": _pct(e.get("full_year_rate"))},
-            "outlook_full_year": {"projected_rate_pct": _pct(o.get("proj")), "range80_pct": [_pct(o.get("lo")), _pct(o.get("hi"))],
-                                  "chance_flagged": o.get("p_flag"), "chance_alert": o.get("p_alert")} if o else None}
+                                                              f"rate_{sfx}": f(e.get("full_year_rate"))},
+            "outlook_full_year": _outlook(results, k, o) if o else None}
         if k in caveats:
             out[labels.get(k, k)]["reporting_caveat"] = caveats[k]
     return {**_source(results), "state": st, "state_name": STATE_NAMES.get(st, st), "indicators": out}
@@ -153,13 +197,14 @@ def get_state(results: dict, state: str) -> dict:
 def explain_state_flag(results: dict, state: str, indicator: str) -> dict:
     """What a state's result for one indicator means, how sure it is, and follow-up checks to consider."""
     st = _state(results, state)
-    ind = _indicator(indicator)
+    ind = _indicator(indicator, results)
     e = results["states_data"][st]["ind"].get(ind)
     if e is None:
         raise ToolError(f"No {ind} result for {st}.")
     o = e.get("outlook") or {}
     fy = results["full_year_provisional"]
-    race = [{"group": r["report"], "rate_pct": _pct(r["rate"]), "earlier_years_pct": _pct(r["ref"]),
+    sfx, f, _ = _scale(results, ind)
+    race = [{"group": r["report"], f"rate_{sfx}": f(r["rate"]), f"earlier_years_{sfx}": f(r["ref"]),
              "ratio": r["rr"], "change": r["change"]}
             for r in results["states_data"][st].get("race", {}).get(ind, [])
             if r["status"] == "reliable" and r["change"] != "not compared"]
@@ -174,14 +219,12 @@ def explain_state_flag(results: dict, state: str, indicator: str) -> dict:
         checks.insert(1, "Look at which groups by mother's race moved (see by_mothers_race): a change concentrated in "
                          "one group points to different follow-up than a state-wide shift.")
     return {
-        **_source(results), "state": st, "state_name": STATE_NAMES.get(st, st), "indicator": _labels()[ind],
+        **_source(results), "state": st, "state_name": STATE_NAMES.get(st, st), "indicator": _labels(results)[ind],
         "level": e["level"], "level_means": LEVEL_MEANING.get(e["level"]),
-        "rate_pct": _pct(e["rate"]), "expected_pct": _pct(e["expected"]), "ratio_to_expected": e["rr"],
-        "births": e["births"],
+        **_rates(results, ind, e),
         "expected_is": "the state's own rate in the same months of recent years, adjusted for the change across all states",
-        f"full_year_{fy}": {"level": e.get("full_year_level"), "rate_pct": _pct(e.get("full_year_rate"))},
-        "outlook_full_year": {"projected_rate_pct": _pct(o.get("proj")), "range80_pct": [_pct(o.get("lo")), _pct(o.get("hi"))],
-                              "chance_flagged": o.get("p_flag"), "chance_alert": o.get("p_alert"),
+        f"full_year_{fy}": {"level": e.get("full_year_level"), f"rate_{sfx}": f(e.get("full_year_rate"))},
+        "outlook_full_year": {**_outlook(results, ind, o),
                               "track_record": outlook_track_record(results)["summary"]} if o else None,
         "by_mothers_race": race,
         "reporting_caveat": _caveats().get(ind),
