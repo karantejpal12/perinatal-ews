@@ -126,6 +126,26 @@ def test_psi():
     assert monitor.population_stability_index(a, rng.normal(1, 1, 2000)) > 0.25
 
 
+def test_psi_status_labels_missing_index_separately():
+    assert monitor.psi_status(0.05) == "stable"
+    assert monitor.psi_status(0.15) == "moderate shift"
+    assert monitor.psi_status(0.30) == "major shift"
+    assert monitor.psi_status(float("nan")) == "too few areas"
+    assert monitor.psi_status(float("nan"), missing="too few values") == "too few values"
+
+
+def test_distribution_drift_with_too_few_areas(cfg, data):
+    # Fewer than 10 areas (as with run --level state on a few states): the index
+    # cannot be computed and must not be reported as a major shift.
+    tidy = data[0]
+    few = tidy[tidy["geo_id"].isin(sorted(tidy["geo_id"].unique())[:5])]
+    drift = monitor.distribution_drift(few, cfg)
+    assert len(drift) and drift["psi"].isna().all()
+    assert set(drift["status"]) == {"too few areas"}
+    full = monitor.distribution_drift(tidy, cfg)
+    assert full["psi"].notna().all() and "too few areas" not in set(full["status"])
+
+
 WONDER_SAMPLE = '''"Notes"\t"County"\t"County Code"\t"Year"\t"Year Code"\t"OE Gestational Age Recode 10"\t"OE Gestational Age Recode 10 Code"\t"Births"
 \t"Middlesex County, MA"\t"25017"\t"2023"\t"2023"\t"34 - 36 weeks"\t"5"\t"1200"
 \t"Middlesex County, MA"\t"25017"\t"2023"\t"2023"\t"37 - 38 weeks"\t"6"\t"5000"

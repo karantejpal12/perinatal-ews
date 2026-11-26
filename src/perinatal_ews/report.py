@@ -462,7 +462,7 @@ An interval that includes zero means the ranking gain is not statistically clear
 
     rows = "".join(
         f"<tr><td>{escape(labels.get(r.indicator, r.indicator))}</td><td class=\"num\">{_pct(r.median_rate_baseline)}</td>"
-        f'<td class="num">{_pct(r.median_rate_current)}</td><td class="num">{r.psi:.3f}</td><td>{escape(r.status)}</td></tr>'
+        f'<td class="num">{_pct(r.median_rate_current)}</td><td class="num">{f"{r.psi:.3f}" if np.isfinite(r.psi) else "–"}</td><td>{escape(r.status)}</td></tr>'
         for r in drift.itertuples())
     health.append('<div class="table-wrap"><table><thead><tr><th>Indicator</th><th class="num">Median county rate, baseline</th>'
                   f'<th class="num">Median, {year}</th><th class="num">Stability index</th><th>Distribution</th></tr></thead>'

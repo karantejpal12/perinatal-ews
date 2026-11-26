@@ -31,6 +31,7 @@ from sklearn.metrics import average_precision_score, brier_score_loss, roc_auc_s
 
 from . import context as ctxmod
 from .detect import detect
+from .monitor import psi_status
 from .schema import TOTAL_SUBGROUP
 
 FEATURES = [
@@ -359,7 +360,7 @@ def run_forecast(tidy: pd.DataFrame, config: dict, seed: int = 0, n_folds: int =
                           for f in (ctx_features if use_ctx else FEATURES)
                           if f in labelled and labelled[f].nunique() >= 20
                           and not (f.startswith("ctx_") and f not in ("ctx_overdose_rate", "ctx_overdose_change"))])
-    drift["status"] = np.where(drift["psi"] < 0.10, "stable", np.where(drift["psi"] < 0.25, "moderate shift", "major shift"))
+    drift["status"] = [psi_status(v, missing="too few values") for v in drift["psi"]]
 
     return ForecastResult(
         forecast_year=last + 1, scores=scores, metrics=metrics, by_size=by_size, by_indicator=by_ind,

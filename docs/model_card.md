@@ -76,7 +76,7 @@ Each run reports:
 
 - **Calibration** by risk quintile (predicted vs observed rate).
 - **Performance by county size and by indicator.**
-- **Feature drift**: population stability index between the training years and the year being scored. Features with fewer than 20 distinct values are excluded.
+- **Feature drift**: population stability index between the training years and the year being scored. Features with fewer than 20 distinct values are excluded. Where fewer than 10 rows are scored the index cannot be computed and the status is "too few values".
 - **Permutation importance** on held-out years.
 
 When a new year of data arrives, the previous forecast can be scored against what happened and added to the evaluation, so performance is tracked over time.

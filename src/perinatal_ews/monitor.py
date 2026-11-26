@@ -58,6 +58,18 @@ def population_stability_index(reference: np.ndarray, current: np.ndarray, bins:
     return float(np.sum((cur_share - ref_share) * np.log(cur_share / ref_share)))
 
 
+def psi_status(psi: float, missing: str = "too few areas") -> str:
+    """Label a population stability index: stable, moderate shift or major shift.
+
+    A missing index (too few values to bin, for example fewer than 10 states)
+    gets the ``missing`` label rather than "major shift", which a NaN would
+    otherwise fall through to because it fails both thresholds.
+    """
+    if psi is None or not np.isfinite(psi):
+        return missing
+    return "stable" if psi < 0.10 else ("moderate shift" if psi < 0.25 else "major shift")
+
+
 def distribution_drift(tidy: pd.DataFrame, config: dict, year: int | None = None) -> pd.DataFrame:
     """PSI of county rates (target year vs. baseline years) for each indicator."""
     year = int(year or tidy["year"].max())
@@ -69,7 +81,7 @@ def distribution_drift(tidy: pd.DataFrame, config: dict, year: int | None = None
     rows = []
     for ind, g in d.groupby("indicator"):
         psi = population_stability_index(g[g["year"].isin(base_years)]["rate"], g[g["year"] == year]["rate"])
-        status = "stable" if psi < 0.10 else ("moderate shift" if psi < 0.25 else "major shift")
+        status = psi_status(psi)
         rows.append({"indicator": ind, "psi": psi, "status": status,
                      "median_rate_baseline": g[g["year"].isin(base_years)]["rate"].median(),
                      "median_rate_current": g[g["year"] == year]["rate"].median()})
