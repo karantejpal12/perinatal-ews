@@ -44,6 +44,16 @@ By county size (births per year):
 
 Scored as if each earlier year were current, before any change was injected, the demo gives alert rates of 0.17% (2021) and 0% (2022), as a calibrated detector should. Weaker sensitivity in small counties is expected: one year of a few hundred births rarely carries enough signal, so small-county results should be read with several years of trend. Results vary by seed; the test suite checks the guarantees (false-alert rate under 1.5%, at least half of injected changes found, every large-county change found).
 
+### Drops in item completeness
+
+A drop in completeness (more births with the item unknown or not stated, for example after a new electronic record system) removes births from the indicator's denominator, since unknowns are left out. `perinatal_ews.synthetic.drop_completeness` makes a share of births unknown in chosen counties and years of the demo data, with cases and other births going missing at the same or different rates, and `tests/test_completeness.py` scores 2024 after each drop:
+
+- **Missing at random.** With 30% of births unknown in the 30 largest unchanged counties (53% of all births), no alert appeared or disappeared in any county, for three random draws, and the injected changes were found as before. Losing births at random costs some precision but does not move the rate.
+- **Births without the outcome go missing.** With every case recorded and 20% of other births unknown in the five largest unchanged counties, the rate rises by about a fifth and 9 to 10 of their 20 county-indicators alerted (two random draws). Every one of these false alerts disappears when the unknowns are counted as births without the outcome, so the missing-data sensitivity analysis (`unknown_sensitivity.csv`, see the [methodology](methodology.md#limitations)) reveals them.
+- **Cases go missing.** When cases are more often unknown than other births, the rate falls. In the largest county with an injected change (preterm birth, about 28,000 births a year), 75% of cases and 25% of other births unknown made its alert disappear. If such a drop affects counties with many births, it also lowers the rate across all counties, and the reference-trend adjustment then lowers every other county's expected rate: with cases 2.5 times as likely to be unknown (50% against 20%) in the ten largest unchanged counties (27% of births), 13 new false alerts appeared in other counties, whose own data were complete. The sensitivity analysis reveals neither effect, because counting unknowns as births without the outcome lowers the rate further.
+
+So a flag in a county or year whose completeness changed should be read with its unknown share (see "Reporting-completeness signal" in the [roadmap](ROADMAP.md)), and a fall in completeness in large counties can move other counties' flags.
+
 ## Next-year forecast
 
 The forecast predicts which county-indicators will be flagged (alert or watch) next year. It is tested forward in time: to predict year *y*, models are trained only on earlier outcome years. Details are in the [model card](model_card.md).
@@ -107,6 +117,6 @@ For comparison, the year-so-far flag alone (flagged on January–September) foun
 - How much missing or unknown items change the published flags: the code exists (`unknown_sensitivity.csv`), but the published data do not yet include unknown counts.
 - Agreement with published state vital-records reports.
 - Forecast and alert performance by rurality, payer mix and race and ethnicity mix.
-- How drops in item completeness affect alerts.
+- How drops in item completeness affect alerts on real data (on synthetic data, see [above](#drops-in-item-completeness)).
 
 These are listed in the [roadmap](ROADMAP.md).

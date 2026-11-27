@@ -114,3 +114,60 @@ def generate(
     tidy = pd.concat([totals, tidy], ignore_index=True)
     tidy[["numerator", "denominator"]] = tidy[["numerator", "denominator"]].astype(float)
     return tidy[["geo_id", "geo_name", "state", "year", "indicator", "subgroup", "numerator", "denominator"]], truth_df
+
+
+def drop_completeness(
+    tidy: pd.DataFrame,
+    geo_ids,
+    years,
+    share: float,
+    case_relative_chance: float = 1.0,
+    indicators=None,
+    seed: int = 0,
+) -> pd.DataFrame:
+    """Copy of `tidy` in which a share of births in some areas and years have the item unknown.
+
+    Each birth without the outcome becomes unknown with probability `share`,
+    and each birth with the outcome with probability
+    `share * case_relative_chance` (capped at 1): 1 is missing at random, 0
+    means cases are always recorded and only births without the outcome go
+    missing (the observed rate rises), above 1 that cases go missing more
+    often (it falls). Births made unknown leave the numerator and denominator
+    and are added to the `unknown` column (created as 0 where absent), as
+    `ingest.wonder_to_tidy` does with its default setting, so the result can be
+    passed to `missing.unknown_sensitivity`. When an area-year has subgroups
+    besides the total, the subgroups are thinned and the total is rebuilt as
+    their sum, so the two stay consistent.
+    """
+    if not 0 <= share <= 1:
+        raise ValueError("share must be between 0 and 1")
+    if case_relative_chance < 0:
+        raise ValueError("case_relative_chance must be 0 or more")
+    rng = np.random.default_rng(seed)
+    out = tidy.copy()
+    if "unknown" not in out.columns:
+        out["unknown"] = 0.0
+    out["unknown"] = pd.to_numeric(out["unknown"], errors="coerce").astype(float)
+    hit = out["geo_id"].isin(list(geo_ids)) & out["year"].isin(list(years))
+    if indicators is not None:
+        hit &= out["indicator"].isin(list(indicators))
+    keys = ["geo_id", "year", "indicator"]
+    has_parts = out[hit & (out["subgroup"] != TOTAL_SUBGROUP)].groupby(keys).size()
+    is_total = out["subgroup"] == TOTAL_SUBGROUP
+    rebuilt = pd.MultiIndex.from_frame(out[keys]).isin(has_parts.index) & is_total
+    thin = hit & ~rebuilt & out[["numerator", "denominator"]].notna().all(axis=1)
+
+    num = out.loc[thin, "numerator"].to_numpy(int)
+    den = out.loc[thin, "denominator"].to_numpy(int)
+    lost_cases = rng.binomial(num, min(1.0, share * case_relative_chance))
+    lost_other = rng.binomial(den - num, share)
+    out.loc[thin, "numerator"] = (num - lost_cases).astype(float)
+    out.loc[thin, "denominator"] = (den - lost_cases - lost_other).astype(float)
+    out.loc[thin, "unknown"] = out.loc[thin, "unknown"] + lost_cases + lost_other
+
+    if rebuilt.any():
+        parts = out[hit & ~is_total].groupby(keys)[["numerator", "denominator", "unknown"]].sum(min_count=1)
+        idx = out.index[rebuilt]
+        sums = parts.reindex(pd.MultiIndex.from_frame(out.loc[idx, keys]))
+        out.loc[idx, ["numerator", "denominator", "unknown"]] = sums.to_numpy()
+    return out
